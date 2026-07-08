@@ -18,6 +18,8 @@ jobs:
           python-version: "3.x"
       - run: python scripts/validate-docs.py
       - run: python scripts/test_validate_docs.py
+      - run: python scripts/test_validate_enterprise_boundary.py
+      - run: python scripts/validate-enterprise-boundary.py
       - run: python scripts/test_verify_local.py
       - run: python scripts/test_webhook_receiver_verification.py
       - run: python scripts/test_validate_service_contracts.py
