@@ -33,7 +33,7 @@ PRIVATE_CODE_PREFIXES = (
 )
 PRIVATE_ROOT_FILES = {"ENTERPRISE-LICENSE-NOTICE.md", "EDITION.md"}
 SOURCE_EXTENSIONS = {".c", ".cpp", ".go", ".h", ".hpp", ".ps1", ".py"}
-GENERATED_DIRS = {"build", "build-fuzz", "build-release", ".tmp", ".gocache", ".tmp-gocache"}
+GENERATED_DIRS = {"build", "build-enterprise", "build-fuzz", "build-release", ".tmp", ".gocache", ".tmp-gocache"}
 SKIP_DIRS = {".git", "__pycache__", ".pytest_cache", "docs-pack", "node_modules", "vendor"}
 SELF_TEST_FILES = {
     "validate-enterprise-boundary.py",

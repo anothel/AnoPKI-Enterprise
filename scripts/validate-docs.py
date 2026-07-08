@@ -148,6 +148,13 @@ def check_license_state(root: Path) -> None:
     readme = (root / "README.md").read_text(encoding="utf-8")
     if "No `LICENSE` file has been selected yet" in readme or "all rights are reserved" in readme:
         fail("README still says license is undecided")
+    enterprise_notice = root / "ENTERPRISE-LICENSE-NOTICE.md"
+    if enterprise_notice.is_file():
+        notice = enterprise_notice.read_text(encoding="utf-8")
+        missing = [text for text in ("LicenseRef-AnoPKI-Enterprise", "MPL-2.0") if text not in notice]
+        if missing:
+            fail("Enterprise license notice missing required text:\n" + "\n".join(missing))
+        return
     license_text = (root / "LICENSE").read_text(encoding="utf-8")
     if "Mozilla Public License Version 2.0" not in license_text or "mozilla.org/MPL/2.0" not in license_text:
         fail("LICENSE is not MPL-2.0 text")

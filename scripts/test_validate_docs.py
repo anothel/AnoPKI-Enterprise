@@ -19,6 +19,7 @@ def copy_docs_inputs(dst: Path) -> None:
     required = [
         "LICENSE",
         "README.md",
+        "ENTERPRISE-LICENSE-NOTICE.md",
         ".env.example",
         "service/README.md",
         "scripts/acme-smoke/README.md",
@@ -221,16 +222,27 @@ def test_missing_readme_link_fails(tmp_path: Path) -> None:
 
 def test_license_text_drift_fails(tmp_path: Path) -> None:
     copy_docs_inputs(tmp_path)
+    (tmp_path / "ENTERPRISE-LICENSE-NOTICE.md").unlink()
     license_file = tmp_path / "LICENSE"
-    license_file.write_text(
-        license_file.read_text(encoding="utf-8").replace("Mozilla Public License Version 2.0", "Custom License"),
-        encoding="utf-8",
-    )
+    license_file.write_text("Custom License\n", encoding="utf-8")
 
     result = run_validator(tmp_path)
 
     assert result.returncode == 1
     assert "LICENSE is not MPL-2.0 text" in result.stderr
+
+
+def test_enterprise_license_notice_allows_private_license(tmp_path: Path) -> None:
+    copy_docs_inputs(tmp_path)
+    (tmp_path / "LICENSE").write_text("Private Enterprise License\n", encoding="utf-8")
+    (tmp_path / "ENTERPRISE-LICENSE-NOTICE.md").write_text(
+        "Enterprise overlay files use LicenseRef-AnoPKI-Enterprise. Upstream files remain MPL-2.0.\n",
+        encoding="utf-8",
+    )
+
+    result = run_validator(tmp_path)
+
+    assert result.returncode == 0, result.stderr + result.stdout
 
 
 def test_ci_missing_docs_validator_tests_fails(tmp_path: Path) -> None:
@@ -279,6 +291,8 @@ def main() -> None:
         test_missing_readme_link_fails(Path(dirname))
     with tempfile.TemporaryDirectory() as dirname:
         test_license_text_drift_fails(Path(dirname))
+    with tempfile.TemporaryDirectory() as dirname:
+        test_enterprise_license_notice_allows_private_license(Path(dirname))
     with tempfile.TemporaryDirectory() as dirname:
         test_ci_missing_docs_validator_tests_fails(Path(dirname))
     with tempfile.TemporaryDirectory() as dirname:
