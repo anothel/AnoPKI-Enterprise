@@ -2,6 +2,8 @@
 
 The Enterprise tree contains a C99 AnoCrypto skeleton so build files, repository
 layout, and validation scripts can be wired before the real implementation arrives.
+The skeleton is available only when `ANOPKI_ENABLE_ANOCRYPTO_BACKEND=ON`; it is
+not the default production backend.
 
 ## Gate sequence
 
@@ -20,3 +22,8 @@ layout, and validation scripts can be wired before the real implementation arriv
 
 The current `enterprise/anocrypto` code is a skeleton. It is not a cryptographic
 implementation and not KCMVP validated.
+
+OpenSSL remains the compatibility and fallback backend until CSR, issuance, CRL,
+OCSP, ACME, release evidence, and rollback parity are proven. KCMVP wording must
+stay target, planned, or preparation-only until approved certification evidence
+exists.

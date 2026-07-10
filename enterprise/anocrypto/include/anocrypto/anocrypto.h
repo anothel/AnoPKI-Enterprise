@@ -15,6 +15,9 @@ typedef enum anocrypto_status {
 } anocrypto_status;
 
 const char *anocrypto_version(void);
+const char *anocrypto_approved_mode_status(void);
+const char *anocrypto_deterministic_test_vector_status(void);
+const char *anocrypto_production_status(void);
 anocrypto_status anocrypto_self_test(void);
 
 #ifdef __cplusplus

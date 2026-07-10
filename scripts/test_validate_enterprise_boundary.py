@@ -32,7 +32,7 @@ def write_clean_enterprise_root(root: Path) -> None:
     write_file(
         root,
         "CMakeLists.txt",
-        "# SPDX-License-Identifier: MPL-2.0\nANOPKI_ENTERPRISE_EDITION\nANOPKI_ENTERPRISE_ANOCRYPTO_STUB\nanocrypto_c99\n",
+        "# SPDX-License-Identifier: MPL-2.0\nANOPKI_ENTERPRISE_EDITION\nANOPKI_ENABLE_ANOCRYPTO_BACKEND\nanocrypto_c99\n",
     )
     write_file(root, "README.md", "# AnoPKI\nOpenSSL remains current.\n")
     write_file(root, "docs/reference/crypto-backend-strategy.md", "AnoCrypto implementation pending. OpenSSL remains current.\n")

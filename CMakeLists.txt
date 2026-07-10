@@ -11,7 +11,7 @@ find_package(OpenSSL REQUIRED COMPONENTS Crypto)
 
 option(ANOPKI_ENABLE_FUZZING "Build local libFuzzer parser targets" OFF)
 option(ANOPKI_ENTERPRISE_EDITION "Build Enterprise edition overlay metadata" ON)
-option(ANOPKI_ENTERPRISE_ANOCRYPTO_STUB "Build the AnoCrypto C99 integration skeleton" ON)
+option(ANOPKI_ENABLE_ANOCRYPTO_BACKEND "Build the Enterprise AnoCrypto backend skeleton; not a production default" OFF)
 
 add_library(anopki_core
     src/core/crl.cpp
@@ -49,24 +49,34 @@ if(ANOPKI_ENTERPRISE_EDITION)
     target_sources(anopki_core
         PRIVATE
             src/enterprise/edition.cpp
-            src/core/crypto/anocrypto_backend.cpp
     )
     target_compile_definitions(anopki_core PUBLIC ANOPKI_ENTERPRISE_EDITION=1)
-    target_include_directories(anopki_core PRIVATE enterprise/anocrypto/include)
 
-    if(ANOPKI_ENTERPRISE_ANOCRYPTO_STUB)
+    if(ANOPKI_ENABLE_ANOCRYPTO_BACKEND)
         add_library(anocrypto_c99 STATIC
             enterprise/anocrypto/src/anocrypto.c
         )
         target_compile_features(anocrypto_c99 PUBLIC c_std_99)
         target_include_directories(anocrypto_c99 PUBLIC enterprise/anocrypto/include)
+
+        target_sources(anopki_core
+            PRIVATE
+                src/core/crypto/anocrypto_backend.cpp
+        )
+        target_include_directories(anopki_core PRIVATE enterprise/anocrypto/include)
         target_link_libraries(anopki_core PRIVATE anocrypto_c99)
-        target_compile_definitions(anopki_core PRIVATE ANOPKI_ENTERPRISE_ANOCRYPTO_STUB=1)
+        target_compile_definitions(anopki_core PRIVATE ANOPKI_ENABLE_ANOCRYPTO_BACKEND=1)
 
         add_executable(anocrypto_selftest
             enterprise/anocrypto/tests/selftest.c
         )
         target_link_libraries(anocrypto_selftest PRIVATE anocrypto_c99)
+
+        add_executable(anocrypto_backend_registration_test
+            enterprise/anocrypto/tests/backend_registration_test.cpp
+        )
+        target_include_directories(anocrypto_backend_registration_test PRIVATE src/core/crypto)
+        target_link_libraries(anocrypto_backend_registration_test PRIVATE anopki::core)
     endif()
 endif()
 
@@ -120,8 +130,9 @@ if(BUILD_TESTING)
     add_test(NAME anopki.version COMMAND anopki_version_test)
 
 
-    if(ANOPKI_ENTERPRISE_EDITION AND ANOPKI_ENTERPRISE_ANOCRYPTO_STUB)
+    if(ANOPKI_ENTERPRISE_EDITION AND ANOPKI_ENABLE_ANOCRYPTO_BACKEND)
         add_test(NAME anocrypto.selftest COMMAND anocrypto_selftest)
+        add_test(NAME anocrypto.backend_registration COMMAND anocrypto_backend_registration_test)
     endif()
 
     add_executable(anopki_core_cli_contract_test

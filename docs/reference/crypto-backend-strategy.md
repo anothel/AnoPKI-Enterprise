@@ -12,6 +12,11 @@ The repository already has a small backend namespace at `include/anopki/crypto/b
 
 The intended direction is to use **AnoCrypto** as the project-owned crypto backend layer after the current OpenSSL-backed behavior is fully pinned by contract tests and fixture evidence.
 
+Enterprise can build the AnoCrypto skeleton with
+`ANOPKI_ENABLE_ANOCRYPTO_BACKEND=ON`, but that option only wires placeholder
+self-tests and adapter registration. It does not make AnoCrypto the production
+default.
+
 Use these names consistently:
 
 | Context | Name |
