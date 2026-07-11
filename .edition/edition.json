@@ -13,12 +13,20 @@
     "webhook_header_prefix": "X-AnoPKI-"
   },
   "crypto_backend_default": "openssl",
-  "crypto_backend_direction": "anocrypto",
-  "anocrypto_status": "skeleton_pending",
+  "crypto_backend_direction": "anocrypto-c",
+  "anocrypto_status": "external_sdk_not_configured",
+  "pki_parity_status": "unsupported_pending",
+  "validated_mode": false,
+  "kcmvp_evidence": "none",
   "commercial_license_status": "placeholder",
   "kcmvp_status": "not_validated",
   "provider_status": "not_implemented",
   "distribution_status": "prohibited",
   "release_maturity": "pre-1.0 / not-production-stable",
-  "generated_from": "uploaded AnoPKI.zip"
+  "generated_from": "uploaded AnoPKI.zip",
+  "experimental_crypto_backend": "anocrypto-c",
+  "anocrypto_sdk_package": "AnoCryptoC::AnoCryptoC",
+  "anocrypto_sdk_version": null,
+  "anocrypto_sdk_build_fingerprint": null,
+  "anocrypto_capability_status": "sdk_capabilities_unverified"
 }

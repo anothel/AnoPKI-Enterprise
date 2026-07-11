@@ -13,7 +13,10 @@ func TestEnterpriseEditionMetadata(t *testing.T) {
 	if OverlayVersion != "unreleased" || OverlayStatus != "private-alpha" {
 		t.Fatalf("unexpected overlay metadata: %q %q", OverlayVersion, OverlayStatus)
 	}
-	if ActiveCryptoBackend != "openssl" || ExperimentalCryptoBackend != "anocrypto" || ExperimentalCryptoBackendStatus != "skeleton_pending" {
+	if ActiveCryptoBackend != "openssl" || ExperimentalCryptoBackend != "anocrypto-c" || ExperimentalCryptoBackendStatus != "external_sdk_not_configured" {
 		t.Fatalf("unexpected backend metadata: %q %q %q", ActiveCryptoBackend, ExperimentalCryptoBackend, ExperimentalCryptoBackendStatus)
+	}
+	if AnoCryptoSDKPackage != "AnoCryptoC::AnoCryptoC" || AnoCryptoCapabilityStatus != "sdk_capabilities_unverified" || PKIParityStatus != "unsupported_pending" || ValidatedMode {
+		t.Fatalf("unexpected SDK metadata: %q %q %q %t", AnoCryptoSDKPackage, AnoCryptoCapabilityStatus, PKIParityStatus, ValidatedMode)
 	}
 }

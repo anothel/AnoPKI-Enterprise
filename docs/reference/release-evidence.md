@@ -9,16 +9,17 @@ Current draft: [v0.1.0-alpha.0 candidate evidence](release-candidate-v0.1.0-alph
 
 | Area | Selected tool | Evidence hook |
 | --- | --- | --- |
-| Go static analysis | `go vet ./...` | CI `go-service` job. |
-| Go staticcheck | `staticcheck` | CI `go-service` job via `go run honnef.co/go/tools/cmd/staticcheck@latest ./...`. |
-| Go security scan | `gosec` | CI `go-service` job via `go run github.com/securego/gosec/v2/cmd/gosec@latest ./...`. |
-| Go race detector | `go test -race ./...` | CI `go-service` job with `CGO_ENABLED=1`. |
-| Go dependency vulnerability scan | `govulncheck` | CI `go-service` job via `go run golang.org/x/vuln/cmd/govulncheck@latest ./...`. |
-| C++ parser fuzz/sanitizer smoke | Clang/libFuzzer with AddressSanitizer | CI `cpp-fuzz-smoke` job builds CSR, OCSP, and CRL parser fuzz targets and runs `-runs=1`. |
+| Go test, vet, and build | Go 1.25.11 minimum plus current CI Go | CI `go-baseline` matrix. |
+| Go staticcheck | `staticcheck` | CI `go-analysis` job via `go run honnef.co/go/tools/cmd/staticcheck@latest ./...`. |
+| Go security scan | `gosec` | CI `go-analysis` job via `go run github.com/securego/gosec/v2/cmd/gosec@latest ./...`. |
+| Go race detector | `go test -race ./...` | CI `go-analysis` job with `CGO_ENABLED=1`. |
+| Go dependency vulnerability scan | `govulncheck` | CI `go-analysis` job via `go run golang.org/x/vuln/cmd/govulncheck@latest ./...`. |
+| PostgreSQL | PostgreSQL 16 service integration | CI `postgres-integration` job records client/server versions. |
+| C++ parser fuzz/sanitizer smoke | Clang/libFuzzer with AddressSanitizer | CI `cpp-fuzz-smoke` job builds CSR, OCSP, and CRL parser targets and runs each for at most 20 seconds. |
 | Community boundary | `scripts/validate-community-boundary.py` | CI `community-boundary` job. |
 | Secret baseline | `scripts/security-baseline-scan.py` | CI `secret-baseline` job and README smoke checklist. |
 | SBOM | `syft` CycloneDX JSON | Release workflow writes `dist/anopki.sbom.cdx.json`. |
-| Artifact signing | `cosign` keyless signing | Release workflow signs checksums, SBOM, and archives. |
+| Artifact signing | `cosign` keyless signing | Tag-only publish job signs checksums, SBOM, and archives; manual dry-runs record signing as skipped. |
 
 ## Release Artifacts
 
@@ -32,12 +33,16 @@ Pre-1.0 releases distribute archives, not installers or container images:
 - cosign signatures and transparency-log references for archives, checksums,
   and SBOM.
 
-The tagged release workflow reads the repository `VERSION` file, requires the
-tag name to match it, builds Linux amd64 service/core archives with the version
-in their filenames, writes `SHA256SUMS`, smoke-checks the archives and
-checksums, generates a CycloneDX SBOM with `syft`, signs release evidence with
-`cosign`, uploads the `dist/` directory as a workflow artifact, and publishes
-or updates the matching GitHub Release.
+The manually dispatched release workflow runs with read-only repository
+permissions. It builds Linux amd64 service/core archives with the repository
+version in their filenames, writes `SHA256SUMS`, validates archive contents,
+generates a CycloneDX SBOM with `syft`, records signing as skipped, and uploads
+the `dist/` directory only to the workflow run.
+
+Publishing is a separate job limited to a matching `v*` tag push. It requires
+a signed annotated tag and the `release` GitHub environment before receiving
+`contents: write` and OIDC permissions, signing evidence with `cosign`, and
+creating or updating the matching GitHub Release.
 
 Container images, OS packages, and Helm charts stay out until a deployment
 target is selected.
@@ -219,16 +224,56 @@ Run `govulncheck` with a patched Go toolchain. WSL Go `1.26.0` reports
 standard-library findings fixed in Go `1.26.4`; Windows Go `1.26.4` returns
 `No vulnerabilities found.` for the current tree.
 
-## Crypto Backend Evidence
+## Product Profile Evidence
 
-Each release candidate must record the active crypto backend and version/source used by the core build.
+Every release candidate records the assembled target, not only a dependency
+name.
 
-Current expected entry:
+| Profile | Required evidence | Release rule |
+| --- | --- | --- |
+| Community/OpenSSL | Community commit, OpenSSL version, full contract/golden tests, artifact evidence | Public release candidate allowed when the standard checklist passes. |
+| Enterprise/OpenSSL | Community baseline commit, Enterprise overlay version, OpenSSL version, Community plus Enterprise tests | Commercial release candidate allowed; AnoCrypto/KCMVP claims prohibited. |
+| Enterprise/AnoCrypto-C | Community baseline, Enterprise overlay, exact AnoCrypto-C SDK version/build/fingerprint, capability matrix, no-fallback tests, parity evidence | Production release blocked until all required Community operations are supported. |
+
+Required profile metadata:
+
+- edition,
+- product profile,
+- selected adapter,
+- backend dependency and exact version,
+- supported capability set,
+- key-provider class,
+- `fallback_used`,
+- production-readiness status,
+- KCMVP status and evidence pointer when applicable.
+
+`fallback_used` should normally be `false`. An AnoCrypto-C operation must not
+silently execute through OpenSSL. OpenSSL compatibility is a separately built
+or configured Enterprise/OpenSSL profile.
+
+## Current Community Backend Evidence
+
+Current expected Community entry:
 
 | Field | Current value | Evidence |
 | --- | --- | --- |
-| Crypto backend | OpenSSL-backed C++ core | CMake configure output, dependency version, and CTest/core CLI contract results. |
-| Backend parity | Fixture format version, per-operation result, and skip reason | [Crypto backend parity](crypto-backend-parity.md) harness output. |
-| Intended migration direction | AnoCrypto | ADR 0006 and [Crypto backend strategy](crypto-backend-strategy.md). |
+| Product profile | Community/OpenSSL | Build configuration and version metadata. |
+| Selected adapter | OpenSSL adapter/current OpenSSL-backed implementation | CMake configure output, OpenSSL version, CTest, core CLI contracts. |
+| AnoCrypto-C used | No | Community boundary validation. |
+| Fallback used | No | Configuration and negative boundary tests. |
 
-Do not mark AnoCrypto as active release evidence until an AnoCrypto-backed path exists and passes CSR, issuance, CRL, OCSP, and release artifact checks.
+Community documents may describe the backend-neutral core refactor and external
+Enterprise AnoCrypto-C direction, but must not mark AnoCrypto-C as active in a
+Community release.
+
+## Enterprise/AnoCrypto-C Evidence Gate
+
+Do not mark Enterprise/AnoCrypto-C production-ready until:
+
+- the real external `AnoCryptoC::AnoCryptoC` SDK is consumed,
+- the exact SDK artifact and build identity are pinned,
+- required CSR, issuance, CRL, and OCSP operations pass positive and negative
+  parity tests,
+- unsupported-capability tests prove OpenSSL is not called,
+- all required product capabilities are declared available,
+- KCMVP wording, if used, points to exact valid evidence.

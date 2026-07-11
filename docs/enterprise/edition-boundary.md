@@ -6,7 +6,7 @@ without a clear reason.
 
 ## Enterprise-only areas
 
-- AnoCrypto implementation and backend adapter.
+- AnoCrypto-C adapter integration and backend adapter.
 - KCMVP preparation, submission, and customer evidence packs.
 - Commercial license, support, and SLA material.
 - SSO/OIDC/SAML, RBAC/ABAC, approval workflows, and operator directory

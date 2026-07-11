@@ -13,8 +13,8 @@ packaging are production-ready.
 | Enterprise boundary validation | `python scripts\validate-enterprise-boundary.py` exits `enterprise boundary ok`. | Required. |
 | Enterprise docs validation | `python scripts\validate-docs.py` exits `docs ok`. | Required. |
 | Secret scan | `python scripts\security-baseline-scan.py` exits `secret baseline scan ok`; no customer secrets, private keys, cloud tokens, or production credentials are committed. | Required. |
-| AnoCrypto skeleton | Configure with `-DANOPKI_ENABLE_ANOCRYPTO_BACKEND=ON`; `anocrypto.selftest` and `anocrypto.backend_registration` pass. | Skeleton only. |
-| Backend parity | OpenSSL parity fixture reports `semantic_equal`; AnoCrypto skeleton reports `unsupported_pending` with an explicit reason until implementation exists. | AnoCrypto pending. |
+| AnoCrypto-C SDK boundary | Default build requires no SDK. Enabling `-DANOPKI_ENABLE_ANOCRYPTO_SDK_INTEGRATION=ON` requires a real installed `AnoCryptoC::AnoCryptoC` package and runs `anocrypto_sdk_integration`. | External SDK adapter only; no embedded algorithms. |
+| Backend parity | OpenSSL parity fixture reports `semantic_equal`; AnoCrypto reports `unsupported_pending` for all five PKI operations. | AnoCrypto PKI pending. |
 | License notice review | `ENTERPRISE-LICENSE-NOTICE.md` reviewed for the alpha package; upstream MPL-2.0 notices remain intact. | Required; commercial terms still placeholder. |
 | Unsupported features list | Alpha notes list every unavailable Enterprise feature. | Required. |
 | KCMVP claim status | KCMVP wording is target, planned, preparation, or readiness only unless approved certification evidence exists. | No certification claim. |
@@ -22,7 +22,7 @@ packaging are production-ready.
 
 ## Unsupported In Private Alpha
 
-- AnoCrypto production backend: unsupported, not implemented.
+- AnoCrypto PKI operation backend: unsupported, not implemented.
 - KCMVP cryptographic module approval: unsupported; no evidence.
 - SSO/OIDC/SAML and RBAC/ABAC operator directory integration.
 - Real HSM, KMS, and PKCS#11 provider implementations.
@@ -41,9 +41,14 @@ python scripts\security-baseline-scan.py
 cd service
 go test ./...
 cd ..
-cmake -S . -B .tmp\private-alpha-cmake -DOPENSSL_ROOT_DIR="$env:OPENSSL_ROOT_DIR" -DANOPKI_ENABLE_ANOCRYPTO_BACKEND=ON
+cmake -S . -B .tmp\private-alpha-cmake -DOPENSSL_ROOT_DIR="$env:OPENSSL_ROOT_DIR"
 cmake --build .tmp\private-alpha-cmake --config Debug
 ctest --test-dir .tmp\private-alpha-cmake -C Debug --output-on-failure
+
+# Optional trusted SDK integration lane only:
+cmake -S . -B .tmp\anocrypto-sdk-cmake -DANOPKI_ENABLE_ANOCRYPTO_SDK_INTEGRATION=ON -DANOCRYPTO_SDK_ROOT="<installed-sdk-prefix>"
+cmake --build .tmp\anocrypto-sdk-cmake --config Debug --target anocrypto_sdk_integration_test
+ctest --test-dir .tmp\anocrypto-sdk-cmake -C Debug -L anocrypto_sdk_integration --output-on-failure
 ```
 
 Run from `anopki-community` for upstream baseline before cutting an Enterprise

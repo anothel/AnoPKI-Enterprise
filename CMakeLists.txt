@@ -6,13 +6,14 @@ file(READ "${CMAKE_CURRENT_SOURCE_DIR}/VERSION" ANOPKI_VERSION)
 string(STRIP "${ANOPKI_VERSION}" ANOPKI_VERSION)
 string(REGEX MATCH "^[0-9]+\\.[0-9]+\\.[0-9]+" ANOPKI_PROJECT_VERSION "${ANOPKI_VERSION}")
 
-project(anopki VERSION ${ANOPKI_PROJECT_VERSION} LANGUAGES C CXX)
+project(anopki VERSION ${ANOPKI_PROJECT_VERSION} LANGUAGES CXX)
 
 find_package(OpenSSL REQUIRED COMPONENTS Crypto)
 
 option(ANOPKI_ENABLE_FUZZING "Build local libFuzzer parser targets" OFF)
 option(ANOPKI_ENTERPRISE_EDITION "Build Enterprise edition overlay metadata" ON)
-option(ANOPKI_ENABLE_ANOCRYPTO_BACKEND "Build the Enterprise AnoCrypto backend skeleton; not a production default" OFF)
+option(ANOPKI_ENABLE_ANOCRYPTO_SDK_INTEGRATION "Build the external AnoCrypto-C SDK adapter integration target" OFF)
+set(ANOCRYPTO_SDK_ROOT "" CACHE PATH "Installed AnoCrypto-C SDK prefix")
 
 add_library(anopki_core
     src/core/crl.cpp
@@ -53,31 +54,29 @@ if(ANOPKI_ENTERPRISE_EDITION)
     )
     target_compile_definitions(anopki_core PUBLIC ANOPKI_ENTERPRISE_EDITION=1)
 
-    if(ANOPKI_ENABLE_ANOCRYPTO_BACKEND)
-        add_library(anocrypto_c99 STATIC
-            enterprise/anocrypto/src/anocrypto.c
-        )
-        target_compile_features(anocrypto_c99 PUBLIC c_std_99)
-        target_include_directories(anocrypto_c99 PUBLIC enterprise/anocrypto/include)
+    if(ANOPKI_ENABLE_ANOCRYPTO_SDK_INTEGRATION)
+        if(ANOCRYPTO_SDK_ROOT)
+            list(PREPEND CMAKE_PREFIX_PATH "${ANOCRYPTO_SDK_ROOT}")
+        endif()
+        find_package(AnoCryptoC 0.1.0 EXACT CONFIG REQUIRED)
 
-        target_sources(anopki_core
-            PRIVATE
-                src/core/crypto/anocrypto_backend.cpp
+        add_library(anopki_enterprise_anocrypto_adapter STATIC
+            src/backends/anocrypto_c/anocrypto_backend.cpp
         )
-        target_include_directories(anopki_core PRIVATE enterprise/anocrypto/include)
-        target_link_libraries(anopki_core PRIVATE anocrypto_c99)
-        target_compile_definitions(anopki_core PRIVATE ANOPKI_ENABLE_ANOCRYPTO_BACKEND=1)
+        target_compile_features(anopki_enterprise_anocrypto_adapter PUBLIC cxx_std_20)
+        target_include_directories(anopki_enterprise_anocrypto_adapter
+            PUBLIC
+                $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+        )
+        target_link_libraries(anopki_enterprise_anocrypto_adapter
+            PUBLIC anopki::core
+            PRIVATE AnoCryptoC::AnoCryptoC
+        )
 
-        add_executable(anocrypto_selftest
-            enterprise/anocrypto/tests/selftest.c
+        add_executable(anocrypto_sdk_integration_test
+            enterprise/tests/anocrypto_sdk_integration_test.cpp
         )
-        target_link_libraries(anocrypto_selftest PRIVATE anocrypto_c99)
-
-        add_executable(anocrypto_backend_registration_test
-            enterprise/anocrypto/tests/backend_registration_test.cpp
-        )
-        target_include_directories(anocrypto_backend_registration_test PRIVATE src/core/crypto)
-        target_link_libraries(anocrypto_backend_registration_test PRIVATE anopki::core)
+        target_link_libraries(anocrypto_sdk_integration_test PRIVATE anopki_enterprise_anocrypto_adapter)
     endif()
 endif()
 
@@ -138,15 +137,9 @@ if(BUILD_TESTING)
         add_test(NAME enterprise.edition_metadata COMMAND anopki_enterprise_edition_metadata_test)
         set_tests_properties(enterprise.edition_metadata PROPERTIES LABELS "enterprise_metadata")
     endif()
-
-    if(ANOPKI_ENTERPRISE_EDITION AND ANOPKI_ENABLE_ANOCRYPTO_BACKEND)
-        add_test(NAME anocrypto.selftest COMMAND anocrypto_selftest)
-        add_test(NAME anocrypto.backend_registration COMMAND anocrypto_backend_registration_test)
-        set_tests_properties(
-            anocrypto.selftest
-            anocrypto.backend_registration
-            PROPERTIES LABELS "anocrypto_skeleton"
-        )
+    if(ANOPKI_ENTERPRISE_EDITION AND ANOPKI_ENABLE_ANOCRYPTO_SDK_INTEGRATION)
+        add_test(NAME anocrypto.sdk_integration COMMAND anocrypto_sdk_integration_test)
+        set_tests_properties(anocrypto.sdk_integration PROPERTIES LABELS "anocrypto_sdk_integration")
     endif()
 
     add_executable(anopki_core_cli_contract_test

@@ -24,7 +24,7 @@ def write_fixture(root: Path) -> None:
         "commercial_license_status": "approved",
         "distribution_status": "allowed",
         "crypto_backend_default": "openssl",
-        "anocrypto_status": "skeleton_pending",
+        "anocrypto_status": "external_sdk_not_configured",
         "kcmvp_status": "not_validated",
     }
     (root / ".edition/edition.json").write_text(json.dumps(edition), encoding="utf-8")
@@ -34,7 +34,7 @@ def write_fixture(root: Path) -> None:
         "GitHub Actions run URL",
         "Active OpenSSL version",
         "Enterprise metadata result",
-        "AnoCrypto skeleton result",
+        "AnoCrypto-C SDK integration result",
         "Pending parity result",
     ))
     (root / "docs/enterprise/private-alpha-evidence.md").write_text(rows + "\n", encoding="utf-8")
@@ -64,7 +64,7 @@ def main() -> None:
         assert anocrypto.returncode == 1
         assert "AnoCrypto is production-ready without evidence" in anocrypto.stderr
 
-        edition["anocrypto_status"] = "skeleton_pending"
+        edition["anocrypto_status"] = "external_sdk_not_configured"
         edition["kcmvp_status"] = "validated"
         edition_path.write_text(json.dumps(edition), encoding="utf-8")
         kcmvp = run(root)

@@ -17,7 +17,7 @@ EVIDENCE_FIELDS = (
     "GitHub Actions run URL",
     "Active OpenSSL version",
     "Enterprise metadata result",
-    "AnoCrypto skeleton result",
+    "AnoCrypto-C SDK integration result",
     "Pending parity result",
 )
 PENDING_VALUES = {"", "pending", "tbd", "todo"}

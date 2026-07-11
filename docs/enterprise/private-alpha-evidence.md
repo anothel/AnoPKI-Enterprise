@@ -1,7 +1,7 @@
 # Enterprise Private Alpha Evidence
 
-Status: local private-alpha engineering gate passed. CI execution and all
-distribution remain blocked.
+Status: local private-alpha engineering gate passes for the Enterprise/OpenSSL
+profile. CI execution and all customer/production distribution remain blocked.
 
 ## Version And Edition Model
 
@@ -13,45 +13,52 @@ distribution remain blocked.
 | Enterprise overlay version | `unreleased` |
 | Enterprise overlay status | `private-alpha` |
 | Active backend | OpenSSL |
-| AnoCrypto | Opt-in skeleton; pending |
+| AnoCrypto-C integration | External SDK adapter boundary; SDK not configured |
+| AnoCrypto-C module self-test | Owned by the external SDK; not executed by this baseline |
+| AnoCrypto-C capability set | Unverified until a pinned external SDK is supplied |
+| PKI parity | Required operations remain `unsupported_pending` |
+| Validated mode | `false` |
 | KCMVP | Not validated; no evidence |
 | Commercial license | Placeholder; distribution blocked |
 | HSM/KMS/PKCS#11 | Not implemented |
 
 The service `/version`, C++ library version, release workflow, and release
-artifact names use the base version. Enterprise edition and backend status are
-separate metadata and do not create a production release version.
+artifact names use the Community base version. Enterprise edition and adapter
+status are separate metadata and do not create a production release version.
 
-## AnoCrypto Parity Status
+## AnoCrypto-C Integration Status
 
-All five required operations remain `unsupported_pending`:
+The old embedded AnoCrypto implementation and copied headers have been removed.
+Enterprise now owns only an adapter source boundary that consumes the separately
+installed CMake package `AnoCryptoC::AnoCryptoC`.
 
-- CSR parse
-- certificate issuance
-- CRL generation/signing
-- OCSP decode
-- OCSP response signing
+Current state:
 
-Skeleton self-test and registration success prove build wiring only. The pending
-parity CTest remains an explicit skip and is not production evidence.
+- default Enterprise/OpenSSL configuration requires no AnoCrypto-C SDK,
+- enabling the SDK integration without a package fails CMake configuration,
+- a real SDK integration run has not yet been recorded,
+- CSR inspection, certificate issuance, CRL generation, OCSP inspection,
+  OCSP response generation, and responder validation remain unavailable through
+  the AnoCrypto-C adapter,
+- unavailable operations return `backend.capability_unavailable`,
+- OpenSSL is never an automatic fallback from the AnoCrypto-C adapter.
 
-## Verification Result
+## Local Verification Result
 
-- Enterprise boundary, docs, version, release-evidence, release-artifact,
-  service-contract, core-contract, and secret checks passed.
-- Community baseline drift validation passed at the recorded commit.
-- Go test, vet, and build passed.
-- CMake configure and Debug build passed with OpenSSL 3.6.3 and the opt-in
-  AnoCrypto skeleton enabled.
-- CTest discovered 11 tests: 10 executed and passed; the AnoCrypto parity test
-  was explicitly skipped as `unsupported_pending`.
-- `anocrypto_skeleton` label selected two tests and both passed.
-- `anocrypto_parity_pending` label selected one test and it remained skipped.
+- Enterprise boundary, docs, version, release-evidence, service-contract,
+  core-contract, and secret checks passed.
+- Enterprise/OpenSSL CMake configure and build passed with OpenSSL 3.5.5 in the
+  audit environment.
+- Enterprise/OpenSSL CTest: 8 tests passed and the AnoCrypto-C parity test was
+  explicitly skipped as `unsupported_pending`.
+- Missing-SDK configuration was verified to fail when
+  `ANOPKI_ENABLE_ANOCRYPTO_SDK_INTEGRATION=ON` and `AnoCryptoC` was unavailable.
+- The adapter compiled against an out-of-tree contract stub only to validate the
+  CMake/C++ consumer boundary. That is not real AnoCrypto-C integration evidence.
 
-Private-alpha engineering readiness is achieved for internal testing on this
-worktree. A reviewed commit and CI run are still required for durable evidence.
-Commercial distribution and production distribution remain prohibited while
-the Enterprise license is a placeholder.
+A reviewed commit, real private CI run, and a pinned real AnoCrypto-C SDK run are
+still required for durable evidence. Commercial and production distribution
+remain prohibited while the Enterprise license is a placeholder.
 
 ## Real Private CI Evidence
 
@@ -65,7 +72,7 @@ GitHub Actions run.
 | Community baseline commit | `2be155780d4b024c76b0a901ec130e83fc221f2f` |
 | Active OpenSSL version | `PENDING` |
 | Enterprise metadata result | `PENDING` |
-| AnoCrypto skeleton result | `PENDING` |
+| AnoCrypto-C SDK integration result | `PENDING` |
 | Pending parity result | `PENDING` |
 | License status | Commercial placeholder; distribution blocked |
 | KCMVP status | Not validated; no evidence |

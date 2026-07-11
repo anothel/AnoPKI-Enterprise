@@ -1,43 +1,78 @@
-# AnoCrypto Integration Plan
+# External AnoCrypto-C Adapter Plan
 
-The Enterprise tree contains a C99 AnoCrypto skeleton so build files, repository
-layout, and validation scripts can be wired before the real implementation arrives.
-The skeleton is available only when `ANOPKI_ENABLE_ANOCRYPTO_BACKEND=ON`; it is
-not the default production backend.
+## Position
 
-[ADR 0007](adr/0007-anocrypto-module-boundary.md) defines the target internal
-split: a PKI codec owns ASN.1 and PKI formats, AnoCrypto owns cryptographic
-primitives and module state, and key providers own `key_ref` resolution and
-signing authorization. The public operation-level backend contract remains the
-outer compatibility boundary.
+AnoCrypto-C is a separate external C99 project and SDK. The Enterprise
+repository does not implement its cryptographic algorithms, module lifecycle,
+self-tests, random service, or zeroization.
 
-## Gate sequence
+Enterprise owns only the AnoPKI adapter, configuration, integration tests,
+metadata, packaging policy, and operation parity evidence.
 
-1. Preserve OpenSSL-backed behavior as the baseline.
-2. Introduce the internal codec/module/provider contracts from ADR 0007 without
-   exposing OpenSSL types.
-3. Generate OpenSSL golden fixtures.
-4. Implement SHA-256 known-answer and negative tests as the first AnoCrypto
-   vertical slice; this does not complete a PKI parity operation.
-5. Extract prepare/sign/finalize paths and implement equivalent AnoCrypto-backed
-   behavior one operation at a time.
-6. Normalize backend errors so raw cryptographic errors do not become public API
-   contracts.
-7. Record codec, crypto module, provider, validated-mode, compiler, OS, and
-   release artifact evidence independently.
-8. Switch the Enterprise default only after parity, security review, and rollback
-   evidence are complete.
+## Dependency Contract
 
-## Current status
+The adapter consumes the installed CMake package:
 
-The current `enterprise/anocrypto` code is a skeleton. It is not a cryptographic
-implementation and not KCMVP validated.
+```cmake
+find_package(AnoCryptoC CONFIG REQUIRED)
+target_link_libraries(anopki_enterprise_anocrypto PRIVATE AnoCryptoC::AnoCryptoC)
+```
 
-OpenSSL remains the compatibility and fallback backend until CSR, issuance, CRL,
-OCSP, ACME, release evidence, and rollback parity are proven. KCMVP wording must
-stay target, planned, or preparation-only until approved certification evidence
-exists.
+The Enterprise build must pin and record the exact SDK artifact, version, build
+identity/fingerprint, platform, compiler/runtime compatibility, and license.
 
-The migration may use OpenSSL as the PKI codec while AnoCrypto primitives are
-introduced. Such a build is a hybrid and must report both components; it is not
-evidence that the five AnoCrypto parity operations are complete.
+## Adapter Contract
+
+The AnoCrypto-C adapter implements the same operation-level contract as the
+Community OpenSSL adapter:
+
+- CSR inspect
+- certificate issue
+- CRL generate
+- OCSP request inspect
+- OCSP response generate
+- responder certificate validate
+- backend identity/version/capabilities
+- stable error mapping
+
+The adapter must not declare unsupported SDK functions or emulate support using
+OpenSSL.
+
+## Current Partial Capability Rule
+
+While the external SDK lacks a required operation:
+
+- advertise the capability as unavailable,
+- return a stable `backend.capability_unavailable` error,
+- verify that no OpenSSL call occurs,
+- keep the relevant parity state pending,
+- block the Enterprise/AnoCrypto-C production release profile.
+
+## No Fallback
+
+AnoCrypto-C failure, initialization error, or missing capability must not cause
+an OpenSSL retry. Customers needing OpenSSL select `Enterprise/OpenSSL` before
+startup/build.
+
+## Release Gate
+
+Enterprise/AnoCrypto-C is production-releasable only after:
+
+- all required Community operation capabilities are implemented,
+- OpenSSL and AnoCrypto-C positive/negative parity evidence passes,
+- missing-capability and dependency-failure tests pass,
+- no-fallback tests prove OpenSSL was not invoked,
+- exact SDK and artifact evidence is attached,
+- security review covers key handling and failures,
+- KCMVP wording is limited to valid exact-module evidence.
+
+## Public Claim Rule
+
+| 상태 | 허용 문구 |
+| --- | --- |
+| capability 일부 구현 | AnoCrypto-C integration profile under development; not production-ready |
+| full parity, 검증 전 | AnoCrypto-C-backed Enterprise profile; KCMVP not validated |
+| KCMVP 시험 중 | KCMVP verification in progress for the listed AnoCrypto-C module; not validated |
+| 검증 완료 | KCMVP-validated AnoCrypto-C module only for the listed version/build/platform |
+
+AnoPKI 전체가 자동으로 검증된 것으로 표현하지 않습니다.

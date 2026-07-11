@@ -9,50 +9,128 @@ permissions:
   contents: read
 
 jobs:
-  community-baseline:
+  docs-validation:
+    name: Docs validation
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.x"
-      - run: python scripts/validate-docs.py
-      - run: python scripts/test_validate_docs.py
-      - run: python scripts/test_verify_local.py
-      - run: python scripts/test_webhook_receiver_verification.py
-      - run: python scripts/test_validate_service_contracts.py
-      - run: python scripts/validate-service-contracts.py
-      - run: python scripts/test_validate_core_cli_contracts.py
-      - run: python scripts/validate-core-cli-contracts.py
-      - run: python scripts/test_validate_version_metadata.py
-      - run: python scripts/validate-version-metadata.py
-      - run: python scripts/test_validate_release_artifacts.py
-      - run: python scripts/test_validate_release_evidence.py
-      - run: python scripts/validate-release-evidence.py
-      - run: python scripts/test_security_baseline_scan.py
-      - run: python scripts/security-baseline-scan.py
+      - name: Validate docs
+        run: python scripts/validate-docs.py
+      - name: Test docs validator
+        run: python scripts/test_validate_docs.py
+      - name: Test local verification command list
+        run: python scripts/test_verify_local.py
+      - name: Test webhook receiver verification
+        run: python scripts/test_webhook_receiver_verification.py
 
-  enterprise-overlay:
+  service-contracts:
+    name: Service contracts
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.x"
-      - name: Fetch recorded Community baseline
-        run: |
-          git remote add community https://github.com/anothel/AnoPKI-Community.git
-          git fetch --no-tags community main
-      - run: python scripts/test_validate_enterprise_boundary.py
-      - run: python scripts/validate-enterprise-boundary.py
-      - run: python scripts/test_sync_community_upstream.py
-      - run: python scripts/validate-docs.py
-      - run: python scripts/validate-community-baseline.py
-      - run: python scripts/test_validate_enterprise_release.py
-      - run: python scripts/validate-enterprise-release.py --expect-blocked
-      - run: python scripts/test_validate_pending_parity_junit.py
+      - name: Test service contract validator
+        run: python scripts/test_validate_service_contracts.py
+      - name: Validate service contracts
+        run: python scripts/validate-service-contracts.py
 
-  community-go-service:
+  core-cli-contracts:
+    name: Core CLI contracts
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+      - name: Test core CLI contract validator
+        run: python scripts/test_validate_core_cli_contracts.py
+      - name: Validate core CLI contracts
+        run: python scripts/validate-core-cli-contracts.py
+
+  release-metadata:
+    name: Release metadata
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+      - name: Test version metadata validator
+        run: python scripts/test_validate_version_metadata.py
+      - name: Validate version metadata
+        run: python scripts/validate-version-metadata.py
+      - name: Test release artifact validator
+        run: python scripts/test_validate_release_artifacts.py
+      - name: Test release evidence validator
+        run: python scripts/test_validate_release_evidence.py
+      - name: Validate release evidence
+        run: python scripts/validate-release-evidence.py
+
+  secret-baseline:
+    name: Secret baseline scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+      - name: Test secret baseline scanner
+        run: python scripts/test_security_baseline_scan.py
+      - name: Scan for committed secrets
+        run: python scripts/security-baseline-scan.py
+
+  go-baseline:
+    name: Go baseline (${{ matrix.go }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        go: ["1.25.11", "1.26.x"]
+    defaults:
+      run:
+        working-directory: service
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ matrix.go }}
+          cache-dependency-path: |
+            service/go.mod
+            service/go.sum
+      - run: go version
+      - run: go test ./...
+      - run: go vet ./...
+      - run: mkdir -p ../.tmp/ci && go build -o ../.tmp/ci/anopki-service ./cmd/anopki-service
+
+  go-analysis:
+    name: Go race and analysis
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: service
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.26.x"
+          cache-dependency-path: |
+            service/go.mod
+            service/go.sum
+      - run: go version
+      - run: go test -race ./...
+        env:
+          CGO_ENABLED: "1"
+      - run: go run honnef.co/go/tools/cmd/staticcheck@latest ./...
+      - run: go run github.com/securego/gosec/v2/cmd/gosec@latest ./...
+      - run: go run golang.org/x/vuln/cmd/govulncheck@latest ./...
+
+  postgres-integration:
+    name: PostgreSQL 16 integration
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -79,18 +157,88 @@ jobs:
           cache-dependency-path: |
             service/go.mod
             service/go.sum
-      - run: go test ./...
-      - run: go test -race ./...
-        env:
-          CGO_ENABLED: "1"
-      - run: go vet ./...
-      - run: go run honnef.co/go/tools/cmd/staticcheck@latest ./...
-      - run: go run github.com/securego/gosec/v2/cmd/gosec@latest ./...
-      - run: go run golang.org/x/vuln/cmd/govulncheck@latest ./...
+      - run: sudo apt-get update && sudo apt-get install -y postgresql-client
+        working-directory: .
+      - name: Record PostgreSQL version
+        run: |
+          psql --version
+          PGPASSWORD=anopki psql -h localhost -U anopki -d anopki_test -Atc "SHOW server_version;"
       - run: go test -p 1 ./internal/store ./internal/httpapi -run PostgresIntegration -v
         env:
           ANOPKI_POSTGRES_TEST_DSN: postgres://anopki:anopki@localhost:5432/anopki_test?sslmode=disable
-      - run: go build ./cmd/anopki-service
+
+  cpp-core:
+    name: C++ core
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update && sudo apt-get install -y cmake g++ libssl-dev pkg-config
+      - name: Record C++ toolchain
+        run: |
+          cmake --version
+          c++ --version
+          pkg-config --modversion openssl
+      - run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug
+      - run: cmake --build build --config Debug
+      - run: ctest --test-dir build -C Debug --output-on-failure
+
+  cpp-fuzz-smoke:
+    name: C++ fuzz smoke
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update && sudo apt-get install -y cmake clang libssl-dev pkg-config
+      - name: Record fuzz toolchain
+        run: |
+          cmake --version
+          clang++ --version
+          pkg-config --modversion openssl
+      - run: cmake -S . -B build-fuzz -DANOPKI_ENABLE_FUZZING=ON -DCMAKE_CXX_COMPILER=clang++
+      - run: cmake --build build-fuzz --target anopki_core_csr_fuzz anopki_core_ocsp_fuzz anopki_core_crl_fuzz
+      - run: timeout 30s ./build-fuzz/anopki_core_csr_fuzz -max_total_time=20
+        env:
+          ASAN_OPTIONS: detect_leaks=0:abort_on_error=1
+      - run: timeout 30s ./build-fuzz/anopki_core_ocsp_fuzz -max_total_time=20
+        env:
+          ASAN_OPTIONS: detect_leaks=0:abort_on_error=1
+      - run: timeout 30s ./build-fuzz/anopki_core_crl_fuzz -max_total_time=20
+        env:
+          ASAN_OPTIONS: detect_leaks=0:abort_on_error=1
+
+  acme-harness:
+    name: ACME harness self-test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.25.11"
+          cache-dependency-path: |
+            service/go.mod
+            service/go.sum
+      - name: Run ACME harness tests
+        shell: pwsh
+        run: ./scripts/acme-smoke/test-run-certbot-smoke.ps1
+      - run: echo "Harness passed; no live lego or certbot compatibility claim was produced."
+  enterprise-overlay:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+      - name: Fetch recorded Community baseline
+        run: |
+          git remote add community https://github.com/anothel/AnoPKI-Community.git
+          git fetch --no-tags community main
+      - run: python scripts/test_validate_enterprise_boundary.py
+      - run: python scripts/validate-enterprise-boundary.py
+      - run: python scripts/test_sync_community_upstream.py
+      - run: python scripts/validate-docs.py
+      - run: python scripts/validate-community-baseline.py
+      - run: python scripts/test_validate_enterprise_release.py
+      - run: python scripts/validate-enterprise-release.py --expect-blocked
+      - run: python scripts/test_validate_pending_parity_junit.py
 
   enterprise-go:
     runs-on: ubuntu-latest
@@ -108,40 +256,34 @@ jobs:
       - run: go test ./internal/enterprise
       - run: go vet ./internal/enterprise
 
-  community-cpp-core:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - run: sudo apt-get update && sudo apt-get install -y cmake g++ libssl-dev
-      - run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug
-      - run: cmake --build build --config Debug
-      - run: ctest --test-dir build -C Debug --output-on-failure
-
   enterprise-cpp-smoke:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - run: sudo apt-get update && sudo apt-get install -y cmake g++ libssl-dev
-      - run: cmake -S . -B build-enterprise -DCMAKE_BUILD_TYPE=Debug -DANOPKI_ENABLE_ANOCRYPTO_BACKEND=ON
-      - run: cmake --build build-enterprise --target anopki_core anocrypto_selftest anocrypto_backend_registration_test anopki_core_openssl_golden_test anopki_enterprise_edition_metadata_test
+      - run: cmake -S . -B build-enterprise -DCMAKE_BUILD_TYPE=Debug
+      - run: cmake --build build-enterprise --target anopki_core anopki_enterprise_edition_metadata_test anopki_core_openssl_golden_test
       - run: ctest --test-dir build-enterprise -N -L enterprise_metadata
       - run: ctest --test-dir build-enterprise -L enterprise_metadata --output-on-failure
-      - run: ctest --test-dir build-enterprise -N -L anocrypto_skeleton
-      - run: ctest --test-dir build-enterprise -L anocrypto_skeleton --output-on-failure
       - run: ctest --test-dir build-enterprise -N -L anocrypto_parity_pending
       - run: ctest --test-dir build-enterprise -L anocrypto_parity_pending --output-on-failure --output-junit anocrypto-parity.xml
       - run: python scripts/validate-pending-parity-junit.py build-enterprise/anocrypto-parity.xml
-
-  cpp-fuzz-smoke:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - run: sudo apt-get update && sudo apt-get install -y cmake clang libssl-dev
-      - run: cmake -S . -B build-fuzz -DANOPKI_ENABLE_FUZZING=ON -DCMAKE_CXX_COMPILER=clang++
-      - run: cmake --build build-fuzz --target anopki_core_csr_fuzz anopki_core_ocsp_fuzz anopki_core_crl_fuzz
-      - run: ./build-fuzz/anopki_core_csr_fuzz -runs=1
-      - run: ./build-fuzz/anopki_core_ocsp_fuzz -runs=1
-      - run: ./build-fuzz/anopki_core_crl_fuzz -runs=1
+      - name: AnoCrypto-C SDK is required when integration is enabled
+        shell: bash
+        run: |
+          set +e
+          output=$(cmake -S . -B build-anocrypto-missing \
+            -DANOPKI_ENABLE_ANOCRYPTO_SDK_INTEGRATION=ON \
+            -DCMAKE_DISABLE_FIND_PACKAGE_AnoCryptoC=TRUE 2>&1)
+          status=$?
+          set -e
+          echo "$output"
+          if [ "$status" -eq 0 ]; then
+            echo "expected AnoCrypto-C SDK configuration failure" >&2
+            exit 1
+          fi
+          echo "$output" | grep -q "AnoCryptoC"
+          echo "expected AnoCrypto-C SDK configuration failure observed"
 
   external-integrations-skipped:
     runs-on: ubuntu-latest

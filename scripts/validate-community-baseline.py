@@ -23,7 +23,7 @@ EXCLUDED_PREFIXES = (
     "include/anopki/enterprise/",
     "LICENSES/",
     "service/internal/enterprise/",
-    "src/core/crypto/anocrypto_backend",
+    "src/backends/anocrypto_c/",
     "src/enterprise/",
 )
 EXCLUDED_FILES = {

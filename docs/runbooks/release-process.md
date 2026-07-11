@@ -3,6 +3,13 @@
 `AnoPKI` is pre-1.0. This process creates a reviewed release candidate; it
 does not publish packages by itself.
 
+## Community Product Profile
+
+Community release candidates are assembled as `Community/OpenSSL`: AnoPKI Core
+plus the Community OpenSSL adapter. Community artifacts must not include the
+Enterprise AnoCrypto-C adapter, a private AnoCrypto-C SDK, Enterprise licensing,
+or KCMVP claims. Enterprise profiles have separate private release gates.
+
 ## Preconditions
 
 - Roadmap completed items have been removed from [ROADMAP](../ROADMAP.md).
@@ -28,10 +35,19 @@ go build ./cmd/anopki-service
 Run core checks:
 
 ```powershell
+$env:OPENSSL_ROOT_DIR = "C:\vcpkg\installed\x64-windows"
 cmake -S . -B build -DOPENSSL_ROOT_DIR="$env:OPENSSL_ROOT_DIR"
 cmake --build build --config Debug
 ctest --test-dir build -C Debug --output-on-failure
 ```
+
+On Windows, `OPENSSL_ROOT_DIR` must point to a root containing
+`bin\libcrypto*.dll`. CMake copies detected runtime DLLs beside `anopki-core`.
+For direct test execution, either keep those copied DLLs beside test binaries or
+prepend that `bin` directory to PATH for the current shell only. Do not modify
+global PATH. `scripts\verify-local.ps1` detects common vcpkg locations, applies
+a process-local PATH, restores it afterward, and fails early with setup guidance
+instead of allowing CTest exit `0xc0000135`.
 
 Run optional smoke checks when tools are available:
 
@@ -77,9 +93,11 @@ Certbot smoke requires Linux/WSL or elevated Windows with certbot installed.
    changed.
 11. Attach route/OpenAPI, operation ID, path/query parameter, config/docs, API error
    mapping, docs validation, and secret baseline scan evidence from CI.
-12. Attach the `.github/workflows/release.yml` run URL and uploaded
-   `anopki-release` artifact containing smoke-checked archives,
-   `SHA256SUMS`, CycloneDX SBOM, cosign signatures, and cosign certificates.
+12. Manually dispatch `.github/workflows/release.yml` from the candidate commit.
+   Attach its run URL and versioned `anopki-release-<run-id>` artifact containing
+   validated service/core archives, `SHA256SUMS`, CycloneDX SBOM, and
+   `SIGNING-STATUS.txt`. Manual runs are dry-runs: they have read-only repository
+   permission and cannot sign, tag, publish packages, or create a GitHub Release.
 13. Copy and complete the compatibility evidence template from
    [Release evidence](../reference/release-evidence.md).
 14. Keep candidate-specific command results, known gaps, and tag blockers in a
@@ -96,6 +114,12 @@ Builds should set:
 
 The release workflow reads `VERSION`, checks that the tag without leading `v`
 matches it, and injects the value into `serviceVersion`.
+
+The publish job is not reachable from `workflow_dispatch`. It runs only for a
+matching `v*` tag push, rejects tags without an embedded PGP or SSH signature,
+and uses the protected `release` environment before write/OIDC permissions are
+available. Configure required reviewers for that environment before any release
+tag is pushed.
 
 Verify the running service reports the expected values:
 

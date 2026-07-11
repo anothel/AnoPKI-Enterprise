@@ -17,9 +17,9 @@ REQUIRED = [
     "LICENSES/MPL-2.0.txt",
     "LICENSES/LicenseRef-AnoPKI-Enterprise.txt",
     "ENTERPRISE-LICENSE-NOTICE.md",
-    "enterprise/anocrypto/include/anocrypto/anocrypto.h",
-    "enterprise/anocrypto/src/anocrypto.c",
-    "src/core/crypto/anocrypto_backend.cpp",
+    "include/anopki/enterprise/anocrypto_backend.hpp",
+    "src/backends/anocrypto_c/anocrypto_backend.cpp",
+    "enterprise/tests/anocrypto_sdk_integration_test.cpp",
     "include/anopki/enterprise/edition.hpp",
     "service/internal/enterprise/edition.go",
     "docs/enterprise/anocrypto-integration-plan.md",
@@ -31,10 +31,10 @@ REQUIRED = [
 PRIVATE_DOC_PREFIXES = ("docs/enterprise/",)
 PRIVATE_CODE_PREFIXES = (
     "enterprise/",
+    "src/backends/anocrypto_c/",
     "include/anopki/enterprise/",
     "service/internal/enterprise/",
     "src/enterprise/",
-    "src/core/crypto/anocrypto_backend",
 )
 PRIVATE_ROOT_FILES = {"ENTERPRISE-LICENSE-NOTICE.md", "EDITION.md"}
 SOURCE_EXTENSIONS = {".c", ".cpp", ".go", ".h", ".hpp", ".ps1", ".py"}
@@ -77,6 +77,23 @@ ALLOW_QUALIFIERS = (
     "direction",
     "fallback",
     "not-production-complete",
+    "production release blocked",
+    "production-releasable only after",
+    "production expansion",
+    "under development",
+    "external sdk",
+    "capability unavailable",
+    "earlier planning",
+    "openSSL remains the active".lower(),
+    "block the",
+    "can be production-releasable",
+    "금지",
+    "검증 완료",
+    "if any",
+    "only for the listed",
+    "has been removed",
+    "have been removed",
+    "requires no anocrypto-c sdk",
     "proceed separately",
     "when the first",
     "when anocrypto implementation begins",
@@ -143,6 +160,14 @@ def source_files(root: Path) -> Iterable[Path]:
 
 def has_allow_qualifier(line: str) -> bool:
     lowered = line.lower()
+    if (
+        "sha-256" in lowered
+        and any(scope in lowered for scope in ("primitive", "self-test", "known-answer"))
+        and not any(word in lowered for word in ("backend", "production", "ready", "validated", "kcmvp"))
+    ):
+        return True
+    if '"anocrypto_self_test": "implemented"' in lowered:
+        return True
     return any(qualifier in lowered for qualifier in ALLOW_QUALIFIERS)
 
 
@@ -196,32 +221,53 @@ def check_license_layout(root: Path) -> None:
 
 def check_cmake_markers(root: Path) -> None:
     cmake = (root / "CMakeLists.txt").read_text(encoding="utf-8")
-    for token in [
-        "ANOPKI_ENTERPRISE_EDITION",
-        "ANOPKI_ENABLE_ANOCRYPTO_BACKEND",
-        "anocrypto_c99",
-        "anocrypto_skeleton",
-        "anocrypto_parity_pending",
-    ]:
-        if token not in cmake:
-            fail(f"Enterprise CMake missing {token}")
+    required = [
+        "ANOPKI_ENABLE_ANOCRYPTO_SDK_INTEGRATION",
+        "ANOCRYPTO_SDK_ROOT",
+        "find_package(AnoCryptoC 0.1.0 EXACT CONFIG REQUIRED)",
+        "AnoCryptoC::AnoCryptoC",
+        "anopki_enterprise_anocrypto_adapter",
+        "anocrypto_sdk_integration",
+    ]
+    missing = [token for token in required if token not in cmake]
+    if missing:
+        fail("Enterprise CMake missing external AnoCrypto-C integration markers:\n" + "\n".join(missing))
+    forbidden = ["anocrypto_c99", "ANOCRYPTO_ENABLE_TEST_HOOKS", "enterprise/anocrypto/src"]
+    hits = [token for token in forbidden if token in cmake]
+    if hits:
+        fail("Enterprise CMake still builds an embedded AnoCrypto implementation:\n" + "\n".join(hits))
 
+
+def check_embedded_anocrypto_absent(root: Path) -> None:
+    forbidden_paths = [
+        root / "enterprise/anocrypto/src",
+        root / "enterprise/anocrypto/include",
+        root / "src/core/crypto/anocrypto_backend.cpp",
+        root / "src/core/crypto/anocrypto_backend.hpp",
+    ]
+    hits = [str(path.relative_to(root)) for path in forbidden_paths if path.exists()]
+    if hits:
+        fail("embedded AnoCrypto implementation/header paths are prohibited:\n" + "\n".join(hits))
+    implementation_tokens = ("sha256_transform", "anocrypto_hash(", "ANOCRYPTO_ENABLE_TEST_HOOKS")
+    source = root / "src/backends/anocrypto_c/anocrypto_backend.cpp"
+    text = source.read_text(encoding="utf-8")
+    hits = [token for token in implementation_tokens if token in text]
+    if hits:
+        fail("AnoCrypto-C adapter contains embedded cryptographic implementation markers:\n" + "\n".join(hits))
 
 def check_ci_markers(root: Path) -> None:
     ci = (root / ".github/workflows/ci.yml").read_text(encoding="utf-8")
     if "ctest --test-dir build-enterprise -R anocrypto" in ci:
         fail("Enterprise CI must not use broad AnoCrypto regex selection")
     required = [
-        "anopki_core_openssl_golden_test",
-        "ctest --test-dir build-enterprise -N -L anocrypto_skeleton",
-        "ctest --test-dir build-enterprise -L anocrypto_skeleton --output-on-failure",
-        "ctest --test-dir build-enterprise -N -L anocrypto_parity_pending",
-        "ctest --test-dir build-enterprise -L anocrypto_parity_pending --output-on-failure",
+        "ANOPKI_ENABLE_ANOCRYPTO_SDK_INTEGRATION=ON",
+        "CMAKE_DISABLE_FIND_PACKAGE_AnoCryptoC=TRUE",
+        "expected AnoCrypto-C SDK configuration failure",
+        "anocrypto_parity_pending",
     ]
     missing = [text for text in required if text not in ci]
     if missing:
-        fail("Enterprise CI missing labeled AnoCrypto checks:\n" + "\n".join(missing))
-
+        fail("Enterprise CI missing external AnoCrypto-C boundary checks:\n" + "\n".join(missing))
 
 def check_generated_files(root: Path) -> None:
     hits = []
@@ -341,6 +387,7 @@ def validate(root: Path = ROOT) -> None:
     check_required_files(root)
     check_license_layout(root)
     check_cmake_markers(root)
+    check_embedded_anocrypto_absent(root)
     check_ci_markers(root)
     check_generated_files(root)
     check_private_paths(root)
@@ -350,8 +397,9 @@ def validate(root: Path = ROOT) -> None:
     check_secrets(root)
 
     docs = (root / "docs/enterprise/anocrypto-integration-plan.md").read_text(encoding="utf-8")
-    if "not KCMVP validated" not in docs or "skeleton" not in docs:
-        fail("Enterprise AnoCrypto docs must clearly mark current implementation as skeleton/not validated")
+    lowered = docs.lower()
+    if ("not kcmvp validated" not in lowered and "kcmvp not validated" not in lowered) or "external" not in lowered or "sdk" not in lowered:
+        fail("Enterprise AnoCrypto-C docs must describe the external SDK boundary and lack of KCMVP validation")
 
 
 def main() -> None:

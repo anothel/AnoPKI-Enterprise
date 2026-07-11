@@ -111,6 +111,20 @@ def test_enterprise_backend_metadata_drift_fails() -> None:
     assert "crypto_backend_default" in result.stderr
 
 
+def test_enterprise_algorithm_metadata_drift_fails() -> None:
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        copy_version_inputs(root)
+        edition_path = root / ".edition" / "edition.json"
+        edition = json.loads(edition_path.read_text(encoding="utf-8"))
+        edition["anocrypto_capability_status"] = "verified"
+        edition_path.write_text(json.dumps(edition), encoding="utf-8")
+        result = run_validator(root)
+
+    assert result.returncode == 1
+    assert "anocrypto_capability_status" in result.stderr
+
+
 def main() -> None:
     test_current_version_metadata_pass()
     test_prerelease_version_metadata_pass()
@@ -118,6 +132,7 @@ def main() -> None:
     test_missing_version_file_fails()
     test_release_workflow_version_drift_fails()
     test_enterprise_backend_metadata_drift_fails()
+    test_enterprise_algorithm_metadata_drift_fails()
     print("version metadata tests ok")
 
 

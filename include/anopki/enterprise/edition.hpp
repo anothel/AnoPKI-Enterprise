@@ -11,6 +11,10 @@ namespace anopki::enterprise {
 [[nodiscard]] std::string_view active_crypto_backend() noexcept;
 [[nodiscard]] std::string_view experimental_crypto_backend() noexcept;
 [[nodiscard]] std::string_view experimental_crypto_backend_status() noexcept;
+[[nodiscard]] std::string_view anocrypto_sdk_package() noexcept;
+[[nodiscard]] std::string_view anocrypto_capability_status() noexcept;
+[[nodiscard]] std::string_view pki_parity_status() noexcept;
+[[nodiscard]] bool validated_mode() noexcept;
 [[nodiscard]] std::string_view crypto_backend_direction() noexcept;
 
 }  // namespace anopki::enterprise
