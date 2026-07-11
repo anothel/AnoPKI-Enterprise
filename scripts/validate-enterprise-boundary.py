@@ -13,6 +13,9 @@ from typing import Iterable
 ROOT = Path(__file__).resolve().parents[1]
 
 REQUIRED = [
+    "LICENSE",
+    "LICENSES/MPL-2.0.txt",
+    "LICENSES/LicenseRef-AnoPKI-Enterprise.txt",
     "ENTERPRISE-LICENSE-NOTICE.md",
     "enterprise/anocrypto/include/anocrypto/anocrypto.h",
     "enterprise/anocrypto/src/anocrypto.c",
@@ -86,6 +89,24 @@ SECRET_PATTERNS = (
     re.compile(r"(?i)\b(?:api[_-]?key|secret|password|token)\s*=\s*['\"][^'\"]{12,}['\"]"),
 )
 
+ROOT_LICENSE_MARKERS = (
+    "AnoPKI Enterprise Mixed-License Notice",
+    "LICENSES/MPL-2.0.txt",
+    "LICENSES/LicenseRef-AnoPKI-Enterprise.txt",
+)
+MPL_LICENSE_MARKERS = (
+    "Mozilla Public License Version 2.0",
+    "https://mozilla.org/MPL/2.0/",
+)
+ENTERPRISE_LICENSE_MARKERS = (
+    "LicenseRef-AnoPKI-Enterprise",
+    "internal evaluation and development only",
+    "no customer distribution",
+    "no production distribution",
+    "not release-ready",
+    "must be replaced by an approved commercial agreement before release",
+)
+
 
 def fail(message: str) -> None:
     raise SystemExit(message)
@@ -144,6 +165,31 @@ def check_required_files(root: Path) -> None:
         fail("Enterprise tree missing required overlay files:\n" + "\n".join(missing))
 
 
+def check_license_layout(root: Path) -> None:
+    root_license = (root / "LICENSE").read_text(encoding="utf-8")
+    if "GNU AFFERO GENERAL PUBLIC LICENSE" in root_license.upper():
+        fail("Enterprise root LICENSE must not contain AGPL terms")
+    missing = [marker for marker in ROOT_LICENSE_MARKERS if marker not in root_license]
+    if missing:
+        fail("Enterprise root LICENSE missing mixed-license markers:\n" + "\n".join(missing))
+
+    mpl_license = (root / "LICENSES/MPL-2.0.txt").read_text(encoding="utf-8")
+    missing = [marker for marker in MPL_LICENSE_MARKERS if marker not in mpl_license]
+    if missing:
+        fail("MPL-2.0 license text missing required markers:\n" + "\n".join(missing))
+
+    enterprise_license = (root / "LICENSES/LicenseRef-AnoPKI-Enterprise.txt").read_text(encoding="utf-8")
+    lowered = " ".join(enterprise_license.lower().split())
+    missing = [marker for marker in ENTERPRISE_LICENSE_MARKERS if marker.lower() not in lowered]
+    if missing:
+        fail("Enterprise license placeholder missing required restrictions:\n" + "\n".join(missing))
+
+    notice = (root / "ENTERPRISE-LICENSE-NOTICE.md").read_text(encoding="utf-8")
+    missing = [marker for marker in ROOT_LICENSE_MARKERS[1:] if marker not in notice]
+    if missing:
+        fail("Enterprise license notice missing license paths:\n" + "\n".join(missing))
+
+
 def check_cmake_markers(root: Path) -> None:
     cmake = (root / "CMakeLists.txt").read_text(encoding="utf-8")
     for token in ["ANOPKI_ENTERPRISE_EDITION", "ANOPKI_ENABLE_ANOCRYPTO_BACKEND", "anocrypto_c99"]:
@@ -196,6 +242,19 @@ def check_mpl_headers(root: Path) -> None:
             missing.append(rel)
     if missing:
         fail("Community MPL-2.0 files missing SPDX header:\n" + "\n".join(sorted(missing)))
+
+
+def check_enterprise_headers(root: Path) -> None:
+    missing = []
+    for path in source_files(root):
+        rel = relpath(path, root)
+        if not has_prefix(rel, PRIVATE_CODE_PREFIXES):
+            continue
+        head = "\n".join(path.read_text(encoding="utf-8").splitlines()[:5])
+        if "SPDX-License-Identifier: LicenseRef-AnoPKI-Enterprise" not in head:
+            missing.append(rel)
+    if missing:
+        fail("Enterprise-only source files missing proprietary SPDX header:\n" + "\n".join(sorted(missing)))
 
 
 def check_claims(root: Path) -> None:
@@ -254,10 +313,12 @@ def check_secrets(root: Path) -> None:
 def validate(root: Path = ROOT) -> None:
     root = root.resolve()
     check_required_files(root)
+    check_license_layout(root)
     check_cmake_markers(root)
     check_generated_files(root)
     check_private_paths(root)
     check_mpl_headers(root)
+    check_enterprise_headers(root)
     check_claims(root)
     check_secrets(root)
 

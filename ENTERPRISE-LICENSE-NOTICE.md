@@ -1,12 +1,36 @@
 # Enterprise License Notice
 
-This private repository contains two categories of material:
+AnoPKI Enterprise is a mixed-license private repository. The root `LICENSE`
+routes files with SPDX identifiers to their license and this notice defines the
+path policy for documentation without SPDX headers.
 
-1. upstream AnoPKI Community files governed by MPL-2.0; and
-2. Enterprise overlay files marked with `SPDX-License-Identifier: LicenseRef-AnoPKI-Enterprise`.
+## MPL-2.0 Material
 
-This file is a placeholder for product planning. Replace it with reviewed commercial
-license terms before distributing Enterprise builds to customers.
+Community-derived source and documentation remain MPL-2.0. Source files that
+require headers use `SPDX-License-Identifier: MPL-2.0`. The authoritative text
+is [LICENSES/MPL-2.0.txt](LICENSES/MPL-2.0.txt).
 
-Do not remove MPL-2.0 notices from upstream files. If Enterprise modifies MPL-covered
-files and distributes them, handle source obligations through a legal review process.
+Do not remove MPL-2.0 notices or relicense Community-derived files as
+proprietary. Distribution of modified MPL-covered files requires review of the
+applicable MPL-2.0 source obligations.
+
+## Enterprise-Only Material
+
+Enterprise-only implementation paths use
+`SPDX-License-Identifier: LicenseRef-AnoPKI-Enterprise`. The current terms are
+in
+[LICENSES/LicenseRef-AnoPKI-Enterprise.txt](LICENSES/LicenseRef-AnoPKI-Enterprise.txt).
+
+Known Enterprise-only paths include:
+
+- `enterprise/`
+- `docs/enterprise/`
+- `include/anopki/enterprise/`
+- `service/internal/enterprise/`
+- `src/enterprise/`
+- `src/core/crypto/anocrypto_backend.*`
+
+The Enterprise terms are an internal placeholder, not an approved customer
+license. Customer distribution and production distribution remain prohibited
+until owner/legal review replaces the placeholder with an approved commercial
+agreement.

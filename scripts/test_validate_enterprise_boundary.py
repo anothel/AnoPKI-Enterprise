@@ -28,7 +28,24 @@ def write_file(root: Path, rel: str, text: str) -> None:
 
 
 def write_clean_enterprise_root(root: Path) -> None:
-    write_file(root, "ENTERPRISE-LICENSE-NOTICE.md", "LicenseRef-AnoPKI-Enterprise\n")
+    write_file(
+        root,
+        "LICENSE",
+        "AnoPKI Enterprise Mixed-License Notice\nLICENSES/MPL-2.0.txt\nLICENSES/LicenseRef-AnoPKI-Enterprise.txt\n",
+    )
+    write_file(root, "LICENSES/MPL-2.0.txt", "Mozilla Public License Version 2.0\nhttps://mozilla.org/MPL/2.0/\n")
+    write_file(
+        root,
+        "LICENSES/LicenseRef-AnoPKI-Enterprise.txt",
+        "LicenseRef-AnoPKI-Enterprise\nInternal evaluation and development only.\n"
+        "No customer distribution.\nNo production distribution.\nNot release-ready.\n"
+        "Must be replaced by an approved commercial agreement before release.\n",
+    )
+    write_file(
+        root,
+        "ENTERPRISE-LICENSE-NOTICE.md",
+        "LICENSES/MPL-2.0.txt\nLICENSES/LicenseRef-AnoPKI-Enterprise.txt\n",
+    )
     write_file(
         root,
         "CMakeLists.txt",
@@ -72,6 +89,30 @@ def test_requires_enterprise_license_notice() -> None:
         assert_fails(root, "missing required overlay files")
 
 
+def test_rejects_agpl_root_license() -> None:
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        write_clean_enterprise_root(root)
+        write_file(root, "LICENSE", "GNU AFFERO GENERAL PUBLIC LICENSE\n")
+        assert_fails(root, "must not contain AGPL terms")
+
+
+def test_rejects_missing_mpl_text() -> None:
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        write_clean_enterprise_root(root)
+        write_file(root, "LICENSES/MPL-2.0.txt", "incomplete\n")
+        assert_fails(root, "MPL-2.0 license text missing required markers")
+
+
+def test_requires_enterprise_license() -> None:
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        write_clean_enterprise_root(root)
+        (root / "LICENSES/LicenseRef-AnoPKI-Enterprise.txt").unlink()
+        assert_fails(root, "missing required overlay files")
+
+
 def test_finds_enterprise_docs_outside_private_paths() -> None:
     with tempfile.TemporaryDirectory() as tmp:
         root = Path(tmp)
@@ -88,12 +129,28 @@ def test_finds_enterprise_code_outside_private_paths() -> None:
         assert_fails(root, "Enterprise-only code outside private paths")
 
 
-def test_finds_missing_mpl_notice_on_community_file() -> None:
+def test_rejects_proprietary_spdx_on_community_file() -> None:
     with tempfile.TemporaryDirectory() as tmp:
         root = Path(tmp)
         write_clean_enterprise_root(root)
-        write_file(root, "src/core/issue.cpp", "int main() { return 0; }\n")
-        assert_fails(root, "Community MPL-2.0 files missing SPDX header")
+        write_file(root, "src/core/issue.cpp", "// SPDX-License-Identifier: LicenseRef-AnoPKI-Enterprise\n")
+        assert_fails(root, "Enterprise-only code outside private paths")
+
+
+def test_rejects_mpl_spdx_on_enterprise_implementation() -> None:
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        write_clean_enterprise_root(root)
+        write_file(root, "enterprise/anocrypto/src/anocrypto.c", "/* SPDX-License-Identifier: MPL-2.0 */\n")
+        assert_fails(root, "Enterprise-only source files missing proprietary SPDX header")
+
+
+def test_requires_distribution_blocking_placeholder() -> None:
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        write_clean_enterprise_root(root)
+        write_file(root, "LICENSES/LicenseRef-AnoPKI-Enterprise.txt", "LicenseRef-AnoPKI-Enterprise\n")
+        assert_fails(root, "Enterprise license placeholder missing required restrictions")
 
 
 def test_finds_premature_anocrypto_claims() -> None:
@@ -131,9 +188,14 @@ def test_finds_generated_files() -> None:
 def main() -> None:
     test_clean_enterprise_root_passes()
     test_requires_enterprise_license_notice()
+    test_rejects_agpl_root_license()
+    test_rejects_missing_mpl_text()
+    test_requires_enterprise_license()
     test_finds_enterprise_docs_outside_private_paths()
     test_finds_enterprise_code_outside_private_paths()
-    test_finds_missing_mpl_notice_on_community_file()
+    test_rejects_proprietary_spdx_on_community_file()
+    test_rejects_mpl_spdx_on_enterprise_implementation()
+    test_requires_distribution_blocking_placeholder()
     test_finds_premature_anocrypto_claims()
     test_finds_kcmvp_certification_claims()
     test_finds_private_key_material()

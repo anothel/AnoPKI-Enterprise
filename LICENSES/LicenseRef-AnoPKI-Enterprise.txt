@@ -1,0 +1,17 @@
+LicenseRef-AnoPKI-Enterprise
+============================
+
+INTERNAL COMMERCIAL-LICENSE PLACEHOLDER
+
+This material is permitted for internal evaluation and development only.
+
+No customer distribution is permitted.
+
+No production distribution is permitted.
+
+This placeholder is not release-ready and must be replaced by an approved
+commercial agreement before release.
+
+This placeholder applies only to files marked with
+`SPDX-License-Identifier: LicenseRef-AnoPKI-Enterprise`. It does not alter the
+MPL-2.0 terms that govern Community-derived files.

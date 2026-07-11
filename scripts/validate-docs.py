@@ -150,10 +150,48 @@ def check_license_state(root: Path) -> None:
         fail("README still says license is undecided")
     enterprise_notice = root / "ENTERPRISE-LICENSE-NOTICE.md"
     if enterprise_notice.is_file():
-        notice = enterprise_notice.read_text(encoding="utf-8")
-        missing = [text for text in ("LicenseRef-AnoPKI-Enterprise", "MPL-2.0") if text not in notice]
+        license_paths = [
+            root / "LICENSES/MPL-2.0.txt",
+            root / "LICENSES/LicenseRef-AnoPKI-Enterprise.txt",
+        ]
+        missing_paths = [str(path.relative_to(root)).replace("\\", "/") for path in license_paths if not path.is_file()]
+        if missing_paths:
+            fail("Enterprise mixed-license files missing:\n" + "\n".join(missing_paths))
+
+        root_license = (root / "LICENSE").read_text(encoding="utf-8")
+        if "GNU AFFERO GENERAL PUBLIC LICENSE" in root_license.upper():
+            fail("Enterprise root LICENSE must not contain AGPL terms")
+        required_root = (
+            "AnoPKI Enterprise Mixed-License Notice",
+            "LICENSES/MPL-2.0.txt",
+            "LICENSES/LicenseRef-AnoPKI-Enterprise.txt",
+        )
+        missing = [text for text in required_root if text not in root_license]
         if missing:
-            fail("Enterprise license notice missing required text:\n" + "\n".join(missing))
+            fail("Enterprise root LICENSE missing mixed-license markers:\n" + "\n".join(missing))
+
+        mpl_license = license_paths[0].read_text(encoding="utf-8")
+        missing = [text for text in ("Mozilla Public License Version 2.0", "https://mozilla.org/MPL/2.0/") if text not in mpl_license]
+        if missing:
+            fail("MPL-2.0 license text missing required markers:\n" + "\n".join(missing))
+
+        enterprise_license = " ".join(license_paths[1].read_text(encoding="utf-8").lower().split())
+        restrictions = (
+            "licenseref-anopki-enterprise",
+            "internal evaluation and development only",
+            "no customer distribution",
+            "no production distribution",
+            "not release-ready",
+            "must be replaced by an approved commercial agreement before release",
+        )
+        missing = [text for text in restrictions if text not in enterprise_license]
+        if missing:
+            fail("Enterprise license placeholder missing required restrictions:\n" + "\n".join(missing))
+
+        notice = enterprise_notice.read_text(encoding="utf-8")
+        missing = [text for text in ("LICENSES/MPL-2.0.txt", "LICENSES/LicenseRef-AnoPKI-Enterprise.txt") if text not in notice]
+        if missing:
+            fail("Enterprise license notice missing license paths:\n" + "\n".join(missing))
         return
     license_text = (root / "LICENSE").read_text(encoding="utf-8")
     if "Mozilla Public License Version 2.0" not in license_text or "mozilla.org/MPL/2.0" not in license_text:
@@ -177,10 +215,9 @@ def check_source_file_headers(root: Path) -> None:
     for path in first_party_source_files(root):
         rel = str(path.relative_to(root)).replace("\\", "/")
         head = "\n".join(path.read_text(encoding="utf-8").splitlines()[:5])
-        allowed = ["SPDX-License-Identifier: MPL-2.0"]
-        if rel.startswith(("enterprise/", "src/enterprise/", "include/anopki/enterprise/", "src/core/crypto/anocrypto_backend", "service/internal/enterprise/")):
-            allowed.append("SPDX-License-Identifier: LicenseRef-AnoPKI-Enterprise")
-        if not any(marker in head for marker in allowed):
+        is_enterprise = rel.startswith(("enterprise/", "src/enterprise/", "include/anopki/enterprise/", "src/core/crypto/anocrypto_backend", "service/internal/enterprise/"))
+        required = "SPDX-License-Identifier: LicenseRef-AnoPKI-Enterprise" if is_enterprise else "SPDX-License-Identifier: MPL-2.0"
+        if required not in head:
             missing.append(rel)
     if missing:
         fail("first-party source files missing SPDX header:\n" + "\n".join(sorted(missing)))

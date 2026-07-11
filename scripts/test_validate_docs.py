@@ -18,6 +18,8 @@ SCRIPT = ROOT / "scripts" / "validate-docs.py"
 def copy_docs_inputs(dst: Path) -> None:
     required = [
         "LICENSE",
+        "LICENSES/MPL-2.0.txt",
+        "LICENSES/LicenseRef-AnoPKI-Enterprise.txt",
         "README.md",
         "ENTERPRISE-LICENSE-NOTICE.md",
         ".env.example",
@@ -232,17 +234,14 @@ def test_license_text_drift_fails(tmp_path: Path) -> None:
     assert "LICENSE is not MPL-2.0 text" in result.stderr
 
 
-def test_enterprise_license_notice_allows_private_license(tmp_path: Path) -> None:
+def test_enterprise_notice_does_not_bypass_root_license_validation(tmp_path: Path) -> None:
     copy_docs_inputs(tmp_path)
     (tmp_path / "LICENSE").write_text("Private Enterprise License\n", encoding="utf-8")
-    (tmp_path / "ENTERPRISE-LICENSE-NOTICE.md").write_text(
-        "Enterprise overlay files use LicenseRef-AnoPKI-Enterprise. Upstream files remain MPL-2.0.\n",
-        encoding="utf-8",
-    )
 
     result = run_validator(tmp_path)
 
-    assert result.returncode == 0, result.stderr + result.stdout
+    assert result.returncode == 1
+    assert "Enterprise root LICENSE missing mixed-license markers" in result.stderr
 
 
 def test_ci_missing_docs_validator_tests_fails(tmp_path: Path) -> None:
@@ -292,7 +291,7 @@ def main() -> None:
     with tempfile.TemporaryDirectory() as dirname:
         test_license_text_drift_fails(Path(dirname))
     with tempfile.TemporaryDirectory() as dirname:
-        test_enterprise_license_notice_allows_private_license(Path(dirname))
+        test_enterprise_notice_does_not_bypass_root_license_validation(Path(dirname))
     with tempfile.TemporaryDirectory() as dirname:
         test_ci_missing_docs_validator_tests_fails(Path(dirname))
     with tempfile.TemporaryDirectory() as dirname:
