@@ -9,7 +9,9 @@ without a clear reason.
 - AnoCrypto implementation and backend adapter.
 - KCMVP preparation, submission, and customer evidence packs.
 - Commercial license, support, and SLA material.
-- SSO/OIDC/SAML, RBAC/ABAC, approval workflows, and operator directory integration.
+- SSO/OIDC/SAML, RBAC/ABAC, approval workflows, and operator directory
+  integration; design is tracked in the
+  [Enterprise access-control plan](access-control-plan.md).
 - HSM/KMS/PKCS#11 provider implementations.
 - HSM/KMS/PKCS#11 provider planning belongs in
   [Enterprise provider interface plan](provider-interface-plan.md) until real
