@@ -15,6 +15,10 @@
   "crypto_backend_default": "openssl",
   "crypto_backend_direction": "anocrypto",
   "anocrypto_status": "skeleton_pending",
+  "commercial_license_status": "placeholder",
+  "kcmvp_status": "not_validated",
+  "provider_status": "not_implemented",
+  "distribution_status": "prohibited",
   "release_maturity": "pre-1.0 / not-production-stable",
   "generated_from": "uploaded AnoPKI.zip"
 }

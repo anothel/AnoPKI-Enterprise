@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import subprocess
 from pathlib import Path
@@ -27,6 +28,7 @@ EXCLUDED_PREFIXES = (
 )
 EXCLUDED_FILES = {
     ".github/workflows/ci.yml",
+    ".github/workflows/release.yml",
     "CMakeLists.txt",
     "EDITION.md",
     "ENTERPRISE-LICENSE-NOTICE.md",
@@ -37,6 +39,10 @@ EXCLUDED_FILES = {
     "scripts/validate-community-boundary.py",
     "scripts/validate-docs.py",
     "scripts/validate-version-metadata.py",
+}
+ALLOWED_PATCHES = {
+    # Deterministic checksum corruption; upstream baseline can mutate a filename instead of the digest.
+    "scripts/test_validate_release_artifacts.py": "46403195b1f2529d4c45ae0cc2d2173de7bbbf2e3cf359b286e9be054ee5b4cf",
 }
 
 
@@ -78,7 +84,8 @@ def validate(root: Path) -> None:
             missing.append(rel)
             continue
         upstream = git(root, "show", f"{BASELINE_COMMIT}:{rel}")
-        if normalized(path.read_bytes()) != normalized(upstream):
+        current = normalized(path.read_bytes())
+        if current != normalized(upstream) and ALLOWED_PATCHES.get(rel) != hashlib.sha256(current).hexdigest():
             changed.append(rel)
 
     if missing or changed:

@@ -67,6 +67,10 @@ def main() -> None:
         "crypto_backend_default": "openssl",
         "crypto_backend_direction": "anocrypto",
         "anocrypto_status": "skeleton_pending",
+        "commercial_license_status": "placeholder",
+        "kcmvp_status": "not_validated",
+        "provider_status": "not_implemented",
+        "distribution_status": "prohibited",
     }
     drift = [f"{key}: expected {value!r}, got {edition.get(key)!r}" for key, value in expected_edition.items() if edition.get(key) != value]
     if drift:
@@ -132,6 +136,9 @@ def main() -> None:
             "Commercial license | Placeholder; distribution blocked",
             "HSM/KMS/PKCS#11 | Not implemented",
             "unsupported_pending",
+            "Reviewed commit SHA | `PENDING`",
+            "GitHub Actions run URL | `PENDING`",
+            "Customer and production distribution prohibited",
         ],
     )
     print("version metadata ok")

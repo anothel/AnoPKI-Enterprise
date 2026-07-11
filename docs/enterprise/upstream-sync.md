@@ -56,6 +56,8 @@ git merge --no-ff community/main
 When a merge would overwrite active Enterprise overlay files, perform a
 controlled shared-file synchronization and run the baseline drift validator.
 Its exclusions are limited to the documented overlay and integration files.
+The validator also pins any temporary upstream test correction by exact file
+hash; remove that exception after the same correction lands in Community.
 
 Do not use subtree or submodule layout for the current repository shape. Those
 add packaging and path indirection without solving the current problem. Revisit

@@ -52,3 +52,22 @@ Private-alpha engineering readiness is achieved for internal testing on this
 worktree. A reviewed commit and CI run are still required for durable evidence.
 Commercial distribution and production distribution remain prohibited while
 the Enterprise license is a placeholder.
+
+## Real Private CI Evidence
+
+Do not replace `PENDING` values until a reviewed commit completes a real private
+GitHub Actions run.
+
+| Evidence field | Value |
+| --- | --- |
+| Reviewed commit SHA | `PENDING` |
+| GitHub Actions run URL | `PENDING` |
+| Community baseline commit | `2be155780d4b024c76b0a901ec130e83fc221f2f` |
+| Active OpenSSL version | `PENDING` |
+| Enterprise metadata result | `PENDING` |
+| AnoCrypto skeleton result | `PENDING` |
+| Pending parity result | `PENDING` |
+| License status | Commercial placeholder; distribution blocked |
+| KCMVP status | Not validated; no evidence |
+| Provider status | HSM/KMS/PKCS#11 not implemented |
+| Distribution prohibition | Customer and production distribution prohibited |

@@ -61,6 +61,7 @@ ALLOW_QUALIFIERS = (
     "not kcmvp",
     "not a kcmvp",
     "not validated",
+    "not_validated",
     "not a production default",
     "not claim",
     "do not claim",
