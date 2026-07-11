@@ -116,7 +116,7 @@ def test_finds_private_key_material() -> None:
     with tempfile.TemporaryDirectory() as tmp:
         root = Path(tmp)
         write_clean_enterprise_root(root)
-        write_file(root, "enterprise/key.pem", "-----BEGIN PRIVATE KEY-----\nsecret\n-----END PRIVATE KEY-----\n")
+        write_file(root, "enterprise/key.pem", "-----BEGIN PRIVATE KEY-----\nsecret\n-----END PRIVATE KEY-----\n")  # secret-scan: allow
         assert_fails(root, "private key material or obvious secrets")
 
 

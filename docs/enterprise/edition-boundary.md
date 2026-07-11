@@ -11,7 +11,11 @@ without a clear reason.
 - Commercial license, support, and SLA material.
 - SSO/OIDC/SAML, RBAC/ABAC, approval workflows, and operator directory integration.
 - HSM/KMS/PKCS#11 provider implementations.
-- Productized deploy adapters and rollback checks.
+- HSM/KMS/PKCS#11 provider planning belongs in
+  [Enterprise provider interface plan](provider-interface-plan.md) until real
+  provider work starts.
+- Productized deploy adapters and rollback checks; initial target planning is
+  in the [Enterprise deployment adapter plan](deploy-adapter-plan.md).
 - SIEM export, tamper-evident audit storage, and compliance reports.
 
 ## Shared upstream areas

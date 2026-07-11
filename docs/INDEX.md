@@ -45,6 +45,7 @@ This index is the public entry point for repository documentation. Keep it short
 | [Certificate profiles](policy/certificate-profiles.md) | Profile-as-code policy fields and remaining profile gaps. |
 | [Algorithm policy](policy/algorithm-policy.md) | Current algorithm baseline, PQC stance, and algorithm migration expectations. |
 | [Crypto backend strategy](reference/crypto-backend-strategy.md) | Current OpenSSL implementation, planned AnoCrypto direction, and migration gates. |
+| [Crypto backend parity](reference/crypto-backend-parity.md) | Shared fixture format, parity result states, commands, and release evidence. |
 | [Key provider semantics](security/key-provider-semantics.md) | Signing key reference, provider, non-exportability, and audit semantics. |
 | [Threat model](security/threat-model.md) | Main assets, threats, current controls, and gaps. |
 | [Access model](security/access-model.md) | Operator and API-key access assumptions. |
