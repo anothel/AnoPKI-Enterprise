@@ -5,6 +5,13 @@ Community remains the OpenSSL-backed public upstream. Enterprise adds private
 overlay code and must not become a separate product fork unless a change is
 explicitly Enterprise-only.
 
+Current shared baseline: `2be155780d4b024c76b0a901ec130e83fc221f2f`
+(`v0.1.0-alpha.0`). Verify it after fetch with:
+
+```powershell
+python scripts\validate-community-baseline.py
+```
+
 ## Community Remote Setup
 
 Use a remote named `community`:
@@ -45,6 +52,10 @@ git diff --stat HEAD...community/main
 git diff --name-status HEAD...community/main
 git merge --no-ff community/main
 ```
+
+When a merge would overwrite active Enterprise overlay files, perform a
+controlled shared-file synchronization and run the baseline drift validator.
+Its exclusions are limited to the documented overlay and integration files.
 
 Do not use subtree or submodule layout for the current repository shape. Those
 add packaging and path indirection without solving the current problem. Revisit

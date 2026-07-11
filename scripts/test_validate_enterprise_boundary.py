@@ -49,14 +49,26 @@ def write_clean_enterprise_root(root: Path) -> None:
     write_file(
         root,
         "CMakeLists.txt",
-        "# SPDX-License-Identifier: MPL-2.0\nANOPKI_ENTERPRISE_EDITION\nANOPKI_ENABLE_ANOCRYPTO_BACKEND\nanocrypto_c99\n",
+        "# SPDX-License-Identifier: MPL-2.0\nANOPKI_ENTERPRISE_EDITION\nANOPKI_ENABLE_ANOCRYPTO_BACKEND\n"
+        "anocrypto_c99\nanocrypto_skeleton\nanocrypto_parity_pending\n",
+    )
+    write_file(
+        root,
+        ".github/workflows/ci.yml",
+        "anopki_core_openssl_golden_test\n"
+        "ctest --test-dir build-enterprise -N -L anocrypto_skeleton\n"
+        "ctest --test-dir build-enterprise -L anocrypto_skeleton --output-on-failure\n"
+        "ctest --test-dir build-enterprise -N -L anocrypto_parity_pending\n"
+        "ctest --test-dir build-enterprise -L anocrypto_parity_pending --output-on-failure\n",
     )
     write_file(root, "README.md", "# AnoPKI\nOpenSSL remains current.\n")
     write_file(root, "docs/reference/crypto-backend-strategy.md", "AnoCrypto implementation pending. OpenSSL remains current.\n")
     write_file(root, "docs/enterprise/anocrypto-integration-plan.md", "AnoCrypto skeleton; not KCMVP validated.\n")
     write_file(root, "docs/enterprise/kcmvp-preparation.md", "KCMVP target planning only.\n")
+    write_file(root, "docs/enterprise/private-alpha-evidence.md", "Private alpha evidence pending.\n")
     write_file(root, "enterprise/anocrypto/include/anocrypto/anocrypto.h", "/* SPDX-License-Identifier: LicenseRef-AnoPKI-Enterprise */\n")
     write_file(root, "enterprise/anocrypto/src/anocrypto.c", "/* SPDX-License-Identifier: LicenseRef-AnoPKI-Enterprise */\n")
+    write_file(root, "enterprise/tests/edition_metadata_test.cpp", "// SPDX-License-Identifier: LicenseRef-AnoPKI-Enterprise\n")
     write_file(root, "src/core/crypto/anocrypto_backend.cpp", "// SPDX-License-Identifier: LicenseRef-AnoPKI-Enterprise\n")
     write_file(root, "include/anopki/enterprise/edition.hpp", "// SPDX-License-Identifier: LicenseRef-AnoPKI-Enterprise\n")
     write_file(root, "service/internal/enterprise/edition.go", "// SPDX-License-Identifier: LicenseRef-AnoPKI-Enterprise\n")
@@ -185,6 +197,15 @@ def test_finds_generated_files() -> None:
         assert_fails(root, "generated build/cache files")
 
 
+def test_rejects_broad_anocrypto_ci_selection() -> None:
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        write_clean_enterprise_root(root)
+        ci = root / ".github/workflows/ci.yml"
+        ci.write_text(ci.read_text(encoding="utf-8") + "ctest --test-dir build-enterprise -R anocrypto\n", encoding="utf-8")
+        assert_fails(root, "must not use broad AnoCrypto regex selection")
+
+
 def main() -> None:
     test_clean_enterprise_root_passes()
     test_requires_enterprise_license_notice()
@@ -200,6 +221,7 @@ def main() -> None:
     test_finds_kcmvp_certification_claims()
     test_finds_private_key_material()
     test_finds_generated_files()
+    test_rejects_broad_anocrypto_ci_selection()
     print("enterprise boundary validator tests ok")
 
 

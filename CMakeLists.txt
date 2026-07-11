@@ -4,8 +4,9 @@ cmake_minimum_required(VERSION 3.20)
 
 file(READ "${CMAKE_CURRENT_SOURCE_DIR}/VERSION" ANOPKI_VERSION)
 string(STRIP "${ANOPKI_VERSION}" ANOPKI_VERSION)
+string(REGEX MATCH "^[0-9]+\\.[0-9]+\\.[0-9]+" ANOPKI_PROJECT_VERSION "${ANOPKI_VERSION}")
 
-project(anopki VERSION ${ANOPKI_VERSION} LANGUAGES C CXX)
+project(anopki VERSION ${ANOPKI_PROJECT_VERSION} LANGUAGES C CXX)
 
 find_package(OpenSSL REQUIRED COMPONENTS Crypto)
 
@@ -129,10 +130,23 @@ if(BUILD_TESTING)
     target_link_libraries(anopki_version_test PRIVATE anopki::core)
     add_test(NAME anopki.version COMMAND anopki_version_test)
 
+    if(ANOPKI_ENTERPRISE_EDITION)
+        add_executable(anopki_enterprise_edition_metadata_test
+            enterprise/tests/edition_metadata_test.cpp
+        )
+        target_link_libraries(anopki_enterprise_edition_metadata_test PRIVATE anopki::core)
+        add_test(NAME enterprise.edition_metadata COMMAND anopki_enterprise_edition_metadata_test)
+        set_tests_properties(enterprise.edition_metadata PROPERTIES LABELS "enterprise_metadata")
+    endif()
 
     if(ANOPKI_ENTERPRISE_EDITION AND ANOPKI_ENABLE_ANOCRYPTO_BACKEND)
         add_test(NAME anocrypto.selftest COMMAND anocrypto_selftest)
         add_test(NAME anocrypto.backend_registration COMMAND anocrypto_backend_registration_test)
+        set_tests_properties(
+            anocrypto.selftest
+            anocrypto.backend_registration
+            PROPERTIES LABELS "anocrypto_skeleton"
+        )
     endif()
 
     add_executable(anopki_core_cli_contract_test
@@ -191,5 +205,10 @@ if(BUILD_TESTING)
         NAME anopki.crypto_backend_parity.anocrypto_pending
         COMMAND anopki_core_openssl_golden_test ${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/backend-parity --pending anocrypto skeleton_operations_not_implemented
     )
-    set_tests_properties(anopki.crypto_backend_parity.anocrypto_pending PROPERTIES SKIP_RETURN_CODE 77)
+    set_tests_properties(
+        anopki.crypto_backend_parity.anocrypto_pending
+        PROPERTIES
+            SKIP_RETURN_CODE 77
+            LABELS "anocrypto_parity_pending"
+    )
 endif()

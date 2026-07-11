@@ -114,8 +114,11 @@ jobs:
       - uses: actions/checkout@v4
       - run: sudo apt-get update && sudo apt-get install -y cmake g++ libssl-dev
       - run: cmake -S . -B build-enterprise -DCMAKE_BUILD_TYPE=Debug -DANOPKI_ENABLE_ANOCRYPTO_BACKEND=ON
-      - run: cmake --build build-enterprise --target anopki_core anocrypto_selftest anocrypto_backend_registration_test
-      - run: ctest --test-dir build-enterprise -R anocrypto --output-on-failure
+      - run: cmake --build build-enterprise --target anopki_core anocrypto_selftest anocrypto_backend_registration_test anopki_core_openssl_golden_test
+      - run: ctest --test-dir build-enterprise -N -L anocrypto_skeleton
+      - run: ctest --test-dir build-enterprise -L anocrypto_skeleton --output-on-failure
+      - run: ctest --test-dir build-enterprise -N -L anocrypto_parity_pending
+      - run: ctest --test-dir build-enterprise -L anocrypto_parity_pending --output-on-failure
 
   cpp-fuzz-smoke:
     runs-on: ubuntu-latest

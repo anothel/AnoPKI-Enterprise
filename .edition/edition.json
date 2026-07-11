@@ -1,14 +1,20 @@
 {
   "project": "AnoPKI",
-  "edition": "Enterprise",
+  "edition": "AnoPKI Enterprise",
   "repository_slug": "anopki-enterprise",
+  "community_baseline_commit": "2be155780d4b024c76b0a901ec130e83fc221f2f",
+  "base_version": "0.1.0-alpha.0",
+  "enterprise_overlay_version": "unreleased",
+  "enterprise_overlay_status": "private-alpha",
   "technical_identifiers": {
     "go_service_command": "anopki-service",
     "core_cli_binary": "anopki-core",
     "environment_prefix": "ANOPKI_",
     "webhook_header_prefix": "X-AnoPKI-"
   },
-  "crypto_backend_default": "AnoCrypto backend direction with OpenSSL compatibility fallback",
+  "crypto_backend_default": "openssl",
+  "crypto_backend_direction": "anocrypto",
+  "anocrypto_status": "skeleton_pending",
   "release_maturity": "pre-1.0 / not-production-stable",
   "generated_from": "uploaded AnoPKI.zip"
 }

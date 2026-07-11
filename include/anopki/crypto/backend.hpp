@@ -17,6 +17,9 @@ public:
 
     [[nodiscard]] virtual std::string_view name() const noexcept = 0;
 
+    // OpenSSL is the only Community implementation today; AnoCrypto remains an intended future backend.
+    // Pending parity work must map backend-specific failures to stable core errors.
+    // Raw OpenSSL or future AnoCrypto diagnostics stay below this contract.
     [[nodiscard]] virtual core::CsrInfo inspect_csr_pem(const std::string &csr_pem) const = 0;
     [[nodiscard]] virtual core::IssueResult issue_certificate(const core::IssueRequest &request) const = 0;
     [[nodiscard]] virtual core::GenerateCRLResult generate_crl(const core::GenerateCRLRequest &request) const = 0;

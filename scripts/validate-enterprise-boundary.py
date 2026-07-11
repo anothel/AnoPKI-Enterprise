@@ -24,6 +24,8 @@ REQUIRED = [
     "service/internal/enterprise/edition.go",
     "docs/enterprise/anocrypto-integration-plan.md",
     "docs/enterprise/kcmvp-preparation.md",
+    "docs/enterprise/private-alpha-evidence.md",
+    "enterprise/tests/edition_metadata_test.cpp",
 ]
 
 PRIVATE_DOC_PREFIXES = ("docs/enterprise/",)
@@ -58,6 +60,7 @@ ALLOW_QUALIFIERS = (
     "not a cryptographic implementation",
     "not kcmvp",
     "not a kcmvp",
+    "not validated",
     "not a production default",
     "not claim",
     "do not claim",
@@ -192,9 +195,31 @@ def check_license_layout(root: Path) -> None:
 
 def check_cmake_markers(root: Path) -> None:
     cmake = (root / "CMakeLists.txt").read_text(encoding="utf-8")
-    for token in ["ANOPKI_ENTERPRISE_EDITION", "ANOPKI_ENABLE_ANOCRYPTO_BACKEND", "anocrypto_c99"]:
+    for token in [
+        "ANOPKI_ENTERPRISE_EDITION",
+        "ANOPKI_ENABLE_ANOCRYPTO_BACKEND",
+        "anocrypto_c99",
+        "anocrypto_skeleton",
+        "anocrypto_parity_pending",
+    ]:
         if token not in cmake:
             fail(f"Enterprise CMake missing {token}")
+
+
+def check_ci_markers(root: Path) -> None:
+    ci = (root / ".github/workflows/ci.yml").read_text(encoding="utf-8")
+    if "ctest --test-dir build-enterprise -R anocrypto" in ci:
+        fail("Enterprise CI must not use broad AnoCrypto regex selection")
+    required = [
+        "anopki_core_openssl_golden_test",
+        "ctest --test-dir build-enterprise -N -L anocrypto_skeleton",
+        "ctest --test-dir build-enterprise -L anocrypto_skeleton --output-on-failure",
+        "ctest --test-dir build-enterprise -N -L anocrypto_parity_pending",
+        "ctest --test-dir build-enterprise -L anocrypto_parity_pending --output-on-failure",
+    ]
+    missing = [text for text in required if text not in ci]
+    if missing:
+        fail("Enterprise CI missing labeled AnoCrypto checks:\n" + "\n".join(missing))
 
 
 def check_generated_files(root: Path) -> None:
@@ -315,6 +340,7 @@ def validate(root: Path = ROOT) -> None:
     check_required_files(root)
     check_license_layout(root)
     check_cmake_markers(root)
+    check_ci_markers(root)
     check_generated_files(root)
     check_private_paths(root)
     check_mpl_headers(root)

@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+import json
 import shutil
 import subprocess
 import sys
@@ -20,6 +21,12 @@ def copy_version_inputs(dst: Path) -> None:
         "VERSION",
         "CMakeLists.txt",
         "src/version.cpp",
+        "src/enterprise/edition.cpp",
+        ".edition/edition.json",
+        "service/internal/enterprise/edition.go",
+        "service/cmd/anopki-service/main.go",
+        "scripts/validate-release-artifacts.py",
+        "docs/enterprise/private-alpha-evidence.md",
         ".github/workflows/release.yml",
     ]:
         target = dst / name
@@ -42,6 +49,16 @@ def test_current_version_metadata_pass() -> None:
     assert result.returncode == 0, result.stderr or result.stdout
 
 
+def test_prerelease_version_metadata_pass() -> None:
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        copy_version_inputs(root)
+        (root / "VERSION").write_text("0.1.0-alpha.0\n", encoding="utf-8")
+        result = run_validator(root)
+
+    assert result.returncode == 0, result.stderr or result.stdout
+
+
 def test_invalid_version_format_fails() -> None:
     with tempfile.TemporaryDirectory() as tmp:
         root = Path(tmp)
@@ -50,7 +67,7 @@ def test_invalid_version_format_fails() -> None:
         result = run_validator(root)
 
     assert result.returncode == 1
-    assert "VERSION must be MAJOR.MINOR.PATCH" in result.stderr
+    assert "VERSION must be MAJOR.MINOR.PATCH with an optional SemVer prerelease" in result.stderr
 
 
 def test_missing_version_file_fails() -> None:
@@ -79,11 +96,28 @@ def test_release_workflow_version_drift_fails() -> None:
     assert "-X main.serviceVersion=${VERSION}" in result.stderr
 
 
+def test_enterprise_backend_metadata_drift_fails() -> None:
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        copy_version_inputs(root)
+        edition_path = root / ".edition" / "edition.json"
+        edition = json.loads(edition_path.read_text(encoding="utf-8"))
+        edition["crypto_backend_default"] = "anocrypto"
+        edition_path.write_text(json.dumps(edition), encoding="utf-8")
+        result = run_validator(root)
+
+    assert result.returncode == 1
+    assert "Enterprise edition metadata drift" in result.stderr
+    assert "crypto_backend_default" in result.stderr
+
+
 def main() -> None:
     test_current_version_metadata_pass()
+    test_prerelease_version_metadata_pass()
     test_invalid_version_format_fails()
     test_missing_version_file_fails()
     test_release_workflow_version_drift_fails()
+    test_enterprise_backend_metadata_drift_fails()
     print("version metadata tests ok")
 
 

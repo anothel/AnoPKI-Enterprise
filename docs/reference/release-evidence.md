@@ -3,6 +3,8 @@
 This file records release artifact, supply-chain, and compatibility decisions.
 Release candidates attach evidence here by command output or CI run URL.
 
+Current draft: [v0.1.0-alpha.0 candidate evidence](release-candidate-v0.1.0-alpha.0.md).
+
 ## Tool Decisions
 
 | Area | Selected tool | Evidence hook |
@@ -13,7 +15,8 @@ Release candidates attach evidence here by command output or CI run URL.
 | Go race detector | `go test -race ./...` | CI `go-service` job with `CGO_ENABLED=1`. |
 | Go dependency vulnerability scan | `govulncheck` | CI `go-service` job via `go run golang.org/x/vuln/cmd/govulncheck@latest ./...`. |
 | C++ parser fuzz/sanitizer smoke | Clang/libFuzzer with AddressSanitizer | CI `cpp-fuzz-smoke` job builds CSR, OCSP, and CRL parser fuzz targets and runs `-runs=1`. |
-| Secret baseline | `scripts/security-baseline-scan.py` | CI `docs` job and README smoke checklist. |
+| Community boundary | `scripts/validate-community-boundary.py` | CI `community-boundary` job. |
+| Secret baseline | `scripts/security-baseline-scan.py` | CI `secret-baseline` job and README smoke checklist. |
 | SBOM | `syft` CycloneDX JSON | Release workflow writes `dist/anopki.sbom.cdx.json`. |
 | Artifact signing | `cosign` keyless signing | Release workflow signs checksums, SBOM, and archives. |
 
@@ -170,6 +173,8 @@ evidence still needs release workflow artifacts containing archives,
 
 - `python scripts/validate-docs.py`
 - `python scripts/test_validate_docs.py`
+- `python scripts/validate-community-boundary.py`
+- `python scripts/test_validate_community_boundary.py`
 - `python scripts/test_webhook_receiver_verification.py`
 - `python scripts/test_verify_local.py`
 - `python scripts/test_validate_version_metadata.py`
@@ -223,6 +228,7 @@ Current expected entry:
 | Field | Current value | Evidence |
 | --- | --- | --- |
 | Crypto backend | OpenSSL-backed C++ core | CMake configure output, dependency version, and CTest/core CLI contract results. |
+| Backend parity | Fixture format version, per-operation result, and skip reason | [Crypto backend parity](crypto-backend-parity.md) harness output. |
 | Intended migration direction | AnoCrypto | ADR 0006 and [Crypto backend strategy](crypto-backend-strategy.md). |
 
 Do not mark AnoCrypto as active release evidence until an AnoCrypto-backed path exists and passes CSR, issuance, CRL, OCSP, and release artifact checks.
