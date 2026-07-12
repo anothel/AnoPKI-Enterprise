@@ -1,23 +1,19 @@
 // SPDX-License-Identifier: LicenseRef-AnoPKI-Enterprise
+#include "anopki/crypto/runtime.hpp"
 #include "anopki/enterprise/anocrypto_backend.hpp"
 
 #include <cassert>
-#include <stdexcept>
-#include <string_view>
 
-int main() {
-    anopki::crypto::enterprise::AnoCryptoBackend backend;
-    assert(backend.name() == "anocrypto-c");
-    assert(backend.dependency_info().operational);
-    assert(!backend.dependency_info().runtime_version.empty());
-    assert(!backend.dependency_info().build_fingerprint.empty());
-    assert(backend.dependency_info().build_identity_abi == 1U);
-
-    try {
-        (void)backend.inspect_csr_pem("unused");
-        assert(false);
-    } catch (const std::runtime_error &error) {
-        assert(std::string_view{error.what()} == "backend.capability_unavailable");
-    }
+int main()
+{
+    const anopki::crypto::enterprise::AnoCryptoBackend backend;
+    const anopki::crypto::BackendInfo &info = backend.info();
+    assert(info.id == "anocrypto-c");
+    assert(info.dependency == "AnoCrypto-C");
+    assert(info.readiness == anopki::crypto::BackendReadiness::ready);
+    assert(!info.dependency_version.empty());
+    assert(!info.build_fingerprint.empty());
+    assert(info.abi_version == 1U);
+    assert(info.capabilities.empty());
     return 0;
 }

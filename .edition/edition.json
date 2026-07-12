@@ -28,5 +28,13 @@
   "anocrypto_sdk_package": "AnoCryptoC::AnoCryptoC",
   "anocrypto_sdk_version": null,
   "anocrypto_sdk_build_fingerprint": null,
-  "anocrypto_capability_status": "sdk_capabilities_unverified"
+  "anocrypto_capability_status": "sdk_capabilities_unverified",
+  "product_profiles": [
+    "enterprise-openssl",
+    "enterprise-anocrypto-c"
+  ],
+  "default_product_profile": "enterprise-openssl",
+  "selected_adapter": "openssl",
+  "fallback_enabled": false,
+  "anocrypto_profile_release_status": "development_integration_only"
 }

@@ -58,7 +58,7 @@ Current state:
 - Enterprise/OpenSSL CTest: 8 tests passed and the AnoCrypto-C parity test was
   explicitly skipped as `unsupported_pending`.
 - Missing-SDK configuration was verified to fail when
-  `ANOPKI_ENABLE_ANOCRYPTO_SDK_INTEGRATION=ON` and `AnoCryptoC` was unavailable.
+  `ANOPKI_PRODUCT_PROFILE=enterprise-anocrypto-c` and `AnoCryptoC` was unavailable.
 - The adapter compiled against an out-of-tree contract stub only to validate the
   CMake/C++ consumer boundary. That is not real AnoCrypto-C integration evidence.
 

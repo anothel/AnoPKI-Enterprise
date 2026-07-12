@@ -229,16 +229,26 @@ def check_license_layout(root: Path) -> None:
 def check_cmake_markers(root: Path) -> None:
     cmake = (root / "CMakeLists.txt").read_text(encoding="utf-8")
     required = [
-        "ANOPKI_ENABLE_ANOCRYPTO_SDK_INTEGRATION",
+        'set(ANOPKI_PRODUCT_PROFILE "enterprise-openssl"',
+        "enterprise-anocrypto-c",
         "ANOCRYPTO_SDK_ROOT",
         "find_package(AnoCryptoC 0.1.0 EXACT CONFIG REQUIRED)",
         "AnoCryptoC::AnoCryptoC",
         "anopki_enterprise_anocrypto_adapter",
         "anocrypto_sdk_integration",
+        "anocrypto_no_fallback",
+        "anopki-enterprise-openssl",
+        "anopki-enterprise-anocrypto-c",
     ]
     missing = [token for token in required if token not in cmake]
     if missing:
         fail("Enterprise CMake missing external AnoCrypto-C integration markers:\n" + "\n".join(missing))
+
+    if 'ANOPKI_PRODUCT_PROFILE STREQUAL "enterprise-anocrypto-c"' not in cmake:
+        fail("Enterprise CMake missing explicit enterprise-anocrypto-c profile")
+    adapter_source = (root / "src/backends/anocrypto_c/anocrypto_backend.cpp").read_text(encoding="utf-8")
+    if "openssl/" in adapter_source.lower() or "OpenSSL::Crypto" in adapter_source:
+        fail("Enterprise AnoCrypto-C adapter must not reference OpenSSL")
     forbidden = ["anocrypto_c99", "ANOCRYPTO_ENABLE_TEST_HOOKS", "enterprise/anocrypto/src"]
     hits = [token for token in forbidden if token in cmake]
     if hits:
@@ -303,7 +313,8 @@ def check_ci_markers(root: Path) -> None:
     if "ctest --test-dir build-enterprise -R anocrypto" in ci:
         fail("Enterprise CI must not use broad AnoCrypto regex selection")
     required = [
-        "ANOPKI_ENABLE_ANOCRYPTO_SDK_INTEGRATION=ON",
+        "ANOPKI_PRODUCT_PROFILE=enterprise-openssl",
+        "ANOPKI_PRODUCT_PROFILE=enterprise-anocrypto-c",
         "CMAKE_DISABLE_FIND_PACKAGE_AnoCryptoC=TRUE",
         "expected AnoCrypto-C SDK configuration failure",
         "anocrypto_parity_pending",

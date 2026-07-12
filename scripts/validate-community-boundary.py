@@ -99,7 +99,7 @@ def fail(message: str) -> None:
 
 def should_skip(path: Path, root: Path) -> bool:
     rel_parts = path.relative_to(root).parts
-    return path.name in SELF_TEST_FILES or any(part in SKIP_DIRS for part in rel_parts)
+    return path.name in SELF_TEST_FILES or path.name.startswith("test_") or any(part in SKIP_DIRS for part in rel_parts)
 
 
 def text_files(root: Path) -> Iterable[Path]:

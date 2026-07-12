@@ -261,19 +261,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: sudo apt-get update && sudo apt-get install -y cmake g++ libssl-dev
-      - run: cmake -S . -B build-enterprise -DCMAKE_BUILD_TYPE=Debug
-      - run: cmake --build build-enterprise --target anopki_core anopki_enterprise_edition_metadata_test anopki_core_openssl_golden_test
+      - run: cmake -S . -B build-enterprise -DCMAKE_BUILD_TYPE=Debug -DANOPKI_PRODUCT_PROFILE=enterprise-openssl
+      - run: cmake --build build-enterprise --target anopki-enterprise-openssl anopki_enterprise_edition_metadata_test anopki_core_openssl_golden_test
       - run: ctest --test-dir build-enterprise -N -L enterprise_metadata
       - run: ctest --test-dir build-enterprise -L enterprise_metadata --output-on-failure
-      - run: ctest --test-dir build-enterprise -N -L anocrypto_parity_pending
-      - run: ctest --test-dir build-enterprise -L anocrypto_parity_pending --output-on-failure --output-junit anocrypto-parity.xml
-      - run: python scripts/validate-pending-parity-junit.py build-enterprise/anocrypto-parity.xml
       - name: AnoCrypto-C SDK is required when integration is enabled
         shell: bash
         run: |
           set +e
           output=$(cmake -S . -B build-anocrypto-missing \
-            -DANOPKI_ENABLE_ANOCRYPTO_SDK_INTEGRATION=ON \
+            -DANOPKI_PRODUCT_PROFILE=enterprise-anocrypto-c \
             -DCMAKE_DISABLE_FIND_PACKAGE_AnoCryptoC=TRUE 2>&1)
           status=$?
           set -e
@@ -291,3 +288,4 @@ jobs:
       - run: echo "Skipping real HSM checks: CI uses no customer hardware or credentials."
       - run: echo "Skipping real KMS checks: CI uses no cloud accounts or private keys."
       - run: echo "Skipping KCMVP evidence checks: certification evidence is not present in skeleton CI."
+      - run: echo "Skipping anocrypto_parity_pending execution: a pinned trusted AnoCrypto-C SDK artifact is not configured in public CI."

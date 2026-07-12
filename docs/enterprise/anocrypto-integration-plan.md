@@ -14,7 +14,7 @@ metadata, packaging policy, and operation parity evidence.
 The adapter consumes the installed CMake package:
 
 ```cmake
-find_package(AnoCryptoC CONFIG REQUIRED)
+find_package(AnoCryptoC 0.1.0 EXACT CONFIG REQUIRED)
 target_link_libraries(anopki_enterprise_anocrypto PRIVATE AnoCryptoC::AnoCryptoC)
 ```
 
@@ -76,3 +76,11 @@ Enterprise/AnoCrypto-C is production-releasable only after:
 | 검증 완료 | KCMVP-validated AnoCrypto-C module only for the listed version/build/platform |
 
 AnoPKI 전체가 자동으로 검증된 것으로 표현하지 않습니다.
+
+## Explicit Product Profile
+
+The adapter is assembled only by selecting
+`ANOPKI_PRODUCT_PROFILE=enterprise-anocrypto-c`. The OpenSSL adapter is not
+linked into that artifact. Missing SDK configuration fails during CMake
+configuration. Current SDK capability metadata is empty for operation-level PKI
+functions, so those requests return `backend.capability_unavailable`.

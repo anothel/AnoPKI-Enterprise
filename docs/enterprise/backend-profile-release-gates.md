@@ -60,3 +60,14 @@ production_ready
 kcmvp_status
 kcmvp_evidence
 ```
+
+## Build Selection
+
+```text
+-DANOPKI_PRODUCT_PROFILE=enterprise-openssl
+-DANOPKI_PRODUCT_PROFILE=enterprise-anocrypto-c
+```
+
+Each artifact links one adapter. The AnoCrypto-C profile does not link OpenSSL.
+`anopki-core backend info` records the selected profile, dependency, readiness,
+capabilities, ABI/fingerprint fields, and `fallback_enabled=false`.

@@ -41,9 +41,9 @@ def write_clean_enterprise_root(root: Path) -> None:
         root,
         "CMakeLists.txt",
         "# SPDX-License-Identifier: MPL-2.0\n"
-        "ANOPKI_ENTERPRISE_EDITION\nANOPKI_ENABLE_ANOCRYPTO_SDK_INTEGRATION\nANOCRYPTO_SDK_ROOT\n"
+        'set(ANOPKI_PRODUCT_PROFILE "enterprise-openssl"\nenterprise-anocrypto-c\nANOPKI_ENTERPRISE_EDITION\nANOCRYPTO_SDK_ROOT\n'
         "find_package(AnoCryptoC 0.1.0 EXACT CONFIG REQUIRED)\n"
-        "AnoCryptoC::AnoCryptoC\nanopki_enterprise_anocrypto_adapter\nanocrypto_sdk_integration\n"
+        "AnoCryptoC::AnoCryptoC\nanopki_enterprise_anocrypto_adapter\nanocrypto_sdk_integration\nanocrypto_no_fallback\nanopki-enterprise-openssl\nanopki-enterprise-anocrypto-c\nANOPKI_PRODUCT_PROFILE STREQUAL \"enterprise-anocrypto-c\"\n"
         "add_library(anopki_core)\nadd_library(anopki_openssl_adapter)\n"
         "target_link_libraries(anopki_openssl_adapter PRIVATE OpenSSL::Crypto)\n"
         "add_executable(anopki-core)\n"
@@ -52,7 +52,7 @@ def write_clean_enterprise_root(root: Path) -> None:
     write_file(
         root,
         ".github/workflows/ci.yml",
-        "ANOPKI_ENABLE_ANOCRYPTO_SDK_INTEGRATION=ON\n"
+        "ANOPKI_PRODUCT_PROFILE=enterprise-openssl\nANOPKI_PRODUCT_PROFILE=enterprise-anocrypto-c\n"
         "CMAKE_DISABLE_FIND_PACKAGE_AnoCryptoC=TRUE\n"
         "expected AnoCrypto-C SDK configuration failure\n"
         "anocrypto_parity_pending\n",
