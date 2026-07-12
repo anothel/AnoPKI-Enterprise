@@ -55,8 +55,10 @@ Current state:
 - Enterprise/OpenSSL CMake configure and build passed with OpenSSL 3.5.5 in the
   audit environment. The backend-neutral `anopki_core` archive had no OpenSSL
   symbols; the separated OpenSSL adapter owned the dependency.
-- Enterprise/OpenSSL CTest: 8 tests passed and the AnoCrypto-C parity test was
-  explicitly skipped as `unsupported_pending`.
+- Enterprise/OpenSSL CTest: 9/9 tests passed after the explicit product-profile
+  contract was added. The AnoCrypto-C parity test is part of the separately
+  selected integration profile and remains explicitly skipped as
+  `unsupported_pending`.
 - Missing-SDK configuration was verified to fail when
   `ANOPKI_PRODUCT_PROFILE=enterprise-anocrypto-c` and `AnoCryptoC` was unavailable.
 - The adapter compiled against an out-of-tree contract stub only to validate the
@@ -84,3 +86,13 @@ GitHub Actions run.
 | KCMVP status | Not validated; no evidence |
 | Provider status | HSM/KMS/PKCS#11 not implemented |
 | Distribution prohibition | Customer and production distribution prohibited |
+
+## Trusted SDK Evidence Lane
+
+A protected manual workflow now exists for an exact AnoCrypto-C source commit.
+No trusted run has been recorded yet. Until a reviewed run URL and generated
+`anocrypto-sdk-evidence.json` are attached, the SDK integration evidence field
+remains `PENDING`. The lane packages and hashes the installed SDK, binds the exact external and
+Enterprise commits to the workflow run, and proves the Enterprise/AnoCrypto-C
+artifact has no OpenSSL linkage or fallback. It does not change operation parity
+from `unsupported_pending`.

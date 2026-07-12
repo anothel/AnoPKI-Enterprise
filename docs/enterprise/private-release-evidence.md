@@ -46,3 +46,18 @@ product by implication.
 | Validated mode | `false` |
 | KCMVP evidence | None; not validated |
 | Distribution | Prohibited while commercial license remains placeholder |
+
+## Trusted SDK Evidence File
+
+For `Enterprise/AnoCrypto-C`, attach the generated
+`anocrypto-sdk-evidence.json` and matching SDK archive. Validate them with:
+
+```text
+python scripts/validate-anocrypto-sdk-evidence.py <evidence.json> --artifact <sdk-archive>
+```
+
+The evidence must identify the exact AnoCrypto-C source commit, exact Enterprise
+consumer commit, workflow ref/run/attempt, deterministic installed-artifact SHA-256, bundled
+dependency license and SDK manifest, runtime version, build-identity ABI, build fingerprint, toolchain, external and consumer
+test results, no-OpenSSL-linkage and no-fallback results, pending PKI parity, and
+`not_validated` KCMVP status. Branch or moving-tag references are not release evidence.

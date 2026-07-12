@@ -55,7 +55,7 @@ def write_clean_enterprise_root(root: Path) -> None:
         "ANOPKI_PRODUCT_PROFILE=enterprise-openssl\nANOPKI_PRODUCT_PROFILE=enterprise-anocrypto-c\n"
         "CMAKE_DISABLE_FIND_PACKAGE_AnoCryptoC=TRUE\n"
         "expected AnoCrypto-C SDK configuration failure\n"
-        "anocrypto_parity_pending\n",
+        "anocrypto_parity_pending\ntest_validate_anocrypto_sdk_evidence.py\n",
     )
     write_file(root, "README.md", "# AnoPKI Enterprise\nOpenSSL remains the active profile.\n")
     write_file(root, "docs/reference/crypto-backend-strategy.md", "AnoCrypto-C external SDK direction. OpenSSL remains current.\n")
@@ -65,6 +65,12 @@ def write_clean_enterprise_root(root: Path) -> None:
     write_file(root, "include/anopki/enterprise/anocrypto_backend.hpp", "// SPDX-License-Identifier: LicenseRef-AnoPKI-Enterprise\n")
     write_file(root, "src/backends/anocrypto_c/anocrypto_backend.cpp", "// SPDX-License-Identifier: LicenseRef-AnoPKI-Enterprise\n")
     write_file(root, "enterprise/tests/anocrypto_sdk_integration_test.cpp", "// SPDX-License-Identifier: LicenseRef-AnoPKI-Enterprise\n")
+    write_file(root, ".github/workflows/anocrypto-sdk-integration.yml", "workflow_dispatch\nanocrypto_commit\nANOCRYPTO_C_READ_TOKEN\nrepository: anothel/AnoCrypto-C\npersist-credentials: false\nANOPKI_PRODUCT_PROFILE=enterprise-anocrypto-c\nANOCRYPTO_SDK_ROOT\nvalidate-anocrypto-sdk-evidence.py\nProve no OpenSSL dependency\nPKI operation parity: unsupported/pending\nREQUESTED_ANOCRYPTO_COMMIT: ${{ inputs.anocrypto_commit }}\n--enterprise-commit\n--workflow-run-id\n--workflow-run-attempt\nanocrypto_no_fallback\nshare/licenses/AnoCrypto-C\n--use-compress-program='gzip -n'\njobs:\n")
+    write_file(root, "scripts/validate-anocrypto-sdk-evidence.py", "# SPDX-License-Identifier: MPL-2.0\n")
+    write_file(root, "scripts/compose-anocrypto-sdk-evidence.py", "# SPDX-License-Identifier: MPL-2.0\n")
+    write_file(root, "scripts/test_validate_anocrypto_sdk_evidence.py", "# SPDX-License-Identifier: MPL-2.0\n")
+    write_file(root, "sdk-manifests/anocrypto-c/README.md", "Trusted SDK evidence policy.\n")
+    write_file(root, "sdk-manifests/anocrypto-c/example-evidence.json", "{}\n")
     write_file(root, "enterprise/tests/edition_metadata_test.cpp", "// SPDX-License-Identifier: LicenseRef-AnoPKI-Enterprise\n")
     write_file(root, "include/anopki/enterprise/edition.hpp", "// SPDX-License-Identifier: LicenseRef-AnoPKI-Enterprise\n")
     write_file(root, "service/internal/enterprise/edition.go", "// SPDX-License-Identifier: LicenseRef-AnoPKI-Enterprise\n")
@@ -240,6 +246,27 @@ def test_rejects_direct_openssl_link_from_enterprise_core() -> None:
         )
         assert_fails(root, "anopki_core must not link OpenSSL::Crypto directly")
 
+
+def test_rejects_untrusted_sdk_workflow_trigger() -> None:
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp); write_clean_enterprise_root(root)
+        workflow = root / ".github/workflows/anocrypto-sdk-integration.yml"
+        text = workflow.read_text(encoding="utf-8")
+        workflow.write_text(text.replace("jobs:\n", "pull_request:\njobs:\n"), encoding="utf-8")
+        assert_fails(root, "must not run on pull_request")
+
+
+def test_rejects_unsafe_dispatch_input_interpolation() -> None:
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp); write_clean_enterprise_root(root)
+        workflow = root / ".github/workflows/anocrypto-sdk-integration.yml"
+        workflow.write_text(
+            workflow.read_text(encoding="utf-8")
+            + "commit='${{ inputs.anocrypto_commit }}'\n",
+            encoding="utf-8",
+        )
+        assert_fails(root, "must pass dispatch input through env")
+
 def main() -> None:
     test_clean_enterprise_root_passes()
     test_requires_enterprise_license_notice()
@@ -259,6 +286,8 @@ def main() -> None:
     test_finds_private_key_material()
     test_finds_generated_files()
     test_rejects_broad_anocrypto_ci_selection()
+    test_rejects_untrusted_sdk_workflow_trigger()
+    test_rejects_unsafe_dispatch_input_interpolation()
     test_rejects_direct_openssl_include_in_shared_core()
     test_rejects_direct_openssl_link_from_enterprise_core()
     print("enterprise boundary validator tests ok")

@@ -20,6 +20,12 @@ REQUIRED = [
     "include/anopki/enterprise/anocrypto_backend.hpp",
     "src/backends/anocrypto_c/anocrypto_backend.cpp",
     "enterprise/tests/anocrypto_sdk_integration_test.cpp",
+    ".github/workflows/anocrypto-sdk-integration.yml",
+    "scripts/validate-anocrypto-sdk-evidence.py",
+    "scripts/compose-anocrypto-sdk-evidence.py",
+    "scripts/test_validate_anocrypto_sdk_evidence.py",
+    "sdk-manifests/anocrypto-c/README.md",
+    "sdk-manifests/anocrypto-c/example-evidence.json",
     "include/anopki/enterprise/edition.hpp",
     "service/internal/enterprise/edition.go",
     "docs/enterprise/anocrypto-integration-plan.md",
@@ -318,10 +324,45 @@ def check_ci_markers(root: Path) -> None:
         "CMAKE_DISABLE_FIND_PACKAGE_AnoCryptoC=TRUE",
         "expected AnoCrypto-C SDK configuration failure",
         "anocrypto_parity_pending",
+        "test_validate_anocrypto_sdk_evidence.py",
     ]
     missing = [text for text in required if text not in ci]
     if missing:
         fail("Enterprise CI missing external AnoCrypto-C boundary checks:\n" + "\n".join(missing))
+
+def check_trusted_sdk_workflow(root: Path) -> None:
+    workflow = (root / ".github/workflows/anocrypto-sdk-integration.yml").read_text(encoding="utf-8")
+    required = [
+        "workflow_dispatch",
+        "anocrypto_commit",
+        "ANOCRYPTO_C_READ_TOKEN",
+        "repository: anothel/AnoCrypto-C",
+        "persist-credentials: false",
+        "ANOPKI_PRODUCT_PROFILE=enterprise-anocrypto-c",
+        "ANOCRYPTO_SDK_ROOT",
+        "validate-anocrypto-sdk-evidence.py",
+        "Prove no OpenSSL dependency",
+        "PKI operation parity: unsupported/pending",
+        "REQUESTED_ANOCRYPTO_COMMIT: ${{ inputs.anocrypto_commit }}",
+        "--enterprise-commit",
+        "--workflow-run-id",
+        "--workflow-run-attempt",
+        "anocrypto_no_fallback",
+        "share/licenses/AnoCrypto-C",
+        "--use-compress-program='gzip -n'",
+    ]
+    missing = [token for token in required if token not in workflow]
+    if missing:
+        fail("trusted AnoCrypto-C workflow missing security/evidence markers:\n" + "\n".join(missing))
+    if "pull_request" in workflow.split("jobs:", 1)[0]:
+        fail("trusted AnoCrypto-C SDK workflow must not run on pull_request")
+    unsafe_shell_interpolation = (
+        "commit='${{ inputs.anocrypto_commit }}'",
+        "test \"$actual\" = '${{ inputs.anocrypto_commit }}'",
+    )
+    if any(token in workflow for token in unsafe_shell_interpolation):
+        fail("trusted AnoCrypto-C workflow must pass dispatch input through env before shell use")
+
 
 def check_generated_files(root: Path) -> None:
     hits = []
@@ -444,6 +485,7 @@ def validate(root: Path = ROOT) -> None:
     check_openssl_adapter_separation(root)
     check_embedded_anocrypto_absent(root)
     check_ci_markers(root)
+    check_trusted_sdk_workflow(root)
     check_generated_files(root)
     check_private_paths(root)
     check_mpl_headers(root)

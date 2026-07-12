@@ -36,5 +36,8 @@
   "default_product_profile": "enterprise-openssl",
   "selected_adapter": "openssl",
   "fallback_enabled": false,
-  "anocrypto_profile_release_status": "development_integration_only"
+  "anocrypto_profile_release_status": "development_integration_only",
+  "trusted_anocrypto_sdk_ci_status": "not_run",
+  "anocrypto_sdk_pin_policy": "exact_source_commit_plus_installed_artifact_sha256",
+  "anocrypto_sdk_evidence_schema": 1
 }

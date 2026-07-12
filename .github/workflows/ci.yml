@@ -239,6 +239,8 @@ jobs:
       - run: python scripts/test_validate_enterprise_release.py
       - run: python scripts/validate-enterprise-release.py --expect-blocked
       - run: python scripts/test_validate_pending_parity_junit.py
+      - run: python scripts/test_validate_anocrypto_sdk_evidence.py
+      - run: python scripts/validate-anocrypto-sdk-evidence.py sdk-manifests/anocrypto-c/example-evidence.json --allow-example
 
   enterprise-go:
     runs-on: ubuntu-latest

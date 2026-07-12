@@ -84,3 +84,21 @@ The adapter is assembled only by selecting
 linked into that artifact. Missing SDK configuration fails during CMake
 configuration. Current SDK capability metadata is empty for operation-level PKI
 functions, so those requests return `backend.capability_unavailable`.
+
+## Trusted SDK Integration Workflow
+
+The manual protected workflow `.github/workflows/anocrypto-sdk-integration.yml`
+accepts only an exact 40-character source commit. It checks out the separate
+repository with the read-only `ANOCRYPTO_C_READ_TOKEN`, builds and tests a
+Release shared SDK, installs the CMake package, bundles the dependency license
+and SDK build manifest, creates a deterministic archive, records its SHA-256,
+and builds Enterprise against that prefix.
+
+The workflow emits `anocrypto-sdk-evidence.json`, runtime metadata, CTest JUnit
+files, the installed SDK archive, and `ANOCRYPTO-SHA256SUMS`. Evidence binds
+both the exact AnoCrypto-C source commit and the exact Enterprise consumer commit
+to the workflow ref, run ID, and run attempt. The evidence validator rejects branch names, placeholder hashes, mismatched
+workflow URLs, missing test/no-fallback attestations, fallback use, non-ready
+module state, unsupported ABI values, non-empty PKI operation capabilities, and
+KCMVP claims. A successful run proves SDK consumption only; it does not promote
+PKI operation parity.

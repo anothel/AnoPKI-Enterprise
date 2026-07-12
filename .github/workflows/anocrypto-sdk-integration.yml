@@ -1,0 +1,206 @@
+name: Trusted AnoCrypto-C SDK integration
+
+on:
+  workflow_dispatch:
+    inputs:
+      anocrypto_commit:
+        description: Exact 40-character AnoCrypto-C commit SHA
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  trusted-sdk-integration:
+    name: Build pinned SDK and test Enterprise adapter
+    runs-on: ubuntu-latest
+    environment: anocrypto-sdk-integration
+    steps:
+      - name: Validate requested source pin
+        shell: bash
+        env:
+          REQUESTED_ANOCRYPTO_COMMIT: ${{ inputs.anocrypto_commit }}
+        run: |
+          set -euo pipefail
+          commit="$REQUESTED_ANOCRYPTO_COMMIT"
+          [[ "$commit" =~ ^[0-9a-f]{40}$ ]]
+          [[ "$commit" != "0000000000000000000000000000000000000000" ]]
+
+      - name: Require protected read token
+        shell: bash
+        env:
+          ANOCRYPTO_C_READ_TOKEN: ${{ secrets.ANOCRYPTO_C_READ_TOKEN }}
+        run: |
+          set -euo pipefail
+          test -n "$ANOCRYPTO_C_READ_TOKEN"
+
+      - uses: actions/checkout@v4
+        with:
+          path: anopki-enterprise
+          persist-credentials: false
+
+      - uses: actions/checkout@v4
+        with:
+          repository: anothel/AnoCrypto-C
+          ref: ${{ inputs.anocrypto_commit }}
+          token: ${{ secrets.ANOCRYPTO_C_READ_TOKEN }}
+          persist-credentials: false
+          fetch-depth: 1
+          path: anocrypto-c-source
+
+      - name: Verify exact source and Enterprise commits
+        shell: bash
+        env:
+          REQUESTED_ANOCRYPTO_COMMIT: ${{ inputs.anocrypto_commit }}
+          EXPECTED_ENTERPRISE_COMMIT: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          actual=$(git -C anocrypto-c-source rev-parse HEAD)
+          enterprise_actual=$(git -C anopki-enterprise rev-parse HEAD)
+          test "$actual" = "$REQUESTED_ANOCRYPTO_COMMIT"
+          test "$enterprise_actual" = "$EXPECTED_ENTERPRISE_COMMIT"
+          test -z "$(git -C anocrypto-c-source status --porcelain)"
+          test -z "$(git -C anopki-enterprise status --porcelain)"
+          echo "ANOCRYPTO_COMMIT=$actual" >> "$GITHUB_ENV"
+          echo "ENTERPRISE_COMMIT=$enterprise_actual" >> "$GITHUB_ENV"
+
+      - name: Install build tools
+        run: sudo apt-get update && sudo apt-get install -y cmake g++ ninja-build
+
+      - name: Record toolchain
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "COMPILER_DESC=$(c++ --version | head -1)" >> "$GITHUB_ENV"
+          echo "CMAKE_DESC=$(cmake --version | head -1)" >> "$GITHUB_ENV"
+          echo "ARCH_DESC=$(uname -m)" >> "$GITHUB_ENV"
+
+      - name: Build and test AnoCrypto-C
+        shell: bash
+        run: |
+          set -euo pipefail
+          cmake -S anocrypto-c-source -B .tmp/anocrypto-c-build -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DBUILD_SHARED_LIBS=ON \
+            -DANO_CRYPTO_BUILD_TESTS=ON \
+            -DANO_CRYPTO_BUILD_EXAMPLES=OFF
+          cmake --build .tmp/anocrypto-c-build --parallel
+          ctest --test-dir .tmp/anocrypto-c-build --output-on-failure \
+            --output-junit "$GITHUB_WORKSPACE/anocrypto-c-ctest.xml"
+          cmake --install .tmp/anocrypto-c-build --prefix "$GITHUB_WORKSPACE/anocrypto-c-sdk"
+          sdk_library=$(find "$GITHUB_WORKSPACE/anocrypto-c-sdk" -type f \
+            \( -name 'libanocrypto_c.so' -o -name 'libanocrypto_c.so.*' \) | head -1)
+          test -n "$sdk_library"
+          sdk_library_dir=$(dirname "$sdk_library")
+          echo "ANOCRYPTO_LIBRARY_DIR=$sdk_library_dir" >> "$GITHUB_ENV"
+
+      - name: Package immutable installed SDK
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f anocrypto-c-source/LICENSE
+          mkdir -p dist \
+            anocrypto-c-sdk/share/licenses/AnoCrypto-C \
+            anocrypto-c-sdk/share/anocrypto-c
+          install -m 0644 anocrypto-c-source/LICENSE \
+            anocrypto-c-sdk/share/licenses/AnoCrypto-C/LICENSE
+          cat > anocrypto-c-sdk/share/anocrypto-c/sdk-build-manifest.json <<EOF
+          {
+            "repository": "anothel/AnoCrypto-C",
+            "source_commit": "$ANOCRYPTO_COMMIT",
+            "package_version": "0.1.0",
+            "build_type": "Release",
+            "shared_library": true,
+            "cmake_target": "AnoCryptoC::AnoCryptoC",
+            "platform": "linux",
+            "architecture": "$ARCH_DESC"
+          }
+          EOF
+          artifact="anocrypto-c-sdk-${ANOCRYPTO_COMMIT}-linux-${ARCH_DESC}.tar.gz"
+          tar --sort=name --mtime='UTC 1970-01-01' --owner=0 --group=0 \
+            --numeric-owner --use-compress-program='gzip -n' \
+            -cf "dist/$artifact" -C anocrypto-c-sdk .
+          echo "ANOCRYPTO_ARTIFACT=$artifact" >> "$GITHUB_ENV"
+          sha256sum "dist/$artifact" > dist/ANOCRYPTO-SHA256SUMS
+
+      - name: Build Enterprise/AnoCrypto-C against installed SDK
+        shell: bash
+        working-directory: anopki-enterprise
+        run: |
+          set -euo pipefail
+          export LD_LIBRARY_PATH="$ANOCRYPTO_LIBRARY_DIR:${LD_LIBRARY_PATH:-}"
+          cmake -S . -B ../.tmp/anopki-enterprise-anocrypto -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DANOPKI_PRODUCT_PROFILE=enterprise-anocrypto-c \
+            -DANOCRYPTO_SDK_ROOT="$GITHUB_WORKSPACE/anocrypto-c-sdk"
+          cmake --build ../.tmp/anopki-enterprise-anocrypto --parallel
+          ctest --test-dir ../.tmp/anopki-enterprise-anocrypto --output-on-failure \
+            --output-junit "$GITHUB_WORKSPACE/anopki-enterprise-anocrypto-ctest.xml"
+          ctest --test-dir ../.tmp/anopki-enterprise-anocrypto -N -L anocrypto_no_fallback
+          ctest --test-dir ../.tmp/anopki-enterprise-anocrypto \
+            -L anocrypto_no_fallback --output-on-failure
+          ../.tmp/anopki-enterprise-anocrypto/anocrypto_sdk_integration_test \
+            "$GITHUB_WORKSPACE/anocrypto-runtime.json"
+
+      - name: Prove no OpenSSL dependency in AnoCrypto-C profile
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ldd .tmp/anopki-enterprise-anocrypto/anopki-core | grep -Eiq 'libssl|libcrypto'; then
+            echo 'Enterprise/AnoCrypto-C unexpectedly links OpenSSL' >&2
+            exit 1
+          fi
+          if nm -u .tmp/anopki-enterprise-anocrypto/anopki-core | grep -Eiq 'OPENSSL_|EVP_|X509_|OCSP_'; then
+            echo 'Enterprise/AnoCrypto-C contains unresolved OpenSSL symbols' >&2
+            exit 1
+          fi
+
+      - name: Compose and validate SDK evidence
+        shell: bash
+        working-directory: anopki-enterprise
+        run: |
+          set -euo pipefail
+          python scripts/compose-anocrypto-sdk-evidence.py \
+            --runtime "$GITHUB_WORKSPACE/anocrypto-runtime.json" \
+            --artifact "$GITHUB_WORKSPACE/dist/$ANOCRYPTO_ARTIFACT" \
+            --source-commit "$ANOCRYPTO_COMMIT" \
+            --output "$GITHUB_WORKSPACE/dist/anocrypto-sdk-evidence.json" \
+            --ci-run-url "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
+            --enterprise-repository "${{ github.repository }}" \
+            --enterprise-commit "$ENTERPRISE_COMMIT" \
+            --workflow-ref "${{ github.workflow_ref }}" \
+            --workflow-run-id "${{ github.run_id }}" \
+            --workflow-run-attempt "${{ github.run_attempt }}" \
+            --platform linux \
+            --architecture "$ARCH_DESC" \
+            --compiler "$COMPILER_DESC" \
+            --cmake-version "$CMAKE_DESC"
+          python scripts/validate-anocrypto-sdk-evidence.py \
+            "$GITHUB_WORKSPACE/dist/anocrypto-sdk-evidence.json" \
+            --artifact "$GITHUB_WORKSPACE/dist/$ANOCRYPTO_ARTIFACT"
+
+      - name: Record integration summary
+        shell: bash
+        run: |
+          cat >> "$GITHUB_STEP_SUMMARY" <<EOF
+          ## Trusted AnoCrypto-C SDK integration
+          - AnoCrypto-C source commit: \`$ANOCRYPTO_COMMIT\`
+          - Enterprise source commit: \`$ENTERPRISE_COMMIT\`
+          - SDK artifact: \`$ANOCRYPTO_ARTIFACT\`
+          - product profile: \`enterprise-anocrypto-c\`
+          - automatic fallback: disabled
+          - PKI operation parity: unsupported/pending
+          - KCMVP status: not validated
+          EOF
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: anocrypto-sdk-integration-${{ inputs.anocrypto_commit }}
+          path: |
+            dist/
+            anocrypto-runtime.json
+            anocrypto-c-ctest.xml
+            anopki-enterprise-anocrypto-ctest.xml
+          if-no-files-found: error
+          retention-days: 30

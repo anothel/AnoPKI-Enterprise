@@ -239,7 +239,7 @@ Most-used docs:
 - [Contributing guide](CONTRIBUTING.md): prerequisites, local verification, roadmap rules, documentation expectations, and commit guidance.
 - [Project scope](docs/reference/project-scope.md): supported PKI domains, explicit non-goals, and current boundaries.
 - [Target architecture](docs/reference/target-architecture.md): component boundaries and production shape.
-- [Crypto backend strategy](docs/reference/crypto-backend-strategy.md): current OpenSSL implementation, intended AnoCrypto direction, and migration gates.
+- [Crypto backend strategy](docs/reference/crypto-backend-strategy.md): backend-neutral core, explicit Enterprise/OpenSSL and Enterprise/AnoCrypto-C profiles, external SDK integration, and no-fallback gates.
 - [Release process](docs/runbooks/release-process.md): release candidate checklist, verification, metadata, and approval gates.
 - [Release evidence](docs/reference/release-evidence.md): artifact, SBOM, signing, scan, compatibility, and backend evidence baseline.
 - [Documentation governance](docs/reference/documentation-governance.md): what belongs in Git, what belongs in internal/GPT project sources, and how to retire stale docs.
@@ -253,3 +253,13 @@ Licensed under the Mozilla Public License, Version 2.0. See [LICENSE](LICENSE).
 ## Current Status
 
 This is a lifecycle-service implementation in progress. Core lifecycle, profile policy, status publication, auth, audit, notifications, security/contribution docs, CI workflow, and ACME adapter foundations exist. Live lego and certbot HTTP-01 smokes reach account, order, challenge validation, finalize, and certificate response against a harness-started local service. Current priority is release-candidate trust: API/doc/code parity, negative failure-mode tests, compatibility evidence, and release operations.
+
+
+### Trusted AnoCrypto-C SDK integration
+
+Ordinary pull-request CI does not fetch private AnoCrypto-C source. A protected manual
+workflow accepts an exact source commit and uses the read-only
+`ANOCRYPTO_C_READ_TOKEN` secret to build, test, install, hash, and consume the
+external SDK. See `sdk-manifests/anocrypto-c/README.md`. A successful workflow
+proves package consumption and no-fallback behavior only; PKI operation parity
+remains pending until the external SDK exposes and passes those operations.
