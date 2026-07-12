@@ -37,7 +37,7 @@ product by implication.
 | Field | Current value |
 | --- | --- |
 | Product profile | Enterprise/OpenSSL |
-| Selected adapter | Community OpenSSL adapter |
+| Selected adapter | Separated Community OpenSSL adapter (`anopki_openssl_adapter`) |
 | Active operation backend | OpenSSL |
 | AnoCrypto-C adapter | External SDK consumer boundary present; SDK not configured |
 | AnoCrypto-C SDK version/fingerprint | Not recorded |

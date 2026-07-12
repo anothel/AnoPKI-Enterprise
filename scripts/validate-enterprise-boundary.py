@@ -26,6 +26,13 @@ REQUIRED = [
     "docs/enterprise/kcmvp-preparation.md",
     "docs/enterprise/private-alpha-evidence.md",
     "enterprise/tests/edition_metadata_test.cpp",
+    "src/backends/openssl/openssl_backend.hpp",
+    "src/backends/openssl/openssl_backend.cpp",
+    "src/backends/openssl/csr.cpp",
+    "src/backends/openssl/issue.cpp",
+    "src/backends/openssl/crl.cpp",
+    "src/backends/openssl/ocsp.cpp",
+    "include/anopki/crypto/runtime.hpp",
 ]
 
 PRIVATE_DOC_PREFIXES = ("docs/enterprise/",)
@@ -238,6 +245,42 @@ def check_cmake_markers(root: Path) -> None:
         fail("Enterprise CMake still builds an embedded AnoCrypto implementation:\n" + "\n".join(hits))
 
 
+def check_openssl_adapter_separation(root: Path) -> None:
+    cmake = (root / "CMakeLists.txt").read_text(encoding="utf-8")
+    if "add_library(anopki_openssl_adapter" not in cmake:
+        fail("Enterprise must reuse the separated Community OpenSSL adapter target")
+    if "target_link_libraries(anopki_openssl_adapter" not in cmake:
+        fail("Enterprise OpenSSL adapter target is missing its dependency declaration")
+
+    for target in ("anopki_core", "anopki-core"):
+        pattern = re.compile(
+            rf"target_link_libraries\(\s*{re.escape(target)}(?=\s|\))(?P<body>.*?)\)",
+            re.DOTALL,
+        )
+        for match in pattern.finditer(cmake):
+            if "OpenSSL::Crypto" in match.group("body"):
+                fail(f"{target} must not link OpenSSL::Crypto directly")
+
+    hits: list[str] = []
+    core_root = root / "src/core"
+    for path in core_root.rglob("*") if core_root.exists() else ():
+        if not path.is_file():
+            continue
+        try:
+            content = path.read_text(encoding="utf-8")
+        except UnicodeDecodeError:
+            continue
+        for number, line in enumerate(content.splitlines(), start=1):
+            if "#include <openssl/" in line or "#include \"openssl/" in line:
+                hits.append(f"{relpath(path, root)}:{number}: {line.strip()}")
+    if hits:
+        fail("Backend-neutral Enterprise Core contains direct OpenSSL includes:\n" + "\n".join(hits))
+
+    cli = root / "src/cli/main.cpp"
+    if cli.is_file() and "#include <openssl/" in cli.read_text(encoding="utf-8"):
+        fail("Enterprise CLI must obtain dependency diagnostics through the selected adapter")
+
+
 def check_embedded_anocrypto_absent(root: Path) -> None:
     forbidden_paths = [
         root / "enterprise/anocrypto/src",
@@ -387,6 +430,7 @@ def validate(root: Path = ROOT) -> None:
     check_required_files(root)
     check_license_layout(root)
     check_cmake_markers(root)
+    check_openssl_adapter_separation(root)
     check_embedded_anocrypto_absent(root)
     check_ci_markers(root)
     check_generated_files(root)

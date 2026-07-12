@@ -41,49 +41,57 @@ target_include_directories(anopki_core
     PRIVATE
         ${CMAKE_CURRENT_BINARY_DIR}/generated
 )
-target_link_libraries(anopki_core
-    PRIVATE
-        OpenSSL::Crypto
-)
-
 
 if(ANOPKI_ENTERPRISE_EDITION)
-    target_sources(anopki_core
-        PRIVATE
-            src/enterprise/edition.cpp
-    )
+    target_sources(anopki_core PRIVATE src/enterprise/edition.cpp)
     target_compile_definitions(anopki_core PUBLIC ANOPKI_ENTERPRISE_EDITION=1)
+endif()
 
-    if(ANOPKI_ENABLE_ANOCRYPTO_SDK_INTEGRATION)
-        if(ANOCRYPTO_SDK_ROOT)
-            list(PREPEND CMAKE_PREFIX_PATH "${ANOCRYPTO_SDK_ROOT}")
-        endif()
-        find_package(AnoCryptoC 0.1.0 EXACT CONFIG REQUIRED)
+add_library(anopki_openssl_adapter
+    src/backends/openssl/crl.cpp
+    src/backends/openssl/csr.cpp
+    src/backends/openssl/issue.cpp
+    src/backends/openssl/ocsp.cpp
+    src/backends/openssl/openssl_backend.cpp
+)
+add_library(anopki::openssl_adapter ALIAS anopki_openssl_adapter)
+target_compile_features(anopki_openssl_adapter PUBLIC cxx_std_20)
+if(MSVC)
+    target_compile_options(anopki_openssl_adapter PUBLIC /EHsc)
+endif()
+target_include_directories(anopki_openssl_adapter
+    PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/include
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/backends/openssl
+)
+target_link_libraries(anopki_openssl_adapter PRIVATE OpenSSL::Crypto)
 
-        add_library(anopki_enterprise_anocrypto_adapter STATIC
-            src/backends/anocrypto_c/anocrypto_backend.cpp
-        )
-        target_compile_features(anopki_enterprise_anocrypto_adapter PUBLIC cxx_std_20)
-        target_include_directories(anopki_enterprise_anocrypto_adapter
-            PUBLIC
-                $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-        )
-        target_link_libraries(anopki_enterprise_anocrypto_adapter
-            PUBLIC anopki::core
-            PRIVATE AnoCryptoC::AnoCryptoC
-        )
-
-        add_executable(anocrypto_sdk_integration_test
-            enterprise/tests/anocrypto_sdk_integration_test.cpp
-        )
-        target_link_libraries(anocrypto_sdk_integration_test PRIVATE anopki_enterprise_anocrypto_adapter)
+if(ANOPKI_ENTERPRISE_EDITION AND ANOPKI_ENABLE_ANOCRYPTO_SDK_INTEGRATION)
+    if(ANOCRYPTO_SDK_ROOT)
+        list(PREPEND CMAKE_PREFIX_PATH "${ANOCRYPTO_SDK_ROOT}")
     endif()
+    find_package(AnoCryptoC 0.1.0 EXACT CONFIG REQUIRED)
+
+    add_library(anopki_enterprise_anocrypto_adapter STATIC
+        src/backends/anocrypto_c/anocrypto_backend.cpp
+    )
+    target_compile_features(anopki_enterprise_anocrypto_adapter PUBLIC cxx_std_20)
+    target_include_directories(anopki_enterprise_anocrypto_adapter
+        PUBLIC
+            $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+    )
+    target_link_libraries(anopki_enterprise_anocrypto_adapter PRIVATE AnoCryptoC::AnoCryptoC)
+
+    add_executable(anocrypto_sdk_integration_test
+        enterprise/tests/anocrypto_sdk_integration_test.cpp
+    )
+    target_link_libraries(anocrypto_sdk_integration_test PRIVATE anopki_enterprise_anocrypto_adapter)
 endif()
 
 add_executable(anopki-core
     src/cli/main.cpp
 )
-target_link_libraries(anopki-core PRIVATE anopki::core OpenSSL::Crypto)
+target_link_libraries(anopki-core PRIVATE anopki::core anopki::openssl_adapter)
 
 if(WIN32 AND OPENSSL_ROOT_DIR)
     file(TO_CMAKE_PATH "${OPENSSL_ROOT_DIR}" OPENSSL_ROOT_DIR_CMAKE)
@@ -112,7 +120,7 @@ if(ANOPKI_ENABLE_FUZZING)
         target_compile_definitions(${target} PRIVATE ${compile_definition})
         target_compile_options(${target} PRIVATE -fsanitize=fuzzer,address)
         target_link_options(${target} PRIVATE -fsanitize=fuzzer,address)
-        target_link_libraries(${target} PRIVATE anopki::core OpenSSL::Crypto)
+        target_link_libraries(${target} PRIVATE anopki::core anopki::openssl_adapter)
     endfunction()
 
     add_anopki_parser_fuzzer(anopki_core_csr_fuzz ANOPKI_FUZZ_CSR)
@@ -123,9 +131,7 @@ endif()
 include(CTest)
 
 if(BUILD_TESTING)
-    add_executable(anopki_version_test
-        tests/version_test.cpp
-    )
+    add_executable(anopki_version_test tests/version_test.cpp)
     target_link_libraries(anopki_version_test PRIVATE anopki::core)
     add_test(NAME anopki.version COMMAND anopki_version_test)
 
@@ -137,66 +143,52 @@ if(BUILD_TESTING)
         add_test(NAME enterprise.edition_metadata COMMAND anopki_enterprise_edition_metadata_test)
         set_tests_properties(enterprise.edition_metadata PROPERTIES LABELS "enterprise_metadata")
     endif()
+
     if(ANOPKI_ENTERPRISE_EDITION AND ANOPKI_ENABLE_ANOCRYPTO_SDK_INTEGRATION)
         add_test(NAME anocrypto.sdk_integration COMMAND anocrypto_sdk_integration_test)
         set_tests_properties(anocrypto.sdk_integration PROPERTIES LABELS "anocrypto_sdk_integration")
     endif()
 
-    add_executable(anopki_core_cli_contract_test
-        tests/core_cli_contract_test.cpp
-    )
-    target_link_libraries(anopki_core_cli_contract_test PRIVATE anopki::core OpenSSL::Crypto)
+    add_executable(anopki_core_cli_contract_test tests/core_cli_contract_test.cpp)
+    target_link_libraries(anopki_core_cli_contract_test PRIVATE anopki::core anopki::openssl_adapter OpenSSL::Crypto)
     add_dependencies(anopki_core_cli_contract_test anopki-core)
     add_test(
         NAME anopki.core_cli_contract
         COMMAND anopki_core_cli_contract_test $<TARGET_FILE:anopki-core> ${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/ocsp
     )
 
-    add_executable(anopki_core_issue_profile_test
-        tests/core_issue_profile_test.cpp
-    )
-    target_link_libraries(anopki_core_issue_profile_test PRIVATE anopki::core OpenSSL::Crypto)
+    add_executable(anopki_core_issue_profile_test tests/core_issue_profile_test.cpp)
+    target_link_libraries(anopki_core_issue_profile_test PRIVATE anopki::core anopki::openssl_adapter OpenSSL::Crypto)
     add_dependencies(anopki_core_issue_profile_test anopki-core)
     add_test(
         NAME anopki.core_issue_profile
         COMMAND anopki_core_issue_profile_test $<TARGET_FILE:anopki-core> ${CMAKE_CURRENT_BINARY_DIR}
     )
 
-    add_executable(anopki_core_crl_test
-        tests/core_crl_test.cpp
-    )
-    target_link_libraries(anopki_core_crl_test PRIVATE anopki::core OpenSSL::Crypto)
-    add_test(
-        NAME anopki.core_crl
-        COMMAND anopki_core_crl_test ${CMAKE_CURRENT_BINARY_DIR}
-    )
+    add_executable(anopki_core_crl_test tests/core_crl_test.cpp)
+    target_link_libraries(anopki_core_crl_test PRIVATE anopki::core anopki::openssl_adapter OpenSSL::Crypto)
+    add_test(NAME anopki.core_crl COMMAND anopki_core_crl_test ${CMAKE_CURRENT_BINARY_DIR})
 
-    add_executable(anopki_core_ocsp_test
-        tests/core_ocsp_test.cpp
-    )
-    target_link_libraries(anopki_core_ocsp_test PRIVATE anopki::core OpenSSL::Crypto)
+    add_executable(anopki_core_ocsp_test tests/core_ocsp_test.cpp)
+    target_link_libraries(anopki_core_ocsp_test PRIVATE anopki::core anopki::openssl_adapter OpenSSL::Crypto)
     add_test(
         NAME anopki.core_ocsp
         COMMAND anopki_core_ocsp_test ${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/ocsp
     )
 
-    add_executable(anopki_crypto_backend_interface_test
-        tests/crypto_backend_interface_test.cpp
-    )
+    add_executable(anopki_crypto_backend_interface_test tests/crypto_backend_interface_test.cpp)
     target_link_libraries(anopki_crypto_backend_interface_test PRIVATE anopki::core)
     add_test(NAME anopki.crypto_backend_interface COMMAND anopki_crypto_backend_interface_test)
 
-    add_executable(anopki_core_openssl_golden_test
-        tests/core_openssl_golden_test.cpp
-    )
-    target_link_libraries(anopki_core_openssl_golden_test PRIVATE anopki::core OpenSSL::Crypto)
+    add_executable(anopki_core_openssl_golden_test tests/core_openssl_golden_test.cpp)
+    target_link_libraries(anopki_core_openssl_golden_test PRIVATE anopki::core anopki::openssl_adapter OpenSSL::Crypto)
     add_test(
         NAME anopki.core_openssl_golden
         COMMAND anopki_core_openssl_golden_test ${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/backend-parity
     )
     add_test(
         NAME anopki.crypto_backend_parity.anocrypto_pending
-        COMMAND anopki_core_openssl_golden_test ${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/backend-parity --pending anocrypto skeleton_operations_not_implemented
+        COMMAND anopki_core_openssl_golden_test ${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/backend-parity --pending anocrypto external_sdk_operations_not_implemented
     )
     set_tests_properties(
         anopki.crypto_backend_parity.anocrypto_pending

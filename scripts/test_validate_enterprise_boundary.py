@@ -43,7 +43,11 @@ def write_clean_enterprise_root(root: Path) -> None:
         "# SPDX-License-Identifier: MPL-2.0\n"
         "ANOPKI_ENTERPRISE_EDITION\nANOPKI_ENABLE_ANOCRYPTO_SDK_INTEGRATION\nANOCRYPTO_SDK_ROOT\n"
         "find_package(AnoCryptoC 0.1.0 EXACT CONFIG REQUIRED)\n"
-        "AnoCryptoC::AnoCryptoC\nanopki_enterprise_anocrypto_adapter\nanocrypto_sdk_integration\n",
+        "AnoCryptoC::AnoCryptoC\nanopki_enterprise_anocrypto_adapter\nanocrypto_sdk_integration\n"
+        "add_library(anopki_core)\nadd_library(anopki_openssl_adapter)\n"
+        "target_link_libraries(anopki_openssl_adapter PRIVATE OpenSSL::Crypto)\n"
+        "add_executable(anopki-core)\n"
+        "target_link_libraries(anopki-core PRIVATE anopki_core anopki_openssl_adapter)\n",
     )
     write_file(
         root,
@@ -65,6 +69,16 @@ def write_clean_enterprise_root(root: Path) -> None:
     write_file(root, "include/anopki/enterprise/edition.hpp", "// SPDX-License-Identifier: LicenseRef-AnoPKI-Enterprise\n")
     write_file(root, "service/internal/enterprise/edition.go", "// SPDX-License-Identifier: LicenseRef-AnoPKI-Enterprise\n")
     write_file(root, "src/core/issue.cpp", "// SPDX-License-Identifier: MPL-2.0\n")
+    write_file(root, "include/anopki/crypto/runtime.hpp", "// SPDX-License-Identifier: MPL-2.0\n")
+    for rel in (
+        "src/backends/openssl/openssl_backend.hpp",
+        "src/backends/openssl/openssl_backend.cpp",
+        "src/backends/openssl/csr.cpp",
+        "src/backends/openssl/issue.cpp",
+        "src/backends/openssl/crl.cpp",
+        "src/backends/openssl/ocsp.cpp",
+    ):
+        write_file(root, rel, "// SPDX-License-Identifier: MPL-2.0\n")
 
 
 def assert_fails(root: Path, expected: str) -> None:
@@ -207,6 +221,25 @@ def test_rejects_broad_anocrypto_ci_selection() -> None:
         assert_fails(root, "must not use broad AnoCrypto regex selection")
 
 
+
+def test_rejects_direct_openssl_include_in_shared_core() -> None:
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp); write_clean_enterprise_root(root)
+        write_file(root, "src/core/issue.cpp", "// SPDX-License-Identifier: MPL-2.0\n#include <openssl/x509.h>\n")
+        assert_fails(root, "direct OpenSSL includes")
+
+
+def test_rejects_direct_openssl_link_from_enterprise_core() -> None:
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp); write_clean_enterprise_root(root)
+        cmake = root / "CMakeLists.txt"
+        cmake.write_text(
+            cmake.read_text(encoding="utf-8")
+            + "target_link_libraries(anopki_core PRIVATE OpenSSL::Crypto)\n",
+            encoding="utf-8",
+        )
+        assert_fails(root, "anopki_core must not link OpenSSL::Crypto directly")
+
 def main() -> None:
     test_clean_enterprise_root_passes()
     test_requires_enterprise_license_notice()
@@ -226,6 +259,8 @@ def main() -> None:
     test_finds_private_key_material()
     test_finds_generated_files()
     test_rejects_broad_anocrypto_ci_selection()
+    test_rejects_direct_openssl_include_in_shared_core()
+    test_rejects_direct_openssl_link_from_enterprise_core()
     print("enterprise boundary validator tests ok")
 
 

@@ -26,6 +26,11 @@ The service `/version`, C++ library version, release workflow, and release
 artifact names use the Community base version. Enterprise edition and adapter
 status are separate metadata and do not create a production release version.
 
+The working tree also contains the post-P0 Community OpenSSL adapter extraction.
+The recorded Community commit remains the previous reviewed baseline until the
+Community change is committed; Enterprise metadata and durable CI evidence must
+be updated to that new commit before merge or release review.
+
 ## AnoCrypto-C Integration Status
 
 The old embedded AnoCrypto implementation and copied headers have been removed.
@@ -48,7 +53,8 @@ Current state:
 - Enterprise boundary, docs, version, release-evidence, service-contract,
   core-contract, and secret checks passed.
 - Enterprise/OpenSSL CMake configure and build passed with OpenSSL 3.5.5 in the
-  audit environment.
+  audit environment. The backend-neutral `anopki_core` archive had no OpenSSL
+  symbols; the separated OpenSSL adapter owned the dependency.
 - Enterprise/OpenSSL CTest: 8 tests passed and the AnoCrypto-C parity test was
   explicitly skipped as `unsupported_pending`.
 - Missing-SDK configuration was verified to fail when

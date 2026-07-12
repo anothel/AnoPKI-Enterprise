@@ -75,7 +75,10 @@ const AnoCryptoDependencyInfo &AnoCryptoBackend::dependency_info() const noexcep
 core::CsrInfo AnoCryptoBackend::inspect_csr_pem(const std::string &) const { capability_unavailable(); }
 core::IssueResult AnoCryptoBackend::issue_certificate(const core::IssueRequest &) const { capability_unavailable(); }
 core::GenerateCRLResult AnoCryptoBackend::generate_crl(const core::GenerateCRLRequest &) const { capability_unavailable(); }
+core::CRLInfo AnoCryptoBackend::inspect_crl_pem(const std::string &) const { capability_unavailable(); }
+core::CRLInfo AnoCryptoBackend::inspect_crl_der(const std::string &) const { capability_unavailable(); }
 core::OCSPRequestInfo AnoCryptoBackend::inspect_ocsp_request_der(const std::string &) const { capability_unavailable(); }
+core::OCSPIssuerInfo AnoCryptoBackend::inspect_ocsp_issuer_pem(const std::string &, const std::string &) const { capability_unavailable(); }
 core::GenerateOCSPResponseResult AnoCryptoBackend::generate_ocsp_response(const core::GenerateOCSPResponseRequest &) const { capability_unavailable(); }
 core::ValidateOCSPResponderResult AnoCryptoBackend::validate_ocsp_responder(const std::string &, const std::string &) const { capability_unavailable(); }
 
