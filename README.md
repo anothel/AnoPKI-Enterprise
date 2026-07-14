@@ -263,3 +263,6 @@ workflow accepts an exact source commit and uses the read-only
 external SDK. See `sdk-manifests/anocrypto-c/README.md`. A successful workflow
 proves package consumption and no-fallback behavior only; PKI operation parity
 remains pending until the external SDK exposes and passes those operations.
+
+
+Enterprise provider architecture: [Key provider integration plan](docs/enterprise/key-provider-integration-plan.md).
