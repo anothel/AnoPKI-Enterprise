@@ -7,7 +7,7 @@ profile. CI execution and all customer/production distribution remain blocked.
 
 | Field | Value |
 | --- | --- |
-| Community baseline | `2be155780d4b024c76b0a901ec130e83fc221f2f` |
+| Community baseline | `71f0e898c32a7d6e00d0725eeab6ca150ccaa0af` |
 | Base version | `0.1.0-alpha.0` |
 | Edition | AnoPKI Enterprise |
 | Enterprise overlay version | `unreleased` |
@@ -26,10 +26,9 @@ The service `/version`, C++ library version, release workflow, and release
 artifact names use the Community base version. Enterprise edition and adapter
 status are separate metadata and do not create a production release version.
 
-The working tree also contains the post-P0 Community OpenSSL adapter extraction.
-The recorded Community commit remains the previous reviewed baseline until the
-Community change is committed; Enterprise metadata and durable CI evidence must
-be updated to that new commit before merge or release review.
+The working tree contains the shared Community/OpenSSL tree synchronized to the
+reviewed baseline above. A reviewed Enterprise commit and durable CI evidence
+remain required before merge or release review.
 
 ## AnoCrypto-C Integration Status
 
@@ -77,7 +76,7 @@ GitHub Actions run.
 | --- | --- |
 | Reviewed commit SHA | `PENDING` |
 | GitHub Actions run URL | `PENDING` |
-| Community baseline commit | `2be155780d4b024c76b0a901ec130e83fc221f2f` |
+| Community baseline commit | `71f0e898c32a7d6e00d0725eeab6ca150ccaa0af` |
 | Active OpenSSL version | `PENDING` |
 | Enterprise metadata result | `PENDING` |
 | AnoCrypto-C SDK integration result | `PENDING` |

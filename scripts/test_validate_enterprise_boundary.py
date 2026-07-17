@@ -44,8 +44,13 @@ def write_clean_enterprise_root(root: Path) -> None:
         'set(ANOPKI_PRODUCT_PROFILE "enterprise-openssl"\nenterprise-anocrypto-c\nANOPKI_ENTERPRISE_EDITION\nANOCRYPTO_SDK_ROOT\n'
         "find_package(AnoCryptoC 0.1.0 EXACT CONFIG REQUIRED)\n"
         "AnoCryptoC::AnoCryptoC\nanopki_enterprise_anocrypto_adapter\nanocrypto_sdk_integration\nanocrypto_no_fallback\nanopki-enterprise-openssl\nanopki-enterprise-anocrypto-c\nANOPKI_PRODUCT_PROFILE STREQUAL \"enterprise-anocrypto-c\"\n"
+        "target_link_libraries(anopki_enterprise_anocrypto_adapter PRIVATE AnoCryptoC::AnoCryptoC)\n"
         "add_library(anopki_core)\nadd_library(anopki_openssl_adapter)\n"
         "target_link_libraries(anopki_openssl_adapter PRIVATE OpenSSL::Crypto)\n"
+        "src/backends/openssl/key_providers/file_key_provider.cpp\n"
+        "src/backends/openssl/key_providers/provider_resolver.cpp\n"
+        "src/backends/openssl/openssl_backend_config.hpp.in\n"
+        "anopki_file_key_provider_test\nanopki_software_token_key_provider_test\nanopki.key_provider_boundary\n"
         "add_executable(anopki-core)\n"
         "target_link_libraries(anopki-core PRIVATE anopki_core anopki_openssl_adapter)\n",
     )
@@ -74,6 +79,30 @@ def write_clean_enterprise_root(root: Path) -> None:
     write_file(root, "enterprise/tests/edition_metadata_test.cpp", "// SPDX-License-Identifier: LicenseRef-AnoPKI-Enterprise\n")
     write_file(root, "include/anopki/enterprise/edition.hpp", "// SPDX-License-Identifier: LicenseRef-AnoPKI-Enterprise\n")
     write_file(root, "service/internal/enterprise/edition.go", "// SPDX-License-Identifier: LicenseRef-AnoPKI-Enterprise\n")
+    write_file(root, "service/internal/corecli/backend_info.go", "// SPDX-License-Identifier: MPL-2.0\n")
+    write_file(
+        root,
+        "scripts/generate-enterprise-release-metadata.py",
+        "# SPDX-License-Identifier: MPL-2.0\n"
+        'profile = "enterprise-openssl"\nif value["edition"] != "enterprise": pass\n'
+        'metadata = {"anocrypto_used": False, "fallback_enabled": False, '
+        '"fallback_used": False, "kcmvp_status": "not_applicable"}\n',
+    )
+    write_file(root, "scripts/test_generate_enterprise_release_metadata.py", "# SPDX-License-Identifier: MPL-2.0\n")
+    write_file(
+        root,
+        "scripts/verify-go-release.py",
+        "# SPDX-License-Identifier: MPL-2.0\n"
+        'evidence = {"product": "AnoPKI Enterprise", "edition": "enterprise", '
+        '"product_profile": "enterprise-openssl", "enterprise_commit": "pending", '
+        '"community_baseline_commit": "pending", "fallback_enabled": False, '
+        '"fallback_used": False, "commercial_release_authorized": False, '
+        '"anocrypto_sdk_status": "not_run", "pki_parity_status": "unsupported_pending", '
+        '"kcmvp_status": "not_validated"}\n',
+    )
+    write_file(root, "scripts/test_verify_go_release.py", "# SPDX-License-Identifier: MPL-2.0\n")
+    write_file(root, "scripts/validate-key-provider-boundary.py", "# SPDX-License-Identifier: MPL-2.0\n")
+    write_file(root, "scripts/test_validate_key_provider_boundary.py", "# SPDX-License-Identifier: MPL-2.0\n")
     write_file(root, "src/core/issue.cpp", "// SPDX-License-Identifier: MPL-2.0\n")
     write_file(root, "include/anopki/crypto/runtime.hpp", "// SPDX-License-Identifier: MPL-2.0\n")
     for rel in (
@@ -83,6 +112,11 @@ def write_clean_enterprise_root(root: Path) -> None:
         "src/backends/openssl/issue.cpp",
         "src/backends/openssl/crl.cpp",
         "src/backends/openssl/ocsp.cpp",
+        "src/backends/openssl/key_providers/file_key_provider.hpp",
+        "src/backends/openssl/key_providers/file_key_provider.cpp",
+        "src/backends/openssl/key_providers/provider_resolver.hpp",
+        "src/backends/openssl/key_providers/provider_resolver.cpp",
+        "src/backends/openssl/openssl_backend_config.hpp.in",
     ):
         write_file(root, rel, "// SPDX-License-Identifier: MPL-2.0\n")
 
@@ -176,6 +210,27 @@ def test_requires_external_sdk_cmake_contract() -> None:
         assert_fails(root, "missing external AnoCrypto-C integration markers")
 
 
+def test_rejects_community_release_metadata_generator() -> None:
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp); write_clean_enterprise_root(root)
+        write_file(root, "scripts/generate-release-metadata.py", "# SPDX-License-Identifier: MPL-2.0\n")
+        assert_fails(root, "Community-only release metadata tooling")
+
+
+def test_rejects_go_runner_release_claim() -> None:
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp); write_clean_enterprise_root(root)
+        runner = root / "scripts/verify-go-release.py"
+        runner.write_text(
+            runner.read_text(encoding="utf-8").replace(
+                '"commercial_release_authorized": False',
+                '"commercial_release_authorized": True',
+            ),
+            encoding="utf-8",
+        )
+        assert_fails(root, "Enterprise Go evidence runner missing fail-closed markers")
+
+
 def test_rejects_legacy_embedded_cmake_target() -> None:
     with tempfile.TemporaryDirectory() as tmp:
         root = Path(tmp); write_clean_enterprise_root(root)
@@ -247,6 +302,18 @@ def test_rejects_direct_openssl_link_from_enterprise_core() -> None:
         assert_fails(root, "anopki_core must not link OpenSSL::Crypto directly")
 
 
+def test_rejects_openssl_link_from_anocrypto_adapter() -> None:
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp); write_clean_enterprise_root(root)
+        cmake = root / "CMakeLists.txt"
+        cmake.write_text(
+            cmake.read_text(encoding="utf-8")
+            + "target_link_libraries(anopki_enterprise_anocrypto_adapter PRIVATE OpenSSL::Crypto)\n",
+            encoding="utf-8",
+        )
+        assert_fails(root, "Enterprise/AnoCrypto-C adapter must not link OpenSSL::Crypto")
+
+
 def test_rejects_untrusted_sdk_workflow_trigger() -> None:
     with tempfile.TemporaryDirectory() as tmp:
         root = Path(tmp); write_clean_enterprise_root(root)
@@ -279,6 +346,8 @@ def main() -> None:
     test_rejects_copied_anocrypto_header()
     test_rejects_embedded_algorithm_marker_in_adapter()
     test_requires_external_sdk_cmake_contract()
+    test_rejects_community_release_metadata_generator()
+    test_rejects_go_runner_release_claim()
     test_rejects_legacy_embedded_cmake_target()
     test_requires_distribution_blocking_placeholder()
     test_finds_premature_anocrypto_claims()
@@ -290,6 +359,7 @@ def main() -> None:
     test_rejects_unsafe_dispatch_input_interpolation()
     test_rejects_direct_openssl_include_in_shared_core()
     test_rejects_direct_openssl_link_from_enterprise_core()
+    test_rejects_openssl_link_from_anocrypto_adapter()
     print("enterprise boundary validator tests ok")
 
 

@@ -17,7 +17,10 @@ REQUIRED_DOC_TEXT = [
     "## Tool Decisions",
     "## Release Artifacts",
     "## Compatibility Matrix",
+    "## Supported-Go Evidence Runner",
     "## Required Evidence Per Release Candidate",
+    "verify-go-release.py",
+    "anopki-enterprise-go-verification.tar.gz",
     "syft",
     "cosign",
     "govulncheck",
@@ -26,6 +29,8 @@ REQUIRED_DOC_TEXT = [
     "staticcheck",
     "gosec",
     "Clang/libFuzzer",
+    "anopki-backend-info.json",
+    "anopki-release-metadata.json",
 ]
 
 REQUIRED_COMPATIBILITY_ROWS = [
@@ -63,17 +68,20 @@ REQUIRED_COMPATIBILITY_TEMPLATE_TEXT = [
 REQUIRED_CI_TEXT = [
     "python scripts/test_validate_version_metadata.py",
     "python scripts/validate-version-metadata.py",
+    "python scripts/test_generate_enterprise_release_metadata.py",
+    "python scripts/test_verify_go_release.py",
     "python scripts/test_validate_release_artifacts.py",
     "python scripts/test_validate_release_evidence.py",
     "python scripts/validate-release-evidence.py",
-    'go-version: "1.25.11"',
-    'go: ["1.25.11", "1.26.x"]',
-    'go-version: "1.26.x"',
-    "go test -race ./...",
-    "go vet ./...",
-    "staticcheck@latest",
-    "gosec@latest",
-    "govulncheck@latest",
+    'go: ["1.25.12", "1.26.5"]',
+    'go-version: "1.26.5"',
+    'go-version: "1.25.12"',
+    "python ../scripts/verify-go-release.py",
+    "--profile baseline",
+    "--profile analysis",
+    "anopki-enterprise-go-baseline-${{ matrix.go }}",
+    "anopki-enterprise-go-analysis-1.26.5",
+    '--commit "${GITHUB_SHA}"',
     "ANOPKI_ENABLE_FUZZING=ON",
     "anopki_core_csr_fuzz",
     "anopki_core_ocsp_fuzz",
@@ -88,18 +96,54 @@ REQUIRED_CI_TEXT = [
     "no live lego or certbot compatibility claim",
 ]
 
+REQUIRED_GO_RUNNER_TEXT = [
+    "MINIMUM_GO_VERSION = (1, 25, 11)",
+    '"baseline"',
+    '"analysis"',
+    '"full"',
+    'StepDefinition("go-test"',
+    '(go_command, "test", "./...")',
+    'StepDefinition("go-vet"',
+    '(go_command, "vet", "./...")',
+    'StepDefinition("go-race"',
+    '(go_command, "test", "-race", "./...")',
+    'STATICCHECK_VERSION = "2026.1"',
+    'GOSEC_VERSION = "v2.25.0"',
+    'GOVULNCHECK_VERSION = "v1.1.4"',
+    "GOTOOLCHAIN",
+    "go-verification.json",
+    "go-verification.md",
+    '"product": "AnoPKI Enterprise"',
+    '"edition": "enterprise"',
+    '"product_profile": "enterprise-openssl"',
+    '"enterprise_commit"',
+    '"community_baseline_commit"',
+    '"commercial_release_authorized": False',
+    '"anocrypto_sdk_status": "not_run"',
+    '"pki_parity_status": "unsupported_pending"',
+    '"kcmvp_status": "not_validated"',
+]
+
 REQUIRED_RELEASE_TEXT = [
     "workflow_dispatch:",
     "tags:",
     "contents: read",
     "contents: write",
     "id-token: write",
-    'go-version: "1.25.11"',
+    'go-version: "1.25.12"',
+    "python scripts/verify-go-release.py",
+    "--profile full",
+    "anopki-enterprise-go-verification.tar.gz",
+    '--commit "${GITHUB_SHA}"',
     'VERSION="$(cat VERSION)"',
     "go build -ldflags",
     "cmake --build build-release --config Release",
     "anopki-service-v${VERSION}-linux-amd64.tar.gz",
     "anopki-core-v${VERSION}-linux-amd64.tar.gz",
+    "./dist/anopki-core backend info > dist/anopki-backend-info.json",
+    "python scripts/generate-enterprise-release-metadata.py",
+    "anopki-release-metadata.json",
+    "sha256sum dist/*.tar.gz dist/anopki-backend-info.json dist/anopki-release-metadata.json",
     "python scripts/validate-release-artifacts.py dist",
     "syft scan dir:dist",
     "cosign sign-blob",
@@ -193,6 +237,7 @@ def main() -> None:
     check_compatibility_matrix(doc)
     check_compatibility_evidence_template(doc)
     check_local_verification_evidence(root, doc)
+    require_text(root / "scripts/verify-go-release.py", REQUIRED_GO_RUNNER_TEXT)
     require_text(root / ".github/workflows/ci.yml", REQUIRED_CI_TEXT)
     require_text(root / ".github/workflows/release.yml", REQUIRED_RELEASE_TEXT)
     print("release evidence ok")

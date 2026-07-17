@@ -22,6 +22,24 @@ if(ANOPKI_PRODUCT_PROFILE STREQUAL "enterprise-openssl")
     set(ANOPKI_SELECTED_BACKEND_ID "openssl")
     set(ANOPKI_PROFILE_REQUIRES_FULL_OPERATIONS 1)
     find_package(OpenSSL REQUIRED COMPONENTS Crypto)
+    set(ANOPKI_OPENSSL_BACKEND_ABI_VERSION 1)
+    if(DEFINED OpenSSL_VERSION)
+        set(ANOPKI_OPENSSL_CONFIG_VERSION "${OpenSSL_VERSION}")
+    elseif(DEFINED OPENSSL_VERSION)
+        set(ANOPKI_OPENSSL_CONFIG_VERSION "${OPENSSL_VERSION}")
+    else()
+        set(ANOPKI_OPENSSL_CONFIG_VERSION "unknown")
+    endif()
+    set(ANOPKI_OPENSSL_BACKEND_FINGERPRINT_INPUT
+        "profile=${ANOPKI_PRODUCT_PROFILE}|edition=enterprise|backend=openssl|abi=${ANOPKI_OPENSSL_BACKEND_ABI_VERSION}|anopki=${ANOPKI_VERSION}|compiler=${CMAKE_CXX_COMPILER_ID}-${CMAKE_CXX_COMPILER_VERSION}|openssl=${ANOPKI_OPENSSL_CONFIG_VERSION}"
+    )
+    string(SHA256 ANOPKI_OPENSSL_BACKEND_BUILD_FINGERPRINT_HASH "${ANOPKI_OPENSSL_BACKEND_FINGERPRINT_INPUT}")
+    set(ANOPKI_OPENSSL_BACKEND_BUILD_FINGERPRINT "sha256:${ANOPKI_OPENSSL_BACKEND_BUILD_FINGERPRINT_HASH}")
+    configure_file(
+        src/backends/openssl/openssl_backend_config.hpp.in
+        generated/anopki/openssl_backend_config.hpp
+        @ONLY
+    )
 elseif(ANOPKI_PRODUCT_PROFILE STREQUAL "enterprise-anocrypto-c")
     set(ANOPKI_SELECTED_BACKEND_ID "anocrypto-c")
     set(ANOPKI_PROFILE_REQUIRES_FULL_OPERATIONS 0)
@@ -76,6 +94,8 @@ if(ANOPKI_PRODUCT_PROFILE STREQUAL "enterprise-openssl")
         src/backends/openssl/crl.cpp
         src/backends/openssl/csr.cpp
         src/backends/openssl/issue.cpp
+        src/backends/openssl/key_providers/file_key_provider.cpp
+        src/backends/openssl/key_providers/provider_resolver.cpp
         src/backends/openssl/ocsp.cpp
         src/backends/openssl/openssl_backend.cpp
     )
@@ -87,6 +107,7 @@ if(ANOPKI_PRODUCT_PROFILE STREQUAL "enterprise-openssl")
     target_include_directories(anopki_openssl_adapter PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/include
         ${CMAKE_CURRENT_SOURCE_DIR}/src/backends/openssl
+        ${CMAKE_CURRENT_BINARY_DIR}/generated
     )
     target_link_libraries(anopki_openssl_adapter PRIVATE OpenSSL::Crypto)
     set(ANOPKI_SELECTED_ADAPTER_TARGET anopki::openssl_adapter)
@@ -187,6 +208,28 @@ if(BUILD_TESTING)
         add_executable(anopki_core_openssl_golden_test tests/core_openssl_golden_test.cpp)
         target_link_libraries(anopki_core_openssl_golden_test PRIVATE anopki::core anopki::openssl_adapter OpenSSL::Crypto)
         add_test(NAME anopki.core_openssl_golden COMMAND anopki_core_openssl_golden_test ${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/backend-parity)
+
+        add_executable(anopki_crl_file_key_provider_test tests/crl_file_key_provider_test.cpp)
+        target_link_libraries(anopki_crl_file_key_provider_test PRIVATE anopki::core anopki::openssl_adapter OpenSSL::Crypto)
+        add_test(NAME anopki.crl_file_key_provider COMMAND anopki_crl_file_key_provider_test ${CMAKE_CURRENT_BINARY_DIR})
+
+        add_executable(anopki_ocsp_file_key_provider_test tests/ocsp_file_key_provider_test.cpp)
+        target_link_libraries(anopki_ocsp_file_key_provider_test PRIVATE anopki::core anopki::openssl_adapter OpenSSL::Crypto)
+        add_test(NAME anopki.ocsp_file_key_provider COMMAND anopki_ocsp_file_key_provider_test ${CMAKE_CURRENT_BINARY_DIR})
+
+        add_executable(anopki_file_key_provider_test tests/file_key_provider_test.cpp)
+        target_include_directories(anopki_file_key_provider_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src/backends/openssl)
+        target_link_libraries(anopki_file_key_provider_test PRIVATE anopki::openssl_adapter OpenSSL::Crypto)
+        add_test(NAME anopki.file_key_provider COMMAND anopki_file_key_provider_test)
+
+        add_executable(anopki_software_token_key_provider_test tests/software_token_key_provider_test.cpp)
+        target_include_directories(anopki_software_token_key_provider_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src/backends/openssl)
+        target_link_libraries(anopki_software_token_key_provider_test PRIVATE anopki::openssl_adapter OpenSSL::Crypto)
+        add_test(NAME anopki.software_token_key_provider COMMAND anopki_software_token_key_provider_test)
+
+        find_package(Python3 REQUIRED COMPONENTS Interpreter)
+        add_test(NAME anopki.key_provider_boundary COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/scripts/validate-key-provider-boundary.py --root ${CMAKE_CURRENT_SOURCE_DIR})
+        add_test(NAME anopki.key_provider_boundary_validator_tests COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/scripts/test_validate_key_provider_boundary.py)
     else()
         add_executable(anocrypto_sdk_integration_test enterprise/tests/anocrypto_sdk_integration_test.cpp)
         target_link_libraries(anocrypto_sdk_integration_test PRIVATE anopki_enterprise_anocrypto_adapter)

@@ -52,6 +52,19 @@ jobs:
       - name: Validate core CLI contracts
         run: python scripts/validate-core-cli-contracts.py
 
+  key-provider-boundary:
+    name: KeyProvider boundary
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+      - name: Test KeyProvider boundary validator
+        run: python scripts/test_validate_key_provider_boundary.py
+      - name: Validate KeyProvider boundary
+        run: python scripts/validate-key-provider-boundary.py
+
   release-metadata:
     name: Release metadata
     runs-on: ubuntu-latest
@@ -64,6 +77,10 @@ jobs:
         run: python scripts/test_validate_version_metadata.py
       - name: Validate version metadata
         run: python scripts/validate-version-metadata.py
+      - name: Test Enterprise release metadata generator
+        run: python scripts/test_generate_enterprise_release_metadata.py
+      - name: Test Enterprise Go release verification runner
+        run: python scripts/test_verify_go_release.py
       - name: Test release artifact validator
         run: python scripts/test_validate_release_artifacts.py
       - name: Test release evidence validator
@@ -90,7 +107,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        go: ["1.25.11", "1.26.x"]
+        go: ["1.25.12", "1.26.5"]
     defaults:
       run:
         working-directory: service
@@ -102,10 +119,20 @@ jobs:
           cache-dependency-path: |
             service/go.mod
             service/go.sum
-      - run: go version
-      - run: go test ./...
-      - run: go vet ./...
-      - run: mkdir -p ../.tmp/ci && go build -o ../.tmp/ci/anopki-service ./cmd/anopki-service
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+      - name: Run Enterprise Go baseline verification
+        run: >-
+          python ../scripts/verify-go-release.py
+          --profile baseline
+          --out-dir ../.tmp/go-evidence/enterprise-baseline-${{ matrix.go }}
+          --commit "${GITHUB_SHA}"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: anopki-enterprise-go-baseline-${{ matrix.go }}
+          path: .tmp/go-evidence/enterprise-baseline-${{ matrix.go }}/
+          if-no-files-found: error
 
   go-analysis:
     name: Go race and analysis
@@ -117,17 +144,24 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
-          go-version: "1.26.x"
+          go-version: "1.26.5"
           cache-dependency-path: |
             service/go.mod
             service/go.sum
-      - run: go version
-      - run: go test -race ./...
-        env:
-          CGO_ENABLED: "1"
-      - run: go run honnef.co/go/tools/cmd/staticcheck@latest ./...
-      - run: go run github.com/securego/gosec/v2/cmd/gosec@latest ./...
-      - run: go run golang.org/x/vuln/cmd/govulncheck@latest ./...
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+      - name: Run Enterprise Go race and analysis verification
+        run: >-
+          python ../scripts/verify-go-release.py
+          --profile analysis
+          --out-dir ../.tmp/go-evidence/enterprise-analysis-1.26.5
+          --commit "${GITHUB_SHA}"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: anopki-enterprise-go-analysis-1.26.5
+          path: .tmp/go-evidence/enterprise-analysis-1.26.5/
+          if-no-files-found: error
 
   postgres-integration:
     name: PostgreSQL 16 integration
@@ -153,7 +187,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
-          go-version: "1.25.11"
+          go-version: "1.25.12"
           cache-dependency-path: |
             service/go.mod
             service/go.sum
@@ -178,7 +212,7 @@ jobs:
           cmake --version
           c++ --version
           pkg-config --modversion openssl
-      - run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug
+      - run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug -DANOPKI_PRODUCT_PROFILE=enterprise-openssl
       - run: cmake --build build --config Debug
       - run: ctest --test-dir build -C Debug --output-on-failure
 
@@ -193,7 +227,7 @@ jobs:
           cmake --version
           clang++ --version
           pkg-config --modversion openssl
-      - run: cmake -S . -B build-fuzz -DANOPKI_ENABLE_FUZZING=ON -DCMAKE_CXX_COMPILER=clang++
+      - run: cmake -S . -B build-fuzz -DANOPKI_PRODUCT_PROFILE=enterprise-openssl -DANOPKI_ENABLE_FUZZING=ON -DCMAKE_CXX_COMPILER=clang++
       - run: cmake --build build-fuzz --target anopki_core_csr_fuzz anopki_core_ocsp_fuzz anopki_core_crl_fuzz
       - run: timeout 30s ./build-fuzz/anopki_core_csr_fuzz -max_total_time=20
         env:
@@ -212,7 +246,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
-          go-version: "1.25.11"
+          go-version: "1.25.12"
           cache-dependency-path: |
             service/go.mod
             service/go.sum
@@ -251,7 +285,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
-          go-version: "1.25.11"
+          go-version: "1.25.12"
           cache-dependency-path: |
             service/go.mod
             service/go.sum

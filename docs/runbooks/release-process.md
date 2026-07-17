@@ -3,12 +3,12 @@
 `AnoPKI` is pre-1.0. This process creates a reviewed release candidate; it
 does not publish packages by itself.
 
-## Community Product Profile
+## Enterprise Product Profiles
 
-Community release candidates are assembled as `Community/OpenSSL`: AnoPKI Core
-plus the Community OpenSSL adapter. Community artifacts must not include the
-Enterprise AnoCrypto-C adapter, a private AnoCrypto-C SDK, Enterprise licensing,
-or KCMVP claims. Enterprise profiles have separate private release gates.
+Enterprise/OpenSSL reuses Community Core and its OpenSSL adapter without a fork.
+Enterprise/AnoCrypto-C consumes only the external SDK boundary and remains
+production-blocked until trusted SDK and parity evidence exist. Neither profile
+permits automatic OpenSSL fallback.
 
 ## Preconditions
 
@@ -23,14 +23,17 @@ or KCMVP claims. Enterprise profiles have separate private release gates.
 
 ## Build And Test
 
-Run service checks:
+Run Enterprise supported-Go checks from the repository root:
 
 ```powershell
-cd service
-$env:GOCACHE = "$PWD\..\.tmp\gocache"
-go test ./...
-go build ./cmd/anopki-service
+python scripts\test_verify_go_release.py
+python scripts\verify-go-release.py --profile full --out-dir .tmp\go-evidence\enterprise-full
 ```
+
+The full profile runs baseline test/vet/build plus race, Staticcheck, gosec,
+and govulncheck with pinned versions. Evidence records Enterprise commit and
+Community baseline separately. Local output is not commercial release,
+AnoCrypto-C SDK/parity, hosted CI, or KCMVP evidence.
 
 Run core checks:
 
@@ -95,8 +98,13 @@ Certbot smoke requires Linux/WSL or elevated Windows with certbot installed.
    mapping, docs validation, and secret baseline scan evidence from CI.
 12. Manually dispatch `.github/workflows/release.yml` from the candidate commit.
    Attach its run URL and versioned `anopki-release-<run-id>` artifact containing
-   validated service/core archives, `SHA256SUMS`, CycloneDX SBOM, and
-   `SIGNING-STATUS.txt`. Manual runs are dry-runs: they have read-only repository
+   validated service/core archives, full-profile
+   `anopki-enterprise-go-verification.tar.gz`, `anopki-backend-info.json`,
+   `anopki-release-metadata.json`, `SHA256SUMS`, CycloneDX SBOM, and
+   `SIGNING-STATUS.txt`. Enterprise/OpenSSL metadata must record
+   `anocrypto_used=false`, `fallback_enabled=false`, `fallback_used=false`, and
+   `kcmvp_status=not_applicable` without raw `key_ref` values. Manual runs are
+   dry-runs: they have read-only repository
    permission and cannot sign, tag, publish packages, or create a GitHub Release.
 13. Copy and complete the compatibility evidence template from
    [Release evidence](../reference/release-evidence.md).

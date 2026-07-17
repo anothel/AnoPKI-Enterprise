@@ -129,6 +129,8 @@ Backend adapter selection and key-provider selection are separate.
 - The selected backend adapter implements PKI operations through its dependency.
 - The key provider owns `key_ref`, key location, exportability, readiness,
   authorization, and provider audit metadata.
+- Enterprise/OpenSSL reuses the Community adapter-private `FileKeyProvider` for
+  certificate, CRL, and OCSP signing; it remains local/dev only and production-rejected.
 - HSM/KMS/PKCS#11 providers may perform signing without exporting private key
   bytes.
 
@@ -149,6 +151,11 @@ Each build and release candidate records:
 - production-readiness status,
 - KCMVP status and evidence pointer when applicable.
 
+Enterprise/OpenSSL records `selected_backend=openssl`, `anocrypto_used=false`,
+`fallback_enabled=false`, `fallback_used=false`, and
+`kcmvp_status=not_applicable`. Enterprise/AnoCrypto-C production release blocked
+with parity and trusted SDK evidence pending and `kcmvp_status=not_validated`.
+
 ## Implemented Control Contract
 
 The shared `Backend` contract now reports `BackendInfo` with adapter ID,
@@ -164,6 +171,7 @@ Enterprise: ANOPKI_PRODUCT_PROFILE=enterprise-anocrypto-c
 ```
 
 The CLI command `anopki-core backend info` exposes the selected profile and
-backend metadata for release evidence. `fallback_enabled` is always false.
+backend metadata for release evidence. The Go service exposes the same immutable
+record through `GET /version`. `fallback_enabled` is always false.
 Enterprise/AnoCrypto-C builds require the real external CMake package and do not
 link OpenSSL. Missing SDK configuration fails at CMake configure time.

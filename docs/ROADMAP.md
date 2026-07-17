@@ -57,6 +57,8 @@ Goal: convert real-client differences into stable protocol fixtures.
 
 Goal: make pre-1.0 release candidates repeatable.
 
+- Run and review `verify-go-release.py --profile full` for the exact Enterprise
+  commit and recorded Community baseline; keep hosted evidence pending until CI runs.
 - Keep compatibility matrix evidence current for OS, Go, OpenSSL, SQLite,
   PostgreSQL, lego, and certbot.
 - Add generated API example validation if example drift becomes visible.
@@ -77,7 +79,6 @@ Goal: split large service files only after behavior is pinned down.
 Goal: make AnoPKI Core backend-neutral while preserving the complete
 Community/OpenSSL baseline and keeping key providers separate.
 
-- Expose selected product profile and backend metadata through the Go service/version and release manifests.
 - Keep Community/OpenSSL golden, CLI-contract, and failure-mode tests passing after each adapter change.
 - Pin a real immutable AnoCrypto-C SDK artifact in trusted Enterprise CI.
 - Expand the external AnoCrypto-C adapter only as supported SDK operations become available.
@@ -85,15 +86,12 @@ Community/OpenSSL baseline and keeping key providers separate.
   issuance, CRL, and OCSP parity is complete.
 - Add negative tests proving that unsupported AnoCrypto-C operations never call
   OpenSSL.
-- Implement ADR 0007 certificate-issuance `FileKeyProvider` vertical slice under the OpenSSL adapter.
-- Preserve the CLI contract and certificate golden behavior while removing direct key-file opening from issuance.
-- Add stable provider errors, actual signing evidence, and no-provider-fallback tests.
-- Extend the proven provider contract to CRL and then OCSP.
-- Add a mock/software-token provider before selecting a real PKCS#11/HSM implementation.
+- Select one real local PKCS#11/HSM target only after deployment and key-ceremony
+  requirements are known; the test-only software-token path is contract
+  evidence, not production non-exportability.
 - Prototype and separately approve remote KMS signing semantics before adding a vendor SDK.
 - Add executable key ceremony evidence and intermediate rollover drills.
 - Add an offline-root operating model if this project owns CA hierarchy operations.
-- Add a PKCS#11 mock or software-token test path.
 
 ## P2: Audit, Access, And Operations
 

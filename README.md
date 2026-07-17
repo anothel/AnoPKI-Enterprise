@@ -83,8 +83,8 @@ Use this deterministic checklist before trusting a local change or release
 candidate. Expected output is shown after each command.
 
 Run the local wrapper for the default docs, release metadata, contract,
-secret-baseline, ACME smoke harness, C++ build/test, Go test/vet, and Go
-build checks:
+secret-baseline, ACME smoke harness, C++ build/test, and Enterprise supported-Go
+baseline evidence checks:
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\verify-local.ps1
@@ -115,6 +115,15 @@ python scripts\test_validate_version_metadata.py
 
 python scripts\validate-version-metadata.py
 # version metadata ok
+
+python scripts\test_generate_enterprise_release_metadata.py
+# Enterprise release metadata generator tests ok
+
+python scripts\test_verify_go_release.py
+# Go release verification runner tests ok
+
+python scripts\verify-go-release.py --profile baseline --out-dir .tmp\go-evidence\enterprise-verify-local
+# requires Go 1.25.11+; records Enterprise commit and Community baseline separately
 
 python scripts\test_validate_release_artifacts.py
 # release artifact tests ok
@@ -244,7 +253,13 @@ Most-used docs:
 - [Release evidence](docs/reference/release-evidence.md): artifact, SBOM, signing, scan, compatibility, and backend evidence baseline.
 - [Documentation governance](docs/reference/documentation-governance.md): what belongs in Git, what belongs in internal/GPT project sources, and how to retire stale docs.
 
-Current execution focus: release evidence, exposing backend/profile metadata through service operations, external AnoCrypto-C capability parity, and key-boundary migration planning. Public TLS issuance fails closed unless the configured lint hook accepts the CSR/profile before signing; external lint tool selection and fixtures remain future work.
+Current execution focus: close Enterprise release evidence, keep shared
+FileKeyProvider/golden/no-fallback validators stable, and obtain trusted external
+AnoCrypto-C capability-parity evidence.
+Separately select a real production
+non-exportable provider. Public TLS issuance fails closed unless the configured
+lint hook accepts the CSR/profile before signing; external lint tool selection
+and fixtures remain future work.
 
 ## License
 

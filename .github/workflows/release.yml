@@ -22,7 +22,7 @@ jobs:
         run: python scripts/validate-enterprise-release.py
       - uses: actions/setup-go@v5
         with:
-          go-version: "1.25.11"
+          go-version: "1.25.12"
           cache-dependency-path: |
             service/go.mod
             service/go.sum
@@ -35,6 +35,15 @@ jobs:
           c++ --version
           pkg-config --modversion openssl
       - run: mkdir -p dist
+      - name: Run Enterprise supported-Go full verification
+        run: >-
+          python scripts/verify-go-release.py
+          --profile full
+          --out-dir .tmp/release-go-evidence
+          --commit "${GITHUB_SHA}"
+      - name: Package Enterprise Go verification evidence
+        run: |
+          tar -czf dist/anopki-enterprise-go-verification.tar.gz -C .tmp/release-go-evidence go-verification.json go-verification.md logs
       - name: Read release version
         run: |
           VERSION="$(cat VERSION)"
@@ -45,15 +54,25 @@ jobs:
             echo "RELEASE_MODE=dry-run" >> "$GITHUB_ENV"
           fi
           echo "VERSION=$VERSION" >> "$GITHUB_ENV"
-      - run: go build -ldflags "-X main.serviceVersion=${VERSION} -X main.serviceCommit=${GITHUB_SHA} -X main.serviceBuildTime=$(date -u +%Y-%m-%dT%H:%M:%SZ)" -o ../dist/anopki-service ./cmd/anopki-service
+          echo "BUILD_TIME=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_ENV"
+      - run: go build -ldflags "-X main.serviceVersion=${VERSION} -X main.serviceCommit=${GITHUB_SHA} -X main.serviceBuildTime=${BUILD_TIME}" -o ../dist/anopki-service ./cmd/anopki-service
         working-directory: service
-      - run: cmake -S . -B build-release -DCMAKE_BUILD_TYPE=Release
+      - run: cmake -S . -B build-release -DCMAKE_BUILD_TYPE=Release -DANOPKI_PRODUCT_PROFILE=enterprise-openssl
       - run: cmake --build build-release --config Release
       - run: cp build-release/anopki-core dist/anopki-core
+      - name: Record Enterprise/OpenSSL backend and provider policy metadata
+        run: |
+          ./dist/anopki-core backend info > dist/anopki-backend-info.json
+          python scripts/generate-enterprise-release-metadata.py \
+            --backend-info dist/anopki-backend-info.json \
+            --out dist/anopki-release-metadata.json \
+            --version "$VERSION" \
+            --commit "$GITHUB_SHA" \
+            --build-time "$BUILD_TIME"
       - run: tar -czf "dist/anopki-service-v${VERSION}-linux-amd64.tar.gz" -C dist anopki-service
       - run: tar -czf "dist/anopki-core-v${VERSION}-linux-amd64.tar.gz" -C dist anopki-core
       - run: rm dist/anopki-service dist/anopki-core
-      - run: sha256sum dist/*.tar.gz > dist/SHA256SUMS
+      - run: sha256sum dist/*.tar.gz dist/anopki-backend-info.json dist/anopki-release-metadata.json > dist/SHA256SUMS
       - run: python scripts/validate-release-artifacts.py dist
       - run: syft scan dir:dist -o cyclonedx-json=dist/anopki.sbom.cdx.json
       - name: Record signing status

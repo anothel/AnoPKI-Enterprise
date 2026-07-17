@@ -59,7 +59,7 @@ def main() -> None:
     edition_path = root / ".edition/edition.json"
     edition = json.loads(require_text(root, edition_path, []))
     expected_edition = {
-        "community_baseline_commit": "2be155780d4b024c76b0a901ec130e83fc221f2f",
+        "community_baseline_commit": "71f0e898c32a7d6e00d0725eeab6ca150ccaa0af",
         "base_version": version,
         "edition": "AnoPKI Enterprise",
         "enterprise_overlay_version": "unreleased",
@@ -121,7 +121,9 @@ def main() -> None:
         root / "service/cmd/anopki-service/main.go",
         [
             "serviceVersion   = defaultServiceVersion",
-            '"version":    cfg.Version',
+            '"version":             cfg.Version',
+            '"backend":             cfg.Backend',
+            '"key_provider_policy": cfg.KeyProviderPolicy',
         ],
     )
     require_text(
@@ -144,7 +146,7 @@ def main() -> None:
         root,
         root / "docs/enterprise/private-alpha-evidence.md",
         [
-            "2be155780d4b024c76b0a901ec130e83fc221f2f",
+            "71f0e898c32a7d6e00d0725eeab6ca150ccaa0af",
             version,
             "Active backend | OpenSSL",
             "AnoCrypto-C integration | External SDK adapter boundary; SDK not configured",

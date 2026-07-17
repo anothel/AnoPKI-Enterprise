@@ -57,7 +57,8 @@ Each selected adapter reports identity, dependency version, readiness, ABI/build
 metadata, and operation capabilities. Core dispatch returns stable
 `backend.capability_unavailable` errors before invoking unsupported operations.
 `anopki-core backend info` exposes the selected immutable profile and confirms
-that automatic fallback is disabled.
+that automatic fallback is disabled. The Go service parses this record at
+startup and exposes it through `GET /version`.
 
 ### Enterprise Layer
 
@@ -71,8 +72,10 @@ fork the Community lifecycle contracts unnecessarily.
 Issuer and responder keys are addressed by `key_ref`. ADR 0007 selects a
 deliberately scoped hybrid provider architecture.
 
-- Community/OpenSSL first uses an in-process adapter-compatible provider seam.
-- File providers are local/dev only and preserve current synchronous operation behavior.
+- Community/OpenSSL implements an in-process adapter-compatible
+  `FileKeyProvider` for certificate, CRL, and OCSP signing; Enterprise/OpenSSL
+  reuses it without a fork.
+- The file provider is local/dev only, exportable, and rejected in production.
 - PKCS#11/local HSM may later provide non-exportable OpenSSL-compatible handles.
 - Remote KMS requires a separately approved Enterprise protocol or provider implementation.
 - Key-provider selection remains separate from backend-adapter selection.
@@ -136,3 +139,4 @@ development profile until all required Community operation parity is complete.
 - Product profile and adapter identity are immutable release metadata.
 - Restore drills verify schema, audit, key references, CRL artifacts, OCSP
   responder state, outbox state, and lifecycle jobs before traffic returns.
+- A real production non-exportable provider remains unimplemented.

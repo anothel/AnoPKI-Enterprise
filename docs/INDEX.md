@@ -18,7 +18,7 @@ This index is the public entry point for repository documentation. Keep it short
 | Document | Purpose |
 | --- | --- |
 | [PKI context](architecture/pki-context.md) | Overview of CA hierarchy, trust boundary, issuance, renewal, and revocation flows. |
-| [Target architecture](reference/target-architecture.md) | Component boundaries and product assembly for backend-neutral core, OpenSSL/AnoCrypto-C adapters, Enterprise layer, providers, audit, CRL, and OCSP. |
+| [Target architecture](reference/target-architecture.md) | Component boundaries and product assembly for Enterprise/OpenSSL, Enterprise/AnoCrypto-C, providers, audit, CRL, and OCSP. |
 | [CA hierarchy](architecture/ca-hierarchy.md) | Trust anchor, intermediate, and issuer structure. |
 | [Issuance flow](architecture/issuance-flow.md) | Enrollment and signing path. |
 | [Renewal flow](architecture/renewal-flow.md) | Renewal and reissue behavior. |
@@ -44,7 +44,7 @@ This index is the public entry point for repository documentation. Keep it short
 | --- | --- |
 | [Certificate profiles](policy/certificate-profiles.md) | Profile-as-code policy fields and remaining profile gaps. |
 | [Algorithm policy](policy/algorithm-policy.md) | Current algorithm baseline, PQC stance, and algorithm migration expectations. |
-| [Crypto backend strategy](reference/crypto-backend-strategy.md) | Community OpenSSL baseline, external Enterprise AnoCrypto-C adapter, explicit profile selection, and no-fallback gates. |
+| [Crypto backend strategy](reference/crypto-backend-strategy.md) | Community/OpenSSL baseline, Enterprise/OpenSSL and Enterprise/AnoCrypto-C profiles, external SDK integration, and no-fallback gates. |
 | [Crypto backend parity](reference/crypto-backend-parity.md) | Shared fixture format, parity result states, commands, and release evidence. |
 | [Key provider semantics](security/key-provider-semantics.md) | Signing key reference, selected hybrid provider boundary, non-exportability, and audit semantics. |
 | [Threat model](security/threat-model.md) | Main assets, threats, current controls, and gaps. |

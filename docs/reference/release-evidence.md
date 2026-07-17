@@ -9,11 +9,11 @@ Current draft: [v0.1.0-alpha.0 candidate evidence](release-candidate-v0.1.0-alph
 
 | Area | Selected tool | Evidence hook |
 | --- | --- | --- |
-| Go test, vet, and build | Go 1.25.11 minimum plus current CI Go | CI `go-baseline` matrix. |
-| Go staticcheck | `staticcheck` | CI `go-analysis` job via `go run honnef.co/go/tools/cmd/staticcheck@latest ./...`. |
-| Go security scan | `gosec` | CI `go-analysis` job via `go run github.com/securego/gosec/v2/cmd/gosec@latest ./...`. |
-| Go race detector | `go test -race ./...` | CI `go-analysis` job with `CGO_ENABLED=1`. |
-| Go dependency vulnerability scan | `govulncheck` | CI `go-analysis` job via `go run golang.org/x/vuln/cmd/govulncheck@latest ./...`. |
+| Go baseline | Maintained floor Go 1.25.11; CI lanes Go 1.25.12 and Go 1.26.5 | Enterprise `verify-go-release.py --profile baseline` in the CI matrix. |
+| Go staticcheck | `staticcheck` 2026.1 | Enterprise `verify-go-release.py --profile analysis` in CI. |
+| Go security scan | `gosec` v2.25.0 | Enterprise `verify-go-release.py --profile analysis` in CI. |
+| Go race detector | `go test -race ./...` | Enterprise `verify-go-release.py --profile analysis` in CI. |
+| Go dependency vulnerability scan | `govulncheck` v1.1.4 | Enterprise `verify-go-release.py --profile analysis` in CI. |
 | PostgreSQL | PostgreSQL 16 service integration | CI `postgres-integration` job records client/server versions. |
 | C++ parser fuzz/sanitizer smoke | Clang/libFuzzer with AddressSanitizer | CI `cpp-fuzz-smoke` job builds CSR, OCSP, and CRL parser targets and runs each for at most 20 seconds. |
 | Community boundary | `scripts/validate-community-boundary.py` | CI `community-boundary` job. |
@@ -28,14 +28,22 @@ Pre-1.0 releases distribute archives, not installers or container images:
 - source archive from the signed tag,
 - `anopki-service` binary archive,
 - `anopki-core` CLI binary archive,
+- `anopki-enterprise-go-verification.tar.gz` containing full-profile JSON,
+  Markdown, and redacted logs,
+- `anopki-backend-info.json` from the built Enterprise/OpenSSL Core artifact,
+- `anopki-release-metadata.json` binding version/commit, Enterprise profile,
+  backend evidence, provider policy, and fail-closed claim fields,
 - `SHA256SUMS`,
 - CycloneDX SBOM JSON,
 - cosign signatures and transparency-log references for archives, checksums,
   and SBOM.
 
-The manually dispatched release workflow runs with read-only repository
-permissions. It builds Linux amd64 service/core archives with the repository
-version in their filenames, writes `SHA256SUMS`, validates archive contents,
+The manually dispatched release workflow first runs the Enterprise distribution
+gate and is currently blocked. If that gate is later closed by approved evidence,
+the read-only build job creates Linux amd64 service/core archives, records
+the Enterprise supported-Go full evidence wrapper, records `anopki-core backend
+info`, generates Enterprise/OpenSSL release metadata, writes checksums for
+archives and metadata, validates exact schema consistency,
 generates a CycloneDX SBOM with `syft`, records signing as skipped, and uploads
 the `dist/` directory only to the workflow run.
 
@@ -54,7 +62,7 @@ Each release candidate records this matrix in release notes:
 | Area | Required evidence |
 | --- | --- |
 | OS | GitHub Actions Ubuntu result plus any Windows local verification used for release. |
-| Go | `go version` from CI and release host; CI pins at least Go 1.25.11 for standard-library vulnerability fixes. |
+| Go | `go version` from CI and release host; The maintained floor is Go 1.25.11; CI pins Go 1.25.12 and Go 1.26.5 and uploads Enterprise runner evidence. |
 | OpenSSL | CMake configure output or package version used by C++ build. |
 | SQLite | Go test result for memory/SQLite stores. |
 | PostgreSQL | PostgreSQL integration job result and DSN major version. |
@@ -75,6 +83,35 @@ Copy this table into release notes for each release candidate and replace
 | PostgreSQL | PostgreSQL integration job and DSN major version | pending | pending |
 | lego | ACME smoke command/output when ACME behavior changed | pending | pending |
 | certbot | WSL/Linux/elevated Windows smoke command/output when ACME behavior changed | pending | pending |
+
+
+## Supported-Go Evidence Runner
+
+`scripts/verify-go-release.py` is the Enterprise entry point for shared Go
+release checks. It sets `GOTOOLCHAIN=local`, requires Go 1.25.11 or newer,
+keeps build/module caches and output under `.tmp`, stops at the first failure,
+and writes redacted JSON, Markdown, and command logs.
+
+Evidence records `enterprise_commit` separately from
+`community_baseline_commit`. It also records
+`commercial_release_authorized=false`, `fallback_enabled=false`,
+`fallback_used=false`, `anocrypto_sdk_status=not_run`,
+`pki_parity_status=unsupported_pending`, and `kcmvp_status=not_validated`.
+Local output does not authorize an Enterprise commercial release and is not
+trusted AnoCrypto-C SDK, parity, hosted CI, or KCMVP evidence.
+
+Profiles are explicit:
+
+- `baseline`: `go test ./...`, `go vet ./...`, and a trimmed service build.
+- `analysis`: `go test -race ./...`, Staticcheck 2026.1, gosec v2.25.0,
+  and govulncheck v1.1.4.
+- `full`: baseline followed by analysis.
+
+CI uses exact Go 1.25.12 and Go 1.26.5 lanes. A future release artifact must
+contain passing full-profile `anopki-enterprise-go-verification.tar.gz` bound
+to the Enterprise release metadata commit and synchronized Community baseline.
+Missing, failed, incomplete, or mismatched evidence blocks artifact validation;
+the independent commercial release gate remains authoritative.
 
 
 ## Local ZIP Baseline Evidence - 2026-07-06
@@ -178,29 +215,28 @@ evidence still needs release workflow artifacts containing archives,
 
 - `python scripts/validate-docs.py`
 - `python scripts/test_validate_docs.py`
-- `python scripts/validate-community-boundary.py`
-- `python scripts/test_validate_community_boundary.py`
+- `python scripts/test_validate_enterprise_boundary.py`
+- `python scripts/validate-enterprise-boundary.py`
 - `python scripts/test_webhook_receiver_verification.py`
 - `python scripts/test_verify_local.py`
 - `python scripts/test_validate_version_metadata.py`
 - `python scripts/validate-version-metadata.py`
+- `python scripts/test_generate_enterprise_release_metadata.py`
+- `python scripts/test_verify_go_release.py`
 - `python scripts/test_validate_release_artifacts.py`
 - `python scripts/test_validate_service_contracts.py`
 - `python scripts/validate-service-contracts.py`
 - `python scripts/test_validate_core_cli_contracts.py`
 - `python scripts/validate-core-cli-contracts.py`
+- `python scripts/test_validate_key_provider_boundary.py`
+- `python scripts/validate-key-provider-boundary.py`
 - `python scripts/test_validate_release_evidence.py`
 - `python scripts/validate-release-evidence.py`
 - `python scripts/test_security_baseline_scan.py`
 - `python scripts/security-baseline-scan.py`
 - `powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\acme-smoke\test-run-certbot-smoke.ps1`
-- `go test ./...`
-- `go test -race ./...`
-- `go vet ./...`
-- `go run honnef.co/go/tools/cmd/staticcheck@latest ./...`
-- `go run github.com/securego/gosec/v2/cmd/gosec@latest ./...`
-- `go run golang.org/x/vuln/cmd/govulncheck@latest ./...`
-- `go build -o .tmp\verify-local\anopki-service.exe ./cmd/anopki-service`
+- `python scripts/verify-go-release.py --profile baseline --out-dir .tmp/go-evidence/enterprise-verify-local`
+- `python scripts/verify-go-release.py --profile full --out-dir .tmp/go-evidence/enterprise-full`
 - `cmake -S . -B build`
 - `cmake --build build --config Debug`
 - `ctest --test-dir build -C Debug --output-on-failure`
@@ -209,6 +245,8 @@ evidence still needs release workflow artifacts containing archives,
 - `./build-fuzz/anopki_core_csr_fuzz -runs=1`
 - `./build-fuzz/anopki_core_ocsp_fuzz -runs=1`
 - `./build-fuzz/anopki_core_crl_fuzz -runs=1`
+- release workflow artifact `anopki-enterprise-go-verification.tar.gz` with
+  passing Enterprise full-profile evidence
 - release workflow artifact containing SBOM output from `syft`
 - release workflow artifact containing signature output from `cosign`
 - compatibility matrix row evidence
@@ -293,6 +331,14 @@ Enterprise/OpenSSL require the complete operation capability set.
 Enterprise/AnoCrypto-C remains pending and reports no operation-level capabilities and
 remains a development/integration profile.
 
+The Go service parses the exact backend record at startup and exposes it through
+`GET /version`. Enterprise release tooling uses
+`scripts/generate-enterprise-release-metadata.py`, stores the raw record as
+`anopki-backend-info.json` and generates `anopki-release-metadata.json` with
+`anocrypto_used=false`, `fallback_enabled=false`, `fallback_used=false`,
+`production_ready=false`, and `kcmvp_status=not_applicable` for
+Enterprise/OpenSSL.
+
 
 ## Key Provider Evidence
 
@@ -307,4 +353,9 @@ Each signing-capable release profile records:
 - stable provider error/result code,
 - evidence that no undeclared provider, file-key, or backend fallback occurred.
 
-Current Community/OpenSSL evidence remains `provider=file`, `exportable`, and local/dev only. Production provider readiness is not complete until actual certificate, CRL, and OCSP signing paths use the provider boundary and non-exportable evidence is recorded.
+Enterprise/OpenSSL reuses the completed Community/OpenSSL certificate, CRL, and
+OCSP `FileKeyProvider` paths. Current evidence remains `provider=file`,
+`exportable`, local/dev only, and production-rejected. The reused regression
+scope covers RSA and ECDSA success for certificate, CRL, and OCSP signing, plus
+non-interactive encrypted-PEM rejection on all three paths.
+A real non-exportable provider remains unimplemented.

@@ -185,10 +185,8 @@ def test_stale_public_tls_readme_next_work_fails(tmp_path: Path) -> None:
     copy_docs_inputs(tmp_path)
     readme = tmp_path / "README.md"
     readme.write_text(
-        readme.read_text(encoding="utf-8").replace(
-            "Current execution focus: release evidence, exposing backend/profile metadata through service operations, external AnoCrypto-C capability parity, and key-boundary migration planning.",
-            "Current execution focus: release operations, supply-chain evidence, and backend/key-boundary migration planning unless public TLS issuance enables a linting hook.",
-        ),
+        readme.read_text(encoding="utf-8")
+        + "\nCurrent execution focus remains pending unless public TLS issuance enables a linting hook.\n",
         encoding="utf-8",
     )
 
@@ -297,11 +295,19 @@ def main() -> None:
     with tempfile.TemporaryDirectory() as dirname:
         test_missing_source_file_header_fails(Path(dirname))
     with tempfile.TemporaryDirectory() as dirname:
+        test_generated_build_tree_headers_are_ignored(Path(dirname))
+    with tempfile.TemporaryDirectory() as dirname:
         test_ignored_go_module_cache_headers_pass(Path(dirname))
     with tempfile.TemporaryDirectory() as dirname:
         test_missing_anocrypto_strategy_doc_fails(Path(dirname))
     with tempfile.TemporaryDirectory() as dirname:
         test_anocrypto_direction_removed_from_roadmap_fails(Path(dirname))
+    with tempfile.TemporaryDirectory() as dirname:
+        test_missing_key_provider_signing_adr_fails(Path(dirname))
+    with tempfile.TemporaryDirectory() as dirname:
+        test_key_provider_direction_drift_fails(Path(dirname))
+    with tempfile.TemporaryDirectory() as dirname:
+        test_completed_key_provider_work_in_roadmap_fails(Path(dirname))
     with tempfile.TemporaryDirectory() as dirname:
         test_legacy_identifiers_outside_migration_context_fail(Path(dirname))
     print("docs validator tests ok")
@@ -316,6 +322,17 @@ def test_missing_source_file_header_fails(tmp_path: Path) -> None:
 
     assert result.returncode == 1
     assert "first-party source files missing SPDX header" in result.stderr
+
+
+def test_generated_build_tree_headers_are_ignored(tmp_path: Path) -> None:
+    copy_docs_inputs(tmp_path)
+    generated = tmp_path / "build-werror-full" / "generated" / "anopki" / "version_config.hpp"
+    generated.parent.mkdir(parents=True, exist_ok=True)
+    generated.write_text("#pragma once\n", encoding="utf-8")
+
+    result = run_validator(tmp_path)
+
+    assert result.returncode == 0, result.stderr + result.stdout
 
 
 def test_ignored_go_module_cache_headers_pass(tmp_path: Path) -> None:
@@ -374,10 +391,6 @@ def test_legacy_identifiers_outside_migration_context_fail(tmp_path: Path) -> No
     assert "legacy project identifiers found outside migration or historical docs" in result.stderr
 
 
-if __name__ == "__main__":
-    main()
-
-
 def test_missing_key_provider_signing_adr_fails(tmp_path: Path) -> None:
     copy_docs_inputs(tmp_path)
     (tmp_path / "docs" / "adr" / "0007-key-provider-signing-boundary.md").unlink()
@@ -392,7 +405,7 @@ def test_key_provider_direction_drift_fails(tmp_path: Path) -> None:
     copy_docs_inputs(tmp_path)
     adr = tmp_path / "docs" / "adr" / "0007-key-provider-signing-boundary.md"
     adr.write_text(
-        adr.read_text(encoding="utf-8").replace("deliberately scoped hybrid", "automatic universal provider", 1),
+        adr.read_text(encoding="utf-8").replace("deliberately scoped hybrid", "automatic universal provider"),
         encoding="utf-8",
     )
 
@@ -400,3 +413,22 @@ def test_key_provider_direction_drift_fails(tmp_path: Path) -> None:
 
     assert result.returncode == 1
     assert "KeyProvider signing direction docs missing required wording" in result.stderr
+
+
+def test_completed_key_provider_work_in_roadmap_fails(tmp_path: Path) -> None:
+    copy_docs_inputs(tmp_path)
+    roadmap = tmp_path / "docs" / "ROADMAP.md"
+    roadmap.write_text(
+        roadmap.read_text(encoding="utf-8")
+        + "\n- Implement ADR 0007 certificate-issuance `FileKeyProvider` vertical slice.\n",
+        encoding="utf-8",
+    )
+
+    result = run_validator(tmp_path)
+
+    assert result.returncode == 1
+    assert "completed shared KeyProvider/backend work" in result.stderr
+
+
+if __name__ == "__main__":
+    main()

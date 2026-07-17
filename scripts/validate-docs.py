@@ -199,12 +199,17 @@ def check_license_state(root: Path) -> None:
         fail("LICENSE is not MPL-2.0 text")
 
 
+def is_generated_or_ignored_path(path: Path, root: Path) -> bool:
+    parts = path.relative_to(root).parts
+    return any(part in SOURCE_HEADER_SKIP_DIRS or part.startswith("build-") for part in parts)
+
+
 def first_party_source_files(root: Path) -> list[Path]:
     files = []
     for path in root.rglob("*"):
         if not path.is_file():
             continue
-        if any(part in SOURCE_HEADER_SKIP_DIRS for part in path.relative_to(root).parts):
+        if is_generated_or_ignored_path(path, root):
             continue
         if path.name == "CMakeLists.txt" or path.suffix in SOURCE_HEADER_EXTENSIONS:
             files.append(path)
@@ -263,12 +268,21 @@ def check_key_provider_direction(root: Path) -> None:
     missing += [text for text in semantics_required if text not in semantics]
     if missing:
         fail("KeyProvider signing direction docs missing required wording:\n" + "\n".join(missing))
-    if "ADR 0007" not in roadmap or "FileKeyProvider" not in roadmap:
-        fail("ROADMAP does not reflect the selected KeyProvider signing boundary")
+    if "real local PKCS#11/HSM target" not in roadmap:
+        fail("ROADMAP does not contain the remaining production KeyProvider work")
+    completed = [
+        "Expose selected product profile and backend metadata through the Go service/version and release manifests",
+        "Implement ADR 0007 certificate-issuance `FileKeyProvider` vertical slice",
+        "Extend the proven provider contract to CRL and then OCSP",
+        "Add a mock/software-token provider before selecting a real PKCS#11/HSM implementation",
+    ]
+    stale = [text for text in completed if text in roadmap]
+    if stale:
+        fail("ROADMAP still lists completed shared KeyProvider/backend work:\n" + "\n".join(stale))
 
 def should_scan_legacy_identifiers(path: Path, root: Path) -> bool:
     rel = path.relative_to(root)
-    if any(part in SOURCE_HEADER_SKIP_DIRS for part in rel.parts):
+    if is_generated_or_ignored_path(path, root):
         return False
     if str(rel).replace("\\", "/") in LEGACY_IDENTIFIER_ALLOWED_PATHS:
         return False

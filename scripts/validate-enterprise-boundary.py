@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import argparse
 import re
+import subprocess
 from pathlib import Path
 from typing import Iterable
 
@@ -38,7 +39,19 @@ REQUIRED = [
     "src/backends/openssl/issue.cpp",
     "src/backends/openssl/crl.cpp",
     "src/backends/openssl/ocsp.cpp",
+    "src/backends/openssl/key_providers/file_key_provider.hpp",
+    "src/backends/openssl/key_providers/file_key_provider.cpp",
+    "src/backends/openssl/key_providers/provider_resolver.hpp",
+    "src/backends/openssl/key_providers/provider_resolver.cpp",
+    "src/backends/openssl/openssl_backend_config.hpp.in",
     "include/anopki/crypto/runtime.hpp",
+    "service/internal/corecli/backend_info.go",
+    "scripts/generate-enterprise-release-metadata.py",
+    "scripts/test_generate_enterprise_release_metadata.py",
+    "scripts/verify-go-release.py",
+    "scripts/test_verify_go_release.py",
+    "scripts/validate-key-provider-boundary.py",
+    "scripts/test_validate_key_provider_boundary.py",
 ]
 
 PRIVATE_DOC_PREFIXES = ("docs/enterprise/",)
@@ -156,7 +169,11 @@ def has_prefix(path: str, prefixes: tuple[str, ...]) -> bool:
 
 def should_skip(path: Path, root: Path) -> bool:
     rel = path.relative_to(root)
-    return path.suffix == ".txtt" or path.name in SELF_TEST_FILES or any(part in SKIP_DIRS for part in rel.parts)
+    return (
+        path.suffix == ".txtt"
+        or path.name in SELF_TEST_FILES
+        or any(part in SKIP_DIRS or part in GENERATED_DIRS for part in rel.parts)
+    )
 
 
 def text_files(root: Path) -> Iterable[Path]:
@@ -245,6 +262,12 @@ def check_cmake_markers(root: Path) -> None:
         "anocrypto_no_fallback",
         "anopki-enterprise-openssl",
         "anopki-enterprise-anocrypto-c",
+        "src/backends/openssl/key_providers/file_key_provider.cpp",
+        "src/backends/openssl/key_providers/provider_resolver.cpp",
+        "src/backends/openssl/openssl_backend_config.hpp.in",
+        "anopki_file_key_provider_test",
+        "anopki_software_token_key_provider_test",
+        "anopki.key_provider_boundary",
     ]
     missing = [token for token in required if token not in cmake]
     if missing:
@@ -276,6 +299,13 @@ def check_openssl_adapter_separation(root: Path) -> None:
         for match in pattern.finditer(cmake):
             if "OpenSSL::Crypto" in match.group("body"):
                 fail(f"{target} must not link OpenSSL::Crypto directly")
+
+    anocrypto_link = re.compile(
+        r"target_link_libraries\(\s*anopki_enterprise_anocrypto_adapter(?P<body>.*?)\)",
+        re.DOTALL,
+    )
+    if any("OpenSSL::Crypto" in match.group("body") for match in anocrypto_link.finditer(cmake)):
+        fail("Enterprise/AnoCrypto-C adapter must not link OpenSSL::Crypto")
 
     hits: list[str] = []
     core_root = root / "src/core"
@@ -313,6 +343,47 @@ def check_embedded_anocrypto_absent(root: Path) -> None:
     hits = [token for token in implementation_tokens if token in text]
     if hits:
         fail("AnoCrypto-C adapter contains embedded cryptographic implementation markers:\n" + "\n".join(hits))
+
+
+def check_enterprise_release_metadata_boundary(root: Path) -> None:
+    community_only = [
+        "scripts/generate-release-metadata.py",
+        "scripts/test_generate_release_metadata.py",
+    ]
+    leaked = [rel for rel in community_only if (root / rel).exists()]
+    if leaked:
+        fail("Enterprise tree contains Community-only release metadata tooling:\n" + "\n".join(leaked))
+
+    generator = (root / "scripts/generate-enterprise-release-metadata.py").read_text(encoding="utf-8")
+    required = [
+        '"enterprise-openssl"',
+        '"edition"] != "enterprise"',
+        '"anocrypto_used": False',
+        '"fallback_enabled": False',
+        '"fallback_used": False',
+        '"kcmvp_status": "not_applicable"',
+    ]
+    missing = [token for token in required if token not in generator]
+    if missing:
+        fail("Enterprise release metadata generator missing fail-closed markers:\n" + "\n".join(missing))
+
+    go_runner = (root / "scripts/verify-go-release.py").read_text(encoding="utf-8")
+    go_required = [
+        '"product": "AnoPKI Enterprise"',
+        '"edition": "enterprise"',
+        '"product_profile": "enterprise-openssl"',
+        '"enterprise_commit"',
+        '"community_baseline_commit"',
+        '"fallback_enabled": False',
+        '"fallback_used": False',
+        '"commercial_release_authorized": False',
+        '"anocrypto_sdk_status": "not_run"',
+        '"pki_parity_status": "unsupported_pending"',
+        '"kcmvp_status": "not_validated"',
+    ]
+    missing = [token for token in go_required if token not in go_runner]
+    if missing:
+        fail("Enterprise Go evidence runner missing fail-closed markers:\n" + "\n".join(missing))
 
 def check_ci_markers(root: Path) -> None:
     ci = (root / ".github/workflows/ci.yml").read_text(encoding="utf-8")
@@ -365,6 +436,21 @@ def check_trusted_sdk_workflow(root: Path) -> None:
 
 
 def check_generated_files(root: Path) -> None:
+    if (root / ".git").exists():
+        result = subprocess.run(
+            ["git", "ls-files", "--", *sorted(GENERATED_DIRS)],
+            cwd=root,
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        if result.returncode != 0:
+            fail(result.stderr.strip() or "failed to inspect tracked generated files")
+        hits = sorted(line for line in result.stdout.splitlines() if line)
+        if hits:
+            fail("Enterprise tree contains tracked generated build/cache files:\n" + "\n".join(hits))
+        return
+
     hits = []
     for directory in GENERATED_DIRS:
         path = root / directory
@@ -484,6 +570,7 @@ def validate(root: Path = ROOT) -> None:
     check_cmake_markers(root)
     check_openssl_adapter_separation(root)
     check_embedded_anocrypto_absent(root)
+    check_enterprise_release_metadata_boundary(root)
     check_ci_markers(root)
     check_trusted_sdk_workflow(root)
     check_generated_files(root)

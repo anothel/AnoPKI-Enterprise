@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: MPL-2.0
-"""Tests for release evidence validation."""
+"""Tests for Enterprise release evidence validation."""
 
 from __future__ import annotations
 
@@ -27,7 +27,10 @@ def require_release_workflow() -> None:
         "contents: read",
         "contents: write",
         "id-token: write",
-        'go-version: "1.25.11"',
+        'go-version: "1.25.12"',
+        "python scripts/verify-go-release.py",
+        "--profile full",
+        "anopki-enterprise-go-verification.tar.gz",
         "cmake --build build-release --config Release",
         'VERSION="$(cat VERSION)"',
         "go build -ldflags",
@@ -57,6 +60,7 @@ def copy_release_evidence_inputs(dst: Path) -> None:
     files = [
         "docs/reference/release-evidence.md",
         "scripts/verify-local.ps1",
+        "scripts/verify-go-release.py",
         ".github/workflows/ci.yml",
         ".github/workflows/release.yml",
     ]
@@ -95,8 +99,8 @@ def test_compatibility_matrix_row_detail_drift_fails(tmp_path: Path) -> None:
     evidence = tmp_path / "docs" / "reference" / "release-evidence.md"
     evidence.write_text(
         evidence.read_text(encoding="utf-8").replace(
-            "CI pins at least Go 1.25.11",
-            "CI pins at least Go 1.25",
+            "The maintained floor is Go 1.25.11",
+            "The maintained floor is Go 1.25",
             1,
         ),
         encoding="utf-8",
@@ -136,40 +140,44 @@ def test_missing_ci_version_metadata_validation_fails(tmp_path: Path) -> None:
     assert "validate-version-metadata.py" in result.stderr
 
 
-def test_missing_ci_staticcheck_fails(tmp_path: Path) -> None:
+def test_missing_go_runner_staticcheck_fails(tmp_path: Path) -> None:
     copy_release_evidence_inputs(tmp_path)
-    ci = tmp_path / ".github" / "workflows" / "ci.yml"
-    ci.write_text(
-        ci.read_text(encoding="utf-8").replace(
-            "go run honnef.co/go/tools/cmd/staticcheck@latest ./...",
-            "",
-            1,
-        ),
+    runner = tmp_path / "scripts" / "verify-go-release.py"
+    runner.write_text(
+        runner.read_text(encoding="utf-8").replace('STATICCHECK_VERSION = "2026.1"', "", 1),
         encoding="utf-8",
     )
 
     result = run_validator(tmp_path)
 
     assert result.returncode == 1
-    assert "staticcheck@latest" in result.stderr
+    assert "STATICCHECK_VERSION" in result.stderr
 
 
-def test_missing_ci_gosec_fails(tmp_path: Path) -> None:
+def test_missing_go_runner_gosec_fails(tmp_path: Path) -> None:
     copy_release_evidence_inputs(tmp_path)
-    ci = tmp_path / ".github" / "workflows" / "ci.yml"
-    ci.write_text(
-        ci.read_text(encoding="utf-8").replace(
-            "go run github.com/securego/gosec/v2/cmd/gosec@latest ./...",
-            "",
-            1,
-        ),
+    runner = tmp_path / "scripts" / "verify-go-release.py"
+    runner.write_text(
+        runner.read_text(encoding="utf-8").replace('GOSEC_VERSION = "v2.25.0"', "", 1),
         encoding="utf-8",
     )
 
     result = run_validator(tmp_path)
 
     assert result.returncode == 1
-    assert "gosec@latest" in result.stderr
+    assert "GOSEC_VERSION" in result.stderr
+
+
+def test_missing_ci_go_evidence_upload_fails(tmp_path: Path) -> None:
+    copy_release_evidence_inputs(tmp_path)
+    ci = tmp_path / ".github" / "workflows" / "ci.yml"
+    ci.write_text(
+        ci.read_text(encoding="utf-8").replace("anopki-enterprise-go-analysis-1.26.5", "", 1),
+        encoding="utf-8",
+    )
+    result = run_validator(tmp_path)
+    assert result.returncode == 1
+    assert "anopki-enterprise-go-analysis-1.26.5" in result.stderr
 
 
 def test_missing_ci_fuzz_smoke_fails(tmp_path: Path) -> None:
@@ -198,6 +206,18 @@ def test_missing_release_signing_evidence_fails(tmp_path: Path) -> None:
 
     assert result.returncode == 1
     assert "cosign sign-blob" in result.stderr
+
+
+def test_missing_release_go_evidence_fails(tmp_path: Path) -> None:
+    copy_release_evidence_inputs(tmp_path)
+    release = tmp_path / ".github" / "workflows" / "release.yml"
+    release.write_text(
+        release.read_text(encoding="utf-8").replace("anopki-enterprise-go-verification.tar.gz", "", 1),
+        encoding="utf-8",
+    )
+    result = run_validator(tmp_path)
+    assert result.returncode == 1
+    assert "anopki-enterprise-go-verification.tar.gz" in result.stderr
 
 
 def test_missing_release_dry_run_gate_fails(tmp_path: Path) -> None:
@@ -281,13 +301,17 @@ def main() -> None:
     with tempfile.TemporaryDirectory() as dirname:
         test_missing_ci_version_metadata_validation_fails(Path(dirname))
     with tempfile.TemporaryDirectory() as dirname:
-        test_missing_ci_staticcheck_fails(Path(dirname))
+        test_missing_go_runner_staticcheck_fails(Path(dirname))
     with tempfile.TemporaryDirectory() as dirname:
-        test_missing_ci_gosec_fails(Path(dirname))
+        test_missing_go_runner_gosec_fails(Path(dirname))
+    with tempfile.TemporaryDirectory() as dirname:
+        test_missing_ci_go_evidence_upload_fails(Path(dirname))
     with tempfile.TemporaryDirectory() as dirname:
         test_missing_ci_fuzz_smoke_fails(Path(dirname))
     with tempfile.TemporaryDirectory() as dirname:
         test_missing_release_signing_evidence_fails(Path(dirname))
+    with tempfile.TemporaryDirectory() as dirname:
+        test_missing_release_go_evidence_fails(Path(dirname))
     with tempfile.TemporaryDirectory() as dirname:
         test_missing_release_dry_run_gate_fails(Path(dirname))
     with tempfile.TemporaryDirectory() as dirname:

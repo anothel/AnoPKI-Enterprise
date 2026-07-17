@@ -1,153 +1,126 @@
 # Enterprise Upstream Sync
 
-Keep `anopki-enterprise` as a reviewed overlay on top of `anopki-community`.
-Community remains the OpenSSL-backed public upstream. Enterprise adds private
-overlay code and must not become a separate product fork unless a change is
-explicitly Enterprise-only.
+AnoPKI Enterprise is a reviewed overlay that consumes Community-owned Core,
+OpenSSL adapter, Go service, public contracts, common tests, and validators from
+one exact target tree. Git histories remain unrelated and are never joined.
 
-Current shared baseline: `2be155780d4b024c76b0a901ec130e83fc221f2f`
-(`v0.1.0-alpha.0`). Verify it after fetch with:
+Current synchronized baseline:
+`71f0e898c32a7d6e00d0725eeab6ca150ccaa0af`.
 
-```powershell
-python scripts\validate-community-baseline.py
-```
-
-## Community Remote Setup
+## Remote And Target Verification
 
 Use a remote named `community`:
 
 ```powershell
 git remote add community <community-url-or-local-path>
 git fetch community
+git cat-file -e "71f0e898c32a7d6e00d0725eeab6ca150ccaa0af^{commit}"
 ```
 
-For local sibling repos:
+For local sibling repositories:
 
 ```powershell
 git remote add community ..\AnoPKI-Community
 git fetch community
 ```
 
-The helper script can print the same safe preview and optionally configure or
-fetch the remote:
+The pinned SHA is authoritative. A later `community/main` must not replace it
+implicitly.
+
+## Exact-Tree Strategy
+
+Recalculate the full diff from the previous baseline to the pinned target:
+
+```powershell
+git diff --name-status `
+  b4b5c475c3cb2f98f5bb6c180786c11a12a1dac8 `
+  71f0e898c32a7d6e00d0725eeab6ca150ccaa0af
+```
+
+Extract allow-listed shared paths from the exact target tree. Do not use branch
+HEAD as the source:
+
+```powershell
+$Target = "71f0e898c32a7d6e00d0725eeab6ca150ccaa0af"
+git restore --source=$Target --worktree -- <allow-listed-shared-paths>
+```
+
+Community-owned files must equal target blobs byte-for-byte after normalized
+line endings. Shared files deleted by the target must be absent. In particular,
+`src/core/openssl_backend.hpp` must not exist.
+
+Do not join unrelated histories through merge, rebase, cherry-pick, subtree, or
+forced history operations.
+
+## Ownership Classes
+
+Exact shared paths include target files under:
+
+- `include/anopki/` public contracts,
+- `src/core/`,
+- `src/backends/openssl/`,
+- `src/cli/`,
+- `service/`, excluding Enterprise-only additions not present in the target,
+- common `tests/`,
+- common Community boundary, Core CLI, and KeyProvider validators.
+
+Mixed files require reviewed manual integration. They include CMake product
+assembly, Enterprise workflows, root product docs, release validators, local
+verification wrappers, and Enterprise-aware public architecture/evidence docs.
+The baseline validator checks explicit required structure instead of accepting
+arbitrary drift.
+
+Community-only files are excluded exactly. The Community release generator and
+its test remain absent because they force `community-openssl` and
+`edition=community`. Enterprise uses
+`scripts/generate-enterprise-release-metadata.py` and its own fail-closed tests.
+
+Enterprise-owned paths remain private, including:
+
+- `enterprise/`,
+- `docs/enterprise/`,
+- `include/anopki/enterprise/`,
+- `service/internal/enterprise/`,
+- `src/backends/anocrypto_c/`,
+- `src/enterprise/`,
+- commercial license and private evidence files.
+
+## Profile Boundaries
+
+`enterprise-openssl` reuses the Community OpenSSL adapter without a fork and
+assembles its config header, ABI/build fingerprint, FileKeyProvider/resolver,
+and OpenSSL tests. `enterprise-anocrypto-c` consumes only the external
+`AnoCryptoC::AnoCryptoC` package and must not link OpenSSL or fall back to it.
+Missing SDK configuration must fail.
+
+Enterprise/OpenSSL release metadata records `selected_backend=openssl`,
+`anocrypto_used=false`, `fallback_enabled=false`, `fallback_used=false`, and
+`kcmvp_status=not_applicable`. Enterprise/AnoCrypto-C production release blocked
+with parity, trusted SDK evidence, and `kcmvp_status=not_validated` pending.
+
+## Helper And Verification
+
+The helper is read-only except for optional remote setup/fetch. It verifies the
+pinned commit and prints the exact baseline diff:
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\sync-community-upstream.ps1
-powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\sync-community-upstream.ps1 -ConfigureRemote -CommunityUrl ..\AnoPKI-Community
 powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\sync-community-upstream.ps1 -Fetch
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\sync-community-upstream.ps1 -Verify
 ```
 
-The helper does not run publish or integration commands. Review and integrate
-manually.
-
-## Sync Strategy
-
-Use a normal Git remote and reviewed merge while Community and Enterprise share
-repository layout and history:
+After shared extraction and mixed integration, update baseline metadata last,
+then run:
 
 ```powershell
-git fetch community
-git log --oneline HEAD..community/main
-git diff --stat HEAD...community/main
-git diff --name-status HEAD...community/main
-git merge --no-ff community/main
-```
-
-When a merge would overwrite active Enterprise overlay files, perform a
-controlled shared-file synchronization and run the baseline drift validator.
-Its exclusions are limited to the documented overlay and integration files.
-The validator also pins any temporary upstream test correction by exact file
-hash; remove that exception after the same correction lands in Community.
-
-Do not use subtree or submodule layout for the current repository shape. Those
-add packaging and path indirection without solving the current problem. Revisit
-subtree or submodule only if Enterprise must consume Community as a vendored
-component with intentionally separate history.
-
-If Git reports unrelated histories, stop. Do not force a history join without a
-separate migration plan.
-
-## Conflict Handling
-
-For shared files, prefer the Community version unless Enterprise has a documented
-overlay reason. Shared behavior includes lifecycle state transitions, public API,
-OpenAPI, core CLI JSON contract, ACME behavior, public docs, and OpenSSL-backed
-core behavior.
-
-For Enterprise-only files, keep the private side in these boundaries:
-
-- `enterprise/`
-- `docs/enterprise/`
-- `include/anopki/enterprise/`
-- `service/internal/enterprise/`
-- `src/enterprise/`
-- `src/core/crypto/anocrypto_backend.*`
-- `ENTERPRISE-LICENSE-NOTICE.md`
-
-If a conflict mixes shared and Enterprise-only logic, keep shared behavior
-compatible with Community and move private behavior behind an Enterprise overlay
-boundary. Do not remove existing behavior unless a test proves it obsolete or
-broken.
-
-## Required Post-Merge Checks
-
-Run the Community baseline in the Community checkout before trusting the source
-revision:
-
-```powershell
-cd ..\AnoPKI-Community
-python scripts\validate-community-boundary.py
-python scripts\validate-docs.py
-powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\verify-local.ps1 -List
-```
-
-Run Enterprise boundary and docs checks after the merge:
-
-```powershell
-cd ..\AnoPKI-Enterprise
+python scripts\test_validate_enterprise_boundary.py
 python scripts\validate-enterprise-boundary.py
-python scripts\validate-docs.py
 python scripts\test_sync_community_upstream.py
+python scripts\validate-community-baseline.py
+python scripts\test_validate_key_provider_boundary.py
+python scripts\validate-key-provider-boundary.py
+python scripts\validate-enterprise-release.py --expect-blocked
 ```
 
-Run Enterprise-specific tests when Enterprise overlay files changed:
-
-```powershell
-cmake -S . -B build
-cmake --build build --config Debug
-ctest --test-dir build -C Debug --output-on-failure
-cd service
-go test ./...
-```
-
-## Checklist
-
-- Run Community baseline checks in `anopki-community`.
-- Fetch and review `community/main` before merging.
-- Resolve shared-file conflicts toward Community unless an Enterprise overlay
-  reason is documented.
-- Run Enterprise boundary checks.
-- Run Enterprise-specific tests.
-- Confirm no private secrets or license files leak to Community.
-- Confirm no Enterprise-only paths, commercial license notices, AnoCrypto
-  implementation, SSO/RBAC, HSM/KMS providers, UI, deployment adapters, or
-  proprietary docs are pushed back to Community.
-
-## Never Push Back To Community
-
-Never push Enterprise-only material back to Community:
-
-- `ENTERPRISE-LICENSE-NOTICE.md`
-- `enterprise/`
-- `docs/enterprise/`
-- `include/anopki/enterprise/`
-- `service/internal/enterprise/`
-- `src/enterprise/`
-- `src/core/crypto/anocrypto_backend.*`
-- commercial terms, customer docs, private release evidence, secrets, keys,
-  AnoCrypto implementation, SSO/RBAC, HSM/KMS/KMS provider code, UI, deployment
-  adapters, and proprietary packaging.
-
-Community may document AnoCrypto as an intended direction, but it must stay
-OpenSSL-backed until code, parity fixtures, tests, release evidence, and review
-prove otherwise.
+Never push Enterprise-only material back to Community. Never record trusted SDK,
+KCMVP, commercial release, or production-provider success without exact evidence.

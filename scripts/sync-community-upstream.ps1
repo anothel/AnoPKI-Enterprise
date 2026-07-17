@@ -3,8 +3,11 @@ param(
     [string]$CommunityRemote = "community",
     [string]$CommunityBranch = "main",
     [string]$CommunityUrl = "",
+    [string]$TargetCommit = "71f0e898c32a7d6e00d0725eeab6ca150ccaa0af",
+    [string]$PreviousBaseline = "b4b5c475c3cb2f98f5bb6c180786c11a12a1dac8",
     [switch]$ConfigureRemote,
-    [switch]$Fetch
+    [switch]$Fetch,
+    [switch]$Verify
 )
 
 Set-StrictMode -Version Latest
@@ -34,7 +37,7 @@ try {
         exit $LASTEXITCODE
     }
     if ($status) {
-        Write-Warning "Worktree has local changes. Review them before integrating Community updates."
+        Write-Warning "Worktree has local changes. This helper is read-only and will not alter them."
         $status | ForEach-Object { Write-Host $_ }
     }
 
@@ -42,42 +45,40 @@ try {
     $remoteUrl = & git config --get "remote.$CommunityRemote.url"
     if ($LASTEXITCODE -ne 0) {
         if (-not $ConfigureRemote) {
-            Write-Host "Missing remote '$CommunityRemote'. Configure it with:"
-            Write-Host "  git remote add $CommunityRemote <community-url-or-local-path>"
+            throw "Missing remote '$CommunityRemote'"
         }
-        elseif ([string]::IsNullOrWhiteSpace($CommunityUrl)) {
+        if ([string]::IsNullOrWhiteSpace($CommunityUrl)) {
             throw "Pass -CommunityUrl when using -ConfigureRemote"
         }
-        else {
-            Invoke-Git @("remote", "add", $CommunityRemote, $CommunityUrl)
-            $remoteUrl = $CommunityUrl
-        }
+        Invoke-Git @("remote", "add", $CommunityRemote, $CommunityUrl)
+        $remoteUrl = $CommunityUrl
     }
-
-    if ($remoteUrl) {
-        Write-Host "Community remote: $CommunityRemote -> $remoteUrl"
-    }
+    Write-Host "Community remote: $CommunityRemote -> $remoteUrl"
 
     if ($Fetch) {
         Invoke-Git @("fetch", $CommunityRemote, $CommunityBranch)
     }
     else {
-        Write-Host "Fetch preview:"
-        Write-Host "  git fetch $CommunityRemote $CommunityBranch"
+        Write-Host "Fetch preview: git fetch $CommunityRemote $CommunityBranch"
     }
 
-    Write-Host ""
-    Write-Host "Review after fetch:"
-    Write-Host "  git log --oneline HEAD..$CommunityRemote/$CommunityBranch"
-    Write-Host "  git diff --stat HEAD...$CommunityRemote/$CommunityBranch"
-    Write-Host "  git diff --name-status HEAD...$CommunityRemote/$CommunityBranch"
-    Write-Host ""
-    Write-Host "Manual integration command is documented in docs\enterprise\upstream-sync.md."
-    Write-Host ""
-    Write-Host "Required post-sync checks:"
-    Write-Host "  python scripts\validate-enterprise-boundary.py"
-    Write-Host "  python scripts\validate-docs.py"
-    Write-Host "  python scripts\test_sync_community_upstream.py"
+    Invoke-Git @("cat-file", "-e", "$TargetCommit`^{commit}")
+    Write-Host "Pinned target commit: $TargetCommit"
+    Invoke-Git @("show", "-s", "--format=%H %s", $TargetCommit)
+
+    Write-Host "Exact baseline diff:"
+    Invoke-Git @("diff", "--name-status", $PreviousBaseline, $TargetCommit)
+    Write-Host "Shared files must be extracted from the pinned target tree; mixed files require reviewed manual integration."
+
+    if ($Verify) {
+        & python scripts\validate-community-baseline.py
+        if ($LASTEXITCODE -ne 0) {
+            exit $LASTEXITCODE
+        }
+    }
+    else {
+        Write-Host "Post-sync verification: python scripts\validate-community-baseline.py"
+    }
 }
 finally {
     Pop-Location

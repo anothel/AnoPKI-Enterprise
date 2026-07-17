@@ -136,7 +136,8 @@ payloads at the process boundary.
 
 ### backend info result
 
-- Direction: C++ core CLI to operator/release tooling, `backend info`.
+- Direction: C++ core CLI to Go service/operator/release tooling, `backend info`.
+- Go source: `BackendInfo` and `Runner.BackendInfo`.
 - `product_profile`
 - `edition`
 - `selected_backend`
@@ -148,6 +149,18 @@ payloads at the process boundary.
 - `backend_capabilities`
 - `backend_abi_version`
 - `backend_build_fingerprint`
+
+## Private Signing Evidence Sidecar
+
+Certificate issuance, CRL generation, and OCSP response generation keep their
+public request/result JSON fields unchanged. The Go runner supplies
+`ANOPKI_CORE_SIGNING_EVIDENCE_FILE` only to the child process. After successful
+signing, the shared OpenSSL adapter writes one redacted evidence object there.
+
+The runner rejects missing, malformed, unknown-field, operation/algorithm
+mismatch, unverified binding, non-`ok`, or `fallback_used=true` evidence. The
+sidecar is not stdout, stderr, a public CLI option, or a public wire-contract
+field and never contains raw key references, paths, PEM data, or credentials.
 
 ### command error
 

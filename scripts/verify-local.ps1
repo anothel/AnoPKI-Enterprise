@@ -55,7 +55,6 @@ function Get-PowerShellCommand {
 }
 
 $PowerShellCommand = Get-PowerShellCommand
-$VerifyTmp = Join-Path $RepoRoot ".tmp\verify-local"
 
 $steps = @(
     @{
@@ -93,6 +92,18 @@ $steps = @(
         Dir = $RepoRoot
         Display = "python scripts\validate-version-metadata.py"
         Command = @("python", "scripts\validate-version-metadata.py")
+    },
+    @{
+        Name = "Enterprise release metadata generator tests"
+        Dir = $RepoRoot
+        Display = "python scripts\test_generate_enterprise_release_metadata.py"
+        Command = @("python", "scripts\test_generate_enterprise_release_metadata.py")
+    },
+    @{
+        Name = "Enterprise Go release verification runner tests"
+        Dir = $RepoRoot
+        Display = "python scripts\test_verify_go_release.py"
+        Command = @("python", "scripts\test_verify_go_release.py")
     },
     @{
         Name = "release artifact validator tests"
@@ -173,22 +184,10 @@ $steps = @(
         Command = @("ctest", "--test-dir", "build", "-C", "Debug", "--output-on-failure")
     },
     @{
-        Name = "Go tests"
-        Dir = Join-Path $RepoRoot "service"
-        Display = "go test ./..."
-        Command = @("go", "test", "./...")
-    },
-    @{
-        Name = "Go vet"
-        Dir = Join-Path $RepoRoot "service"
-        Display = "go vet ./..."
-        Command = @("go", "vet", "./...")
-    },
-    @{
-        Name = "Go build"
-        Dir = Join-Path $RepoRoot "service"
-        Display = "go build -o .tmp\verify-local\anopki-service.exe ./cmd/anopki-service"
-        Command = @("go", "build", "-o", (Join-Path $VerifyTmp "anopki-service.exe"), "./cmd/anopki-service")
+        Name = "Enterprise Go baseline release verification"
+        Dir = $RepoRoot
+        Display = "python scripts\verify-go-release.py --profile baseline --out-dir .tmp\go-evidence\enterprise-verify-local"
+        Command = @("python", "scripts\verify-go-release.py", "--profile", "baseline", "--out-dir", ".tmp\go-evidence\enterprise-verify-local")
     }
 )
 
@@ -212,7 +211,6 @@ if ($CheckOpenSSLRuntime) {
 
 $goCache = Join-Path $RepoRoot ".gocache"
 New-Item -ItemType Directory -Force -Path $goCache | Out-Null
-New-Item -ItemType Directory -Force -Path $VerifyTmp | Out-Null
 $previousGoCache = $env:GOCACHE
 $previousOpenSSLRootDir = $env:OPENSSL_ROOT_DIR
 $previousPath = $env:PATH

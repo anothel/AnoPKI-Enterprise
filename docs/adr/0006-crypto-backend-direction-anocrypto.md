@@ -2,7 +2,8 @@
 
 ## Status
 
-Accepted revised direction; Community/OpenSSL extraction implemented, profile and parity work pending.
+Accepted. Community/OpenSSL extraction and explicit Enterprise profile assembly
+are implemented; external AnoCrypto-C capability parity remains pending.
 
 ## Context
 
@@ -57,10 +58,7 @@ missing. It must not silently call OpenSSL.
 
 ## Follow-Up Work
 
-- Extend the backend contract with identity, version, capability, readiness, and stable error metadata.
 - Keep all Community/OpenSSL golden fixtures passing through the separated OpenSSL adapter.
-- Add explicit build targets for Community/OpenSSL, Enterprise/OpenSSL, and
-  Enterprise/AnoCrypto-C.
 - Implement the Enterprise adapter only against supported external AnoCrypto-C
   APIs; do not reimplement AnoCrypto-C inside AnoPKI.
 - Add capability discovery, stable unsupported errors, and negative tests that
