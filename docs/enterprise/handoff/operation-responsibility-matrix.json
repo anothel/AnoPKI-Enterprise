@@ -1,0 +1,515 @@
+{
+  "schema_version": 1,
+  "enterprise_commit": "152a657c8cc49775e8fa3bf33a3819b62c9d8e36",
+  "community_baseline_commit": "ae3ddee72dd05f274b9bbae1b514cdc4c4de03f5",
+  "operations": [
+    {
+      "operation": "CSR PEM/DER parse",
+      "backend_neutral_behavior": "decode CSR, normalize requested subject/SAN/public-key/signature metadata",
+      "required_crypto_primitives": [
+        "PEM/base64",
+        "ASN.1 DER",
+        "hash",
+        "public-key signature verification"
+      ],
+      "key_provider_responsibilities": [
+        "none"
+      ],
+      "sdk_responsibilities": [
+        "provide high-level CSR APIs or verified primitives under the selected codec model; capability unverified"
+      ],
+      "enterprise_adapter_responsibilities": [
+        "map Core input/output/errors",
+        "never invoke OpenSSL fallback"
+      ],
+      "community_responsibilities": [
+        "own backend-neutral contract",
+        "provide OpenSSL adapter and fixtures"
+      ],
+      "enterprise_product_responsibilities": [
+        "validate API input",
+        "apply profile policy",
+        "audit stable result"
+      ],
+      "current_status": "unsupported_pending",
+      "blockers": [
+        "PKI codec model undecided",
+        "SDK capability discovery and trusted execution not run"
+      ],
+      "acceptance_tests": [
+        "valid and malformed PEM/DER",
+        "OpenSSL/AnoCrypto semantic parity",
+        "no fallback"
+      ]
+    },
+    {
+      "operation": "CSR signature validation",
+      "backend_neutral_behavior": "verify CSR proof-of-possession and return stable validity/error semantics",
+      "required_crypto_primitives": [
+        "ASN.1 DER",
+        "hash",
+        "RSA/ECDSA verification per approved scope"
+      ],
+      "key_provider_responsibilities": [
+        "none"
+      ],
+      "sdk_responsibilities": [
+        "verify CSR signature or expose verified public-key primitives; capability unverified"
+      ],
+      "enterprise_adapter_responsibilities": [
+        "map verification result and stable errors",
+        "no fallback"
+      ],
+      "community_responsibilities": [
+        "define behavior and OpenSSL reference implementation"
+      ],
+      "enterprise_product_responsibilities": [
+        "reject invalid CSR before lifecycle transition"
+      ],
+      "current_status": "unsupported_pending",
+      "blockers": [
+        "SDK verification API unverified"
+      ],
+      "acceptance_tests": [
+        "valid signature",
+        "tampered CSR",
+        "unsupported algorithm",
+        "no fallback"
+      ]
+    },
+    {
+      "operation": "certificate issue",
+      "backend_neutral_behavior": "apply IssueRequest and certificate profile, produce normalized IssueResult",
+      "required_crypto_primitives": [
+        "X.509 ASN.1 encode",
+        "hash",
+        "certificate signature"
+      ],
+      "key_provider_responsibilities": [
+        "resolve non-exportable issuer key reference",
+        "check readiness/binding",
+        "sign without exporting private bytes"
+      ],
+      "sdk_responsibilities": [
+        "certificate encode/sign or required primitives; capability unverified"
+      ],
+      "enterprise_adapter_responsibilities": [
+        "map request/result",
+        "enforce provider and no-fallback boundary",
+        "emit signing evidence"
+      ],
+      "community_responsibilities": [
+        "own contract, profiles, OpenSSL adapter and golden fixtures"
+      ],
+      "enterprise_product_responsibilities": [
+        "authorize issuance",
+        "persist result/evidence",
+        "audit lifecycle"
+      ],
+      "current_status": "unsupported_pending",
+      "blockers": [
+        "codec model and SDK signing/key-handle contracts unverified"
+      ],
+      "acceptance_tests": [
+        "positive/negative profile parity",
+        "signature verification",
+        "provider failure",
+        "no fallback"
+      ]
+    },
+    {
+      "operation": "certificate signature",
+      "backend_neutral_behavior": "sign certificate TBS using requested algorithm and selected key reference",
+      "required_crypto_primitives": [
+        "hash",
+        "RSA/ECDSA signature per approved scope"
+      ],
+      "key_provider_responsibilities": [
+        "own handle/reference and signing authorization",
+        "prevent export",
+        "return redacted evidence"
+      ],
+      "sdk_responsibilities": [
+        "perform or support selected signature primitive; capability unverified"
+      ],
+      "enterprise_adapter_responsibilities": [
+        "bridge codec TBS to provider/SDK once",
+        "validate returned evidence"
+      ],
+      "community_responsibilities": [
+        "define shared signing semantics and OpenSSL reference behavior"
+      ],
+      "enterprise_product_responsibilities": [
+        "bind operation/request identity and retain evidence"
+      ],
+      "current_status": "unsupported_pending",
+      "blockers": [
+        "key ownership and retry/idempotency undecided"
+      ],
+      "acceptance_tests": [
+        "algorithm matrix",
+        "key mismatch",
+        "single-sign/no-fallback evidence"
+      ]
+    },
+    {
+      "operation": "CRL generate",
+      "backend_neutral_behavior": "encode issuer, update interval, CRL number and revoked entries",
+      "required_crypto_primitives": [
+        "X.509 CRL ASN.1 encode",
+        "hash"
+      ],
+      "key_provider_responsibilities": [
+        "none until signing"
+      ],
+      "sdk_responsibilities": [
+        "CRL encoding or required primitives; capability unverified"
+      ],
+      "enterprise_adapter_responsibilities": [
+        "map GenerateCRLRequest/Result and stable errors"
+      ],
+      "community_responsibilities": [
+        "own contract, OpenSSL implementation and fixtures"
+      ],
+      "enterprise_product_responsibilities": [
+        "select revoked entries and publication lifecycle"
+      ],
+      "current_status": "unsupported_pending",
+      "blockers": [
+        "codec model and SDK CRL APIs unverified"
+      ],
+      "acceptance_tests": [
+        "semantic parity",
+        "invalid entry/time tests",
+        "no fallback"
+      ]
+    },
+    {
+      "operation": "CRL sign",
+      "backend_neutral_behavior": "sign CRL TBS with selected issuer key reference",
+      "required_crypto_primitives": [
+        "hash",
+        "RSA/ECDSA signature per approved scope"
+      ],
+      "key_provider_responsibilities": [
+        "non-exportable issuer key resolution",
+        "binding/readiness/signing evidence"
+      ],
+      "sdk_responsibilities": [
+        "signature primitive or key-handle operation; capability unverified"
+      ],
+      "enterprise_adapter_responsibilities": [
+        "invoke selected signer once and preserve no-fallback evidence"
+      ],
+      "community_responsibilities": [
+        "shared signing contract and OpenSSL reference"
+      ],
+      "enterprise_product_responsibilities": [
+        "audit and publish only proven result"
+      ],
+      "current_status": "unsupported_pending",
+      "blockers": [
+        "key ownership and SDK signing contract unverified"
+      ],
+      "acceptance_tests": [
+        "signature verification",
+        "provider failure",
+        "no fallback"
+      ]
+    },
+    {
+      "operation": "CRL inspect",
+      "backend_neutral_behavior": "decode CRL PEM/DER and normalize issuer, updates, number and entries",
+      "required_crypto_primitives": [
+        "PEM/base64",
+        "ASN.1 DER"
+      ],
+      "key_provider_responsibilities": [
+        "none"
+      ],
+      "sdk_responsibilities": [
+        "CRL decode API or required primitives; capability unverified"
+      ],
+      "enterprise_adapter_responsibilities": [
+        "map CRLInfo and stable malformed-input errors"
+      ],
+      "community_responsibilities": [
+        "own contract and OpenSSL reference behavior"
+      ],
+      "enterprise_product_responsibilities": [
+        "display/use normalized revocation metadata"
+      ],
+      "current_status": "unsupported_pending",
+      "blockers": [
+        "SDK CRL decode capability unverified"
+      ],
+      "acceptance_tests": [
+        "PEM/DER parity",
+        "malformed and duplicate-entry cases",
+        "no fallback"
+      ]
+    },
+    {
+      "operation": "OCSP request decode",
+      "backend_neutral_behavior": "decode request DER, certificate IDs and nonce",
+      "required_crypto_primitives": [
+        "ASN.1 DER",
+        "hash identifier parsing"
+      ],
+      "key_provider_responsibilities": [
+        "none"
+      ],
+      "sdk_responsibilities": [
+        "OCSP request decode or required primitives; capability unverified"
+      ],
+      "enterprise_adapter_responsibilities": [
+        "map OCSPRequestInfo and stable errors"
+      ],
+      "community_responsibilities": [
+        "own contract, OpenSSL implementation and curated fixtures"
+      ],
+      "enterprise_product_responsibilities": [
+        "request admission and response lookup"
+      ],
+      "current_status": "unsupported_pending",
+      "blockers": [
+        "SDK OCSP capability unverified"
+      ],
+      "acceptance_tests": [
+        "curated request parity",
+        "malformed DER",
+        "nonce cases",
+        "no fallback"
+      ]
+    },
+    {
+      "operation": "OCSP issuer identification",
+      "backend_neutral_behavior": "derive issuer name/key hashes for requested digest",
+      "required_crypto_primitives": [
+        "X.509 parse",
+        "hash"
+      ],
+      "key_provider_responsibilities": [
+        "none"
+      ],
+      "sdk_responsibilities": [
+        "issuer hash API or required primitives; capability unverified"
+      ],
+      "enterprise_adapter_responsibilities": [
+        "map OCSPIssuerInfo and reject unsupported digest"
+      ],
+      "community_responsibilities": [
+        "own contract and OpenSSL reference"
+      ],
+      "enterprise_product_responsibilities": [
+        "match request to issuer"
+      ],
+      "current_status": "unsupported_pending",
+      "blockers": [
+        "SDK issuer/hash capability unverified",
+        "direct no-fallback assertion absent"
+      ],
+      "acceptance_tests": [
+        "known issuer hashes",
+        "unsupported digest",
+        "no fallback"
+      ]
+    },
+    {
+      "operation": "OCSP response generate",
+      "backend_neutral_behavior": "encode statuses, update times and responder data into BasicOCSPResponse",
+      "required_crypto_primitives": [
+        "OCSP ASN.1 encode",
+        "hash"
+      ],
+      "key_provider_responsibilities": [
+        "none until signing"
+      ],
+      "sdk_responsibilities": [
+        "OCSP response encode or required primitives; capability unverified"
+      ],
+      "enterprise_adapter_responsibilities": [
+        "map GenerateOCSPResponseRequest/Result"
+      ],
+      "community_responsibilities": [
+        "own contract, OpenSSL implementation and fixtures"
+      ],
+      "enterprise_product_responsibilities": [
+        "authorize status data and response lifetime"
+      ],
+      "current_status": "unsupported_pending",
+      "blockers": [
+        "SDK OCSP response APIs unverified"
+      ],
+      "acceptance_tests": [
+        "semantic parity",
+        "time/status negatives",
+        "no fallback"
+      ]
+    },
+    {
+      "operation": "OCSP response sign",
+      "backend_neutral_behavior": "sign OCSP response using selected responder key",
+      "required_crypto_primitives": [
+        "hash",
+        "RSA/ECDSA signature per approved scope"
+      ],
+      "key_provider_responsibilities": [
+        "resolve non-exportable responder key",
+        "binding/readiness/signing evidence"
+      ],
+      "sdk_responsibilities": [
+        "signature or key-handle operation; capability unverified"
+      ],
+      "enterprise_adapter_responsibilities": [
+        "invoke selected signer once and validate evidence"
+      ],
+      "community_responsibilities": [
+        "shared signing semantics and OpenSSL reference"
+      ],
+      "enterprise_product_responsibilities": [
+        "serve only verified, evidenced response"
+      ],
+      "current_status": "unsupported_pending",
+      "blockers": [
+        "SDK signing/key-handle and retry contracts unverified"
+      ],
+      "acceptance_tests": [
+        "signature verification",
+        "provider mismatch/failure",
+        "no fallback"
+      ]
+    },
+    {
+      "operation": "OCSP responder certificate validation",
+      "backend_neutral_behavior": "validate responder certificate against issuer and required usage",
+      "required_crypto_primitives": [
+        "X.509 parse",
+        "chain/signature verification"
+      ],
+      "key_provider_responsibilities": [
+        "none"
+      ],
+      "sdk_responsibilities": [
+        "responder validation or required primitives; capability unverified"
+      ],
+      "enterprise_adapter_responsibilities": [
+        "map boolean/stable errors and reject invalid responder"
+      ],
+      "community_responsibilities": [
+        "own contract and OpenSSL reference"
+      ],
+      "enterprise_product_responsibilities": [
+        "select authorized responder certificate"
+      ],
+      "current_status": "unsupported_pending",
+      "blockers": [
+        "SDK validation capability unverified",
+        "direct no-fallback assertion absent"
+      ],
+      "acceptance_tests": [
+        "valid delegated responder",
+        "wrong issuer/EKU/expiry",
+        "no fallback"
+      ]
+    },
+    {
+      "operation": "backend metadata/readiness",
+      "backend_neutral_behavior": "report identity, dependency, version, fingerprint, ABI, readiness and capabilities",
+      "required_crypto_primitives": [
+        "module init",
+        "module state/self-test reporting"
+      ],
+      "key_provider_responsibilities": [
+        "separate readiness check; no backend selection"
+      ],
+      "sdk_responsibilities": [
+        "return exact runtime version, build identity/fingerprint and operational state"
+      ],
+      "enterprise_adapter_responsibilities": [
+        "fail closed on mismatch/init/non-operational state",
+        "advertise no unverified PKI capabilities"
+      ],
+      "community_responsibilities": [
+        "own BackendInfo and stable error contract"
+      ],
+      "enterprise_product_responsibilities": [
+        "record profile/dependency metadata and gate release"
+      ],
+      "current_status": "contract_present_execution_not_run",
+      "blockers": [
+        "trusted SDK execution not run for current Enterprise commit"
+      ],
+      "acceptance_tests": [
+        "exact version/ABI/fingerprint",
+        "init and non-operational failures",
+        "capability truthfulness"
+      ]
+    },
+    {
+      "operation": "key/certificate binding validation",
+      "backend_neutral_behavior": "prove selected signing key matches issuer/responder certificate",
+      "required_crypto_primitives": [
+        "public-key derivation/comparison or sign/verify proof"
+      ],
+      "key_provider_responsibilities": [
+        "return binding result without exporting private key"
+      ],
+      "sdk_responsibilities": [
+        "support handle/public-key binding where it owns key handles; capability unverified"
+      ],
+      "enterprise_adapter_responsibilities": [
+        "reject mismatch before returning artifact",
+        "redact native errors"
+      ],
+      "community_responsibilities": [
+        "define shared binding semantics and OpenSSL tests"
+      ],
+      "enterprise_product_responsibilities": [
+        "register expected issuer/responder binding"
+      ],
+      "current_status": "unsupported_pending",
+      "blockers": [
+        "AnoCrypto-C key ownership model undecided"
+      ],
+      "acceptance_tests": [
+        "matching and mismatching certificate/key",
+        "provider failure",
+        "no fallback"
+      ]
+    },
+    {
+      "operation": "signing evidence generation",
+      "backend_neutral_behavior": "record stable operation/provider/key/result correlation without secrets",
+      "required_crypto_primitives": [
+        "none beyond completed signing operation"
+      ],
+      "key_provider_responsibilities": [
+        "return provider identity, key identity, readiness/exportability and fallback=false evidence"
+      ],
+      "sdk_responsibilities": [
+        "return safe module/build/result identity where applicable; capability unverified"
+      ],
+      "enterprise_adapter_responsibilities": [
+        "emit evidence only for actual selected signing path",
+        "redact path/native error data"
+      ],
+      "community_responsibilities": [
+        "define shared provider evidence semantics"
+      ],
+      "enterprise_product_responsibilities": [
+        "bind evidence to request/trace/lifecycle and retain securely"
+      ],
+      "current_status": "unsupported_pending",
+      "blockers": [
+        "AnoCrypto-C signing path and provider ownership not established"
+      ],
+      "acceptance_tests": [
+        "successful evidence correlation",
+        "evidence-write failure",
+        "no secret/path leakage",
+        "no fallback"
+      ]
+    }
+  ]
+}

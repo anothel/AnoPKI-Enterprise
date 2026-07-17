@@ -1,0 +1,168 @@
+{
+  "schema_version": 1,
+  "enterprise_commit": "152a657c8cc49775e8fa3bf33a3819b62c9d8e36",
+  "community_baseline_commit": "ae3ddee72dd05f274b9bbae1b514cdc4c4de03f5",
+  "current_anocrypto_capabilities": [],
+  "capabilities": [
+    {
+      "stable_operation_name": "csr_inspect",
+      "input_contract": "CSR PEM text",
+      "output_contract": "CsrInfo: subject, DNS/IP SANs, public-key metadata, signature metadata, extension OIDs",
+      "required_backend_metadata": [
+        "backend id",
+        "dependency name",
+        "dependency version",
+        "build fingerprint",
+        "ABI version",
+        "readiness",
+        "capability set",
+        "selected product profile",
+        "fallback_enabled=false"
+      ],
+      "current_openssl_state": "available",
+      "current_anocrypto_c_state": "unsupported_pending",
+      "unavailable_error": "backend.capability_unavailable",
+      "release_impact": "blocks Enterprise/AnoCrypto-C production release"
+    },
+    {
+      "stable_operation_name": "certificate_issue",
+      "input_contract": "IssueRequest: CSR, issuer certificate, issuer key reference, validity and certificate profile fields",
+      "output_contract": "IssueResult: certificate PEM, serial, subject and validity",
+      "required_backend_metadata": [
+        "backend id",
+        "dependency name",
+        "dependency version",
+        "build fingerprint",
+        "ABI version",
+        "readiness",
+        "capability set",
+        "selected product profile",
+        "fallback_enabled=false"
+      ],
+      "current_openssl_state": "available",
+      "current_anocrypto_c_state": "unsupported_pending",
+      "unavailable_error": "backend.capability_unavailable",
+      "release_impact": "blocks Enterprise/AnoCrypto-C production release"
+    },
+    {
+      "stable_operation_name": "crl_generate",
+      "input_contract": "GenerateCRLRequest: issuer certificate, issuer key reference, CRL number, update times and revoked entries",
+      "output_contract": "GenerateCRLResult: signed CRL PEM",
+      "required_backend_metadata": [
+        "backend id",
+        "dependency name",
+        "dependency version",
+        "build fingerprint",
+        "ABI version",
+        "readiness",
+        "capability set",
+        "selected product profile",
+        "fallback_enabled=false"
+      ],
+      "current_openssl_state": "available",
+      "current_anocrypto_c_state": "unsupported_pending",
+      "unavailable_error": "backend.capability_unavailable",
+      "release_impact": "blocks Enterprise/AnoCrypto-C production release"
+    },
+    {
+      "stable_operation_name": "crl_inspect",
+      "input_contract": "CRL PEM or DER",
+      "output_contract": "CRLInfo: issuer, update times, CRL number and revoked entries",
+      "required_backend_metadata": [
+        "backend id",
+        "dependency name",
+        "dependency version",
+        "build fingerprint",
+        "ABI version",
+        "readiness",
+        "capability set",
+        "selected product profile",
+        "fallback_enabled=false"
+      ],
+      "current_openssl_state": "available",
+      "current_anocrypto_c_state": "unsupported_pending",
+      "unavailable_error": "backend.capability_unavailable",
+      "release_impact": "blocks Enterprise/AnoCrypto-C production release"
+    },
+    {
+      "stable_operation_name": "ocsp_request_inspect",
+      "input_contract": "OCSP request DER",
+      "output_contract": "OCSPRequestInfo: certificate IDs and nonce metadata",
+      "required_backend_metadata": [
+        "backend id",
+        "dependency name",
+        "dependency version",
+        "build fingerprint",
+        "ABI version",
+        "readiness",
+        "capability set",
+        "selected product profile",
+        "fallback_enabled=false"
+      ],
+      "current_openssl_state": "available",
+      "current_anocrypto_c_state": "unsupported_pending",
+      "unavailable_error": "backend.capability_unavailable",
+      "release_impact": "blocks Enterprise/AnoCrypto-C production release"
+    },
+    {
+      "stable_operation_name": "ocsp_issuer_inspect",
+      "input_contract": "issuer certificate PEM and requested hash algorithm",
+      "output_contract": "OCSPIssuerInfo: issuer name hash, issuer key hash and hash algorithm",
+      "required_backend_metadata": [
+        "backend id",
+        "dependency name",
+        "dependency version",
+        "build fingerprint",
+        "ABI version",
+        "readiness",
+        "capability set",
+        "selected product profile",
+        "fallback_enabled=false"
+      ],
+      "current_openssl_state": "available",
+      "current_anocrypto_c_state": "unsupported_pending",
+      "unavailable_error": "backend.capability_unavailable",
+      "release_impact": "blocks Enterprise/AnoCrypto-C production release"
+    },
+    {
+      "stable_operation_name": "ocsp_response_generate",
+      "input_contract": "GenerateOCSPResponseRequest: request DER, issuer certificate, issuer key reference, update times and statuses",
+      "output_contract": "GenerateOCSPResponseResult: signed OCSP response DER",
+      "required_backend_metadata": [
+        "backend id",
+        "dependency name",
+        "dependency version",
+        "build fingerprint",
+        "ABI version",
+        "readiness",
+        "capability set",
+        "selected product profile",
+        "fallback_enabled=false"
+      ],
+      "current_openssl_state": "available",
+      "current_anocrypto_c_state": "unsupported_pending",
+      "unavailable_error": "backend.capability_unavailable",
+      "release_impact": "blocks Enterprise/AnoCrypto-C production release"
+    },
+    {
+      "stable_operation_name": "ocsp_responder_validate",
+      "input_contract": "issuer certificate PEM and responder certificate PEM",
+      "output_contract": "ValidateOCSPResponderResult: valid boolean",
+      "required_backend_metadata": [
+        "backend id",
+        "dependency name",
+        "dependency version",
+        "build fingerprint",
+        "ABI version",
+        "readiness",
+        "capability set",
+        "selected product profile",
+        "fallback_enabled=false"
+      ],
+      "current_openssl_state": "available",
+      "current_anocrypto_c_state": "unsupported_pending",
+      "unavailable_error": "backend.capability_unavailable",
+      "release_impact": "blocks Enterprise/AnoCrypto-C production release"
+    }
+  ]
+}
