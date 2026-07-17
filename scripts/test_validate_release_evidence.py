@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+import json
 import shutil
 import subprocess
 import sys
@@ -59,6 +60,8 @@ def require_release_workflow() -> None:
 def copy_release_evidence_inputs(dst: Path) -> None:
     files = [
         "docs/reference/release-evidence.md",
+        "docs/enterprise/private-alpha-evidence.md",
+        ".edition/edition.json",
         "scripts/verify-local.ps1",
         "scripts/verify-go-release.py",
         ".github/workflows/ci.yml",
@@ -284,6 +287,28 @@ def test_missing_compatibility_evidence_template_fails(tmp_path: Path) -> None:
     assert "release evidence compatibility template missing" in result.stderr
 
 
+def test_hosted_execution_contradictions_fail(tmp_path: Path) -> None:
+    cases = [
+        ("hosted_ci", {"remote_validation": "passed"}, "runner_assigned=false"),
+        ("hosted_ci", {"runner_assigned": True, "classification": "CI_SUCCESS"}, "zero hosted CI steps"),
+        ("hosted_ci", {"release_artifact_evidence": True}, "release artifact evidence"),
+        ("trusted_anocrypto_sdk_lane", {"status": "completed"}, "trusted SDK not_run"),
+        ("trusted_anocrypto_sdk_lane", {"kcmvp_status": "validated"}, "KCMVP validated claim"),
+        ("hosted_ci", {"blocker": "code_failure"}, "billing blocker"),
+    ]
+    for section, changes, expected in cases:
+        copy_release_evidence_inputs(tmp_path)
+        edition_path = tmp_path / ".edition" / "edition.json"
+        edition = json.loads(edition_path.read_text(encoding="utf-8"))
+        edition[section].update(changes)
+        edition_path.write_text(json.dumps(edition), encoding="utf-8")
+
+        result = run_validator(tmp_path)
+
+        assert result.returncode == 1
+        assert expected in result.stderr
+
+
 def main() -> None:
     result = run_validator(ROOT)
     if result.returncode != 0:
@@ -320,6 +345,8 @@ def main() -> None:
         test_missing_local_verification_evidence_fails(Path(dirname))
     with tempfile.TemporaryDirectory() as dirname:
         test_missing_compatibility_evidence_template_fails(Path(dirname))
+    with tempfile.TemporaryDirectory() as dirname:
+        test_hosted_execution_contradictions_fail(Path(dirname))
     require_release_workflow()
     print("release evidence validator tests ok")
 

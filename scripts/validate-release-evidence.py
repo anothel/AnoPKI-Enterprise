@@ -5,8 +5,10 @@
 from __future__ import annotations
 
 import argparse
+import json
 import re
 import sys
+from datetime import datetime
 from pathlib import Path
 
 
@@ -160,6 +162,40 @@ REQUIRED_RELEASE_TEXT = [
     "gh release upload",
 ]
 
+EXPECTED_HOSTED_CI = {
+    "enterprise_commit": "22f5ebde6bfe2e3b40f874bb52dd5957152e4f22",
+    "community_baseline_commit": "71f0e898c32a7d6e00d0725eeab6ca150ccaa0af",
+    "workflow_name": "CI",
+    "run_id": "29579430288",
+    "run_url": "https://github.com/anothel/AnoPKI-Enterprise/actions/runs/29579430288",
+    "event": "push",
+    "head_sha": "22f5ebde6bfe2e3b40f874bb52dd5957152e4f22",
+    "started_at": "2026-07-17T12:12:35Z",
+    "completed_at": "2026-07-17T12:12:41Z",
+    "job_count": 17,
+    "runner_assigned": False,
+    "steps_executed": 0,
+    "artifacts_created": 0,
+    "job_logs_created": 0,
+    "release_artifact_evidence": False,
+    "classification": "REMOTE_DEFERRED/BLOCKED_EXTERNAL",
+    "blocker": "github_actions_billing_or_spending_limit_runner_allocation_blocked",
+    "local_validation": "passed",
+    "remote_validation": "not_run",
+}
+
+EXPECTED_TRUSTED_SDK = {
+    "workflow_present": True,
+    "execution": "not_run",
+    "status": "REMOTE_UNVERIFIED",
+    "required_secret": "ANOCRYPTO_C_READ_TOKEN",
+    "exact_sdk_commit_required": True,
+    "capacity_blocked": True,
+    "parity": "unsupported_pending",
+    "production_ready": False,
+    "kcmvp_status": "not_validated",
+}
+
 
 def fail(message: str) -> None:
     print(message, file=sys.stderr)
@@ -228,6 +264,64 @@ def check_local_verification_evidence(root: Path, text: str) -> None:
         fail("release evidence missing local verification commands:\n" + "\n".join(missing))
 
 
+def check_hosted_execution_evidence(root: Path) -> None:
+    edition = json.loads((root / ".edition/edition.json").read_text(encoding="utf-8"))
+    hosted = edition.get("hosted_ci")
+    trusted = edition.get("trusted_anocrypto_sdk_lane")
+    if not isinstance(hosted, dict) or not isinstance(trusted, dict):
+        fail("missing structured hosted CI or trusted SDK evidence")
+
+    if hosted.get("runner_assigned") is False and hosted.get("remote_validation") in {"passed", "success"}:
+        fail("runner_assigned=false cannot record remote tests passed")
+    if hosted.get("steps_executed") == 0 and hosted.get("classification") in {"CI_SUCCESS", "PASSED", "SUCCESS"}:
+        fail("zero hosted CI steps cannot record CI success")
+    if hosted.get("artifacts_created") == 0 and hosted.get("release_artifact_evidence") is not False:
+        fail("zero hosted artifacts cannot claim release artifact evidence")
+    if trusted.get("execution") == "not_run" and trusted.get("status") in {"completed", "COMPLETED", "passed", "success"}:
+        fail("trusted SDK not_run cannot record completed SDK evidence")
+    if trusted.get("kcmvp_status") == "validated" or edition.get("kcmvp_status") == "validated":
+        fail("KCMVP validated claim requires certification evidence")
+    if hosted.get("blocker") in {"code_failure", "test_failure"}:
+        fail("billing blocker cannot be classified as a code failure")
+
+    hosted_drift = [
+        f"{key}: expected {value!r}, got {hosted.get(key)!r}"
+        for key, value in EXPECTED_HOSTED_CI.items()
+        if hosted.get(key) != value
+    ]
+    trusted_drift = [
+        f"{key}: expected {value!r}, got {trusted.get(key)!r}"
+        for key, value in EXPECTED_TRUSTED_SDK.items()
+        if trusted.get(key) != value
+    ]
+    state_drift = [
+        key
+        for key in ("commercial_release_authorized", "production_ready", "fallback_enabled", "fallback_used")
+        if edition.get(key) is not False
+    ]
+    if hosted_drift or trusted_drift or state_drift:
+        fail(
+            "hosted execution evidence drift:\n"
+            + "\n".join(hosted_drift + trusted_drift + [f"{key}: expected false" for key in state_drift])
+        )
+
+    try:
+        started = datetime.fromisoformat(hosted["started_at"].replace("Z", "+00:00"))
+        completed = datetime.fromisoformat(hosted["completed_at"].replace("Z", "+00:00"))
+    except (TypeError, ValueError):
+        fail("hosted CI timestamps must be RFC3339")
+    if completed < started:
+        fail("hosted CI completed_at precedes started_at")
+
+    evidence_doc = require_text(root / "docs/enterprise/private-alpha-evidence.md", [])
+    required_doc_markers = list(EXPECTED_HOSTED_CI) + list(EXPECTED_TRUSTED_SDK)
+    required_doc_markers += [str(value).lower() for value in EXPECTED_HOSTED_CI.values()]
+    required_doc_markers += [str(value).lower() for value in EXPECTED_TRUSTED_SDK.values()]
+    missing = [value for value in required_doc_markers if value not in evidence_doc.lower()]
+    if missing:
+        fail("private hosted evidence missing:\n" + "\n".join(sorted(set(missing))))
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--root", default=ROOT, type=Path)
@@ -237,6 +331,7 @@ def main() -> None:
     check_compatibility_matrix(doc)
     check_compatibility_evidence_template(doc)
     check_local_verification_evidence(root, doc)
+    check_hosted_execution_evidence(root)
     require_text(root / "scripts/verify-go-release.py", REQUIRED_GO_RUNNER_TEXT)
     require_text(root / ".github/workflows/ci.yml", REQUIRED_CI_TEXT)
     require_text(root / ".github/workflows/release.yml", REQUIRED_RELEASE_TEXT)

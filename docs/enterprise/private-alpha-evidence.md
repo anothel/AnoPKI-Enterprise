@@ -1,7 +1,9 @@
 # Enterprise Private Alpha Evidence
 
 Status: local private-alpha engineering gate passes for the Enterprise/OpenSSL
-profile. CI execution and all customer/production distribution remain blocked.
+profile. Hosted qualification is deferred because GitHub Actions blocked runner
+allocation before code execution. All customer/production distribution remains
+blocked.
 
 ## Version And Edition Model
 
@@ -26,9 +28,9 @@ The service `/version`, C++ library version, release workflow, and release
 artifact names use the Community base version. Enterprise edition and adapter
 status are separate metadata and do not create a production release version.
 
-The working tree contains the shared Community/OpenSSL tree synchronized to the
-reviewed baseline above. A reviewed Enterprise commit and durable CI evidence
-remain required before merge or release review.
+Enterprise commit `22f5ebde6bfe2e3b40f874bb52dd5957152e4f22`
+contains the shared Community/OpenSSL tree synchronized to the reviewed baseline
+above. Durable hosted CI evidence remains required before release review.
 
 ## AnoCrypto-C Integration Status
 
@@ -54,7 +56,7 @@ Current state:
 - Enterprise/OpenSSL CMake configure and build passed with OpenSSL 3.5.5 in the
   audit environment. The backend-neutral `anopki_core` archive had no OpenSSL
   symbols; the separated OpenSSL adapter owned the dependency.
-- Enterprise/OpenSSL CTest: 9/9 tests passed after the explicit product-profile
+- Enterprise/OpenSSL CTest: 15/15 tests passed after the explicit product-profile
   contract was added. The AnoCrypto-C parity test is part of the separately
   selected integration profile and remains explicitly skipped as
   `unsupported_pending`.
@@ -63,9 +65,42 @@ Current state:
 - The adapter compiled against an out-of-tree contract stub only to validate the
   CMake/C++ consumer boundary. That is not real AnoCrypto-C integration evidence.
 
-A reviewed commit, real private CI run, and a pinned real AnoCrypto-C SDK run are
-still required for durable evidence. Commercial and production distribution
-remain prohibited while the Enterprise license is a placeholder.
+The reviewed commit has been recorded. A real private CI run and a pinned real
+AnoCrypto-C SDK run are still required for durable evidence. Commercial and
+production distribution remain prohibited while the Enterprise license is a
+placeholder.
+
+## Hosted CI Attempt Evidence
+
+This records an exact GitHub Actions attempt, not a code failure or successful
+remote qualification. GitHub Actions reported all 17 jobs as failures after a
+billing or spending-limit blocker prevented runner allocation. No hosted test
+steps ran, and no artifacts or job logs were produced.
+
+| Evidence field | Value |
+| --- | --- |
+| enterprise_commit | `22f5ebde6bfe2e3b40f874bb52dd5957152e4f22` |
+| community_baseline_commit | `71f0e898c32a7d6e00d0725eeab6ca150ccaa0af` |
+| workflow_name | `CI` |
+| run_id | `29579430288` |
+| run_url | `https://github.com/anothel/AnoPKI-Enterprise/actions/runs/29579430288` |
+| event | `push` |
+| head_sha | `22f5ebde6bfe2e3b40f874bb52dd5957152e4f22` |
+| started_at | `2026-07-17T12:12:35Z` |
+| completed_at | `2026-07-17T12:12:41Z` |
+| job_count | `17` |
+| runner_assigned | `false` |
+| steps_executed | `0` |
+| artifacts_created | `0` |
+| job_logs_created | `0` |
+| release_artifact_evidence | `false` |
+| classification | `REMOTE_DEFERRED/BLOCKED_EXTERNAL` |
+| blocker | `github_actions_billing_or_spending_limit_runner_allocation_blocked` |
+| local_validation | `passed` |
+| remote_validation | `not_run` |
+
+The exact Enterprise commit remains remotely unverified. The qualification
+fields below remain `PENDING` because the hosted attempt executed no code.
 
 ## Real Private CI Evidence
 
@@ -95,3 +130,15 @@ remains `PENDING`. The lane packages and hashes the installed SDK, binds the exa
 Enterprise commits to the workflow run, and proves the Enterprise/AnoCrypto-C
 artifact has no OpenSSL linkage or fallback. It does not change operation parity
 from `unsupported_pending`.
+
+| Field | Value |
+| --- | --- |
+| workflow_present | `true` |
+| execution | `not_run` |
+| status | `REMOTE_UNVERIFIED` |
+| required_secret | `ANOCRYPTO_C_READ_TOKEN` |
+| exact_sdk_commit_required | `true` |
+| capacity_blocked | `true` |
+| parity | `unsupported_pending` |
+| production_ready | `false` |
+| kcmvp_status | `not_validated` |
