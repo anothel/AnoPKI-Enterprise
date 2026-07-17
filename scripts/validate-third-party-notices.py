@@ -19,6 +19,7 @@ LEGACY_INVENTORY_PATH = Path("packaging/license-inventory.json")
 POLICY_PATH = Path("packaging/package-policy.json")
 GENERATOR = ROOT / "scripts/generate-third-party-notices.py"
 ATTRIBUTES_PATH = Path(".gitattributes")
+EVIDENCE_EOL_RULE = ["LICENSES/third-party/**", "text", "eol=lf"]
 WHITESPACE_EVIDENCE_PATH = "LICENSES/third-party/go/gopkg.in_check.v1/v1.0.0-20201130134442-10cb98267c6c/LICENSE"
 WHITESPACE_ATTRIBUTE = "whitespace=-trailing-space"
 SHA_RE = re.compile(r"[0-9a-f]{64}")
@@ -349,9 +350,12 @@ def validate_attributes(root: Path) -> None:
         lines = (root / ATTRIBUTES_PATH).read_text(encoding="utf-8").splitlines()
     except OSError as exc:
         fail(f"invalid third-party whitespace policy: {exc}")
+    parsed = []
     rules = []
     for raw in lines:
         parts = raw.partition("#")[0].split()
+        if parts:
+            parsed.append(parts)
         if len(parts) > 1 and any(
             item in {"whitespace", "-whitespace", "!whitespace"} or item.startswith("whitespace=")
             for item in parts[1:]
@@ -359,6 +363,8 @@ def validate_attributes(root: Path) -> None:
             rules.append(parts)
     if rules != [[WHITESPACE_EVIDENCE_PATH, WHITESPACE_ATTRIBUTE]]:
         fail("third-party whitespace policy must contain only the exact pinned evidence exception")
+    if EVIDENCE_EOL_RULE not in parsed:
+        fail("third-party evidence must use LF across checkout platforms")
 
 
 def validate_inventory(root: Path, inventory: dict[str, object]) -> None:
