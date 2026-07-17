@@ -223,6 +223,14 @@ def test_missing_readme_link_fails(tmp_path: Path) -> None:
 def test_license_text_drift_fails(tmp_path: Path) -> None:
     copy_docs_inputs(tmp_path)
     (tmp_path / "ENTERPRISE-LICENSE-NOTICE.md").unlink()
+    readme = tmp_path / "README.md"
+    readme.write_text(
+        readme.read_text(encoding="utf-8").replace(
+            " and\n[ENTERPRISE-LICENSE-NOTICE.md](ENTERPRISE-LICENSE-NOTICE.md)",
+            "",
+        ),
+        encoding="utf-8",
+    )
     license_file = tmp_path / "LICENSE"
     license_file.write_text("Custom License\n", encoding="utf-8")
 

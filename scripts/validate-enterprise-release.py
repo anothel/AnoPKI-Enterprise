@@ -35,8 +35,41 @@ def release_blockers(root: Path) -> list[str]:
     evidence = (root / "docs/enterprise/private-alpha-evidence.md").read_text(encoding="utf-8")
     blockers: list[str] = []
 
-    if "PLACEHOLDER" in enterprise_license.upper() or edition.get("commercial_license_status") == "placeholder":
-        blockers.append("commercial license is placeholder")
+    packaging_paths = (
+        root / "packaging/license-inventory.json",
+        root / "packaging/package-policy.json",
+        root / "scripts/generate-package-manifest.py",
+        root / "scripts/validate-package-boundary.py",
+    )
+    missing_packaging = [str(path.relative_to(root)) for path in packaging_paths if not path.is_file()]
+    if missing_packaging:
+        blockers.append("packaging boundary is incomplete: " + ", ".join(missing_packaging))
+        inventory: dict[str, object] = {}
+        package_policy: dict[str, object] = {}
+    else:
+        inventory = json.loads(packaging_paths[0].read_text(encoding="utf-8"))
+        package_policy = json.loads(packaging_paths[1].read_text(encoding="utf-8"))
+
+    if "PLACEHOLDER" in enterprise_license.upper() or edition.get("commercial_license_status") != "complete":
+        blockers.append("commercial license is incomplete")
+    if inventory.get("commercial_license_status") != "complete":
+        blockers.append("license inventory is incomplete")
+    if inventory.get("customer_distribution_authorized") is not True:
+        blockers.append("license inventory does not authorize customer distribution")
+    classes = package_policy.get("package_classes")
+    customer_policy = classes.get("customer-release", {}) if isinstance(classes, dict) else {}
+    if package_policy.get("customer_distribution_authorized") is not True or not isinstance(
+        customer_policy, dict
+    ) or customer_policy.get("authorized") is not True:
+        blockers.append("customer package policy is not authorized")
+    if edition.get("commercial_release_authorized") is not True:
+        blockers.append("commercial release authorization is absent")
+    if edition.get("production_ready") is not True:
+        blockers.append("production readiness is false")
+
+    hosted = edition.get("hosted_ci")
+    if not isinstance(hosted, dict) or hosted.get("remote_validation") != "passed":
+        blockers.append("hosted qualification is not passed")
     if edition.get("enterprise_overlay_version") == "unreleased":
         blockers.append("Enterprise overlay version is unreleased")
     if edition.get("distribution_status") == "prohibited":

@@ -33,6 +33,9 @@ Pre-1.0 releases distribute archives, not installers or container images:
 - `anopki-backend-info.json` from the built Enterprise/OpenSSL Core artifact,
 - `anopki-release-metadata.json` binding version/commit, Enterprise profile,
   backend evidence, provider policy, and fail-closed claim fields,
+- `package-manifest.json` binding the exact internal-validation allow-list,
+  per-file SHA-256 values, ownership, license inventory, notices, selected
+  adapter, and no-fallback state,
 - `SHA256SUMS`,
 - CycloneDX SBOM JSON,
 - cosign signatures and transparency-log references for archives, checksums,
@@ -42,10 +45,17 @@ The manually dispatched release workflow first runs the Enterprise distribution
 gate and is currently blocked. If that gate is later closed by approved evidence,
 the read-only build job creates Linux amd64 service/core archives, records
 the Enterprise supported-Go full evidence wrapper, records `anopki-core backend
-info`, generates Enterprise/OpenSSL release metadata, writes checksums for
+info`, generates Enterprise/OpenSSL release metadata and the explicitly
+non-customer `internal-validation` package manifest, writes checksums for
 archives and metadata, validates exact schema consistency,
 generates a CycloneDX SBOM with `syft`, records signing as skipped, and uploads
 the `dist/` directory only to the workflow run.
+
+Manually dispatched dry-run archives use `internal-validation` and are not a
+customer package. A tag build selects `customer-release`; generation and the
+publish job both fail closed unless its separate allow-list, commercial license,
+third-party notices, hosted qualification, and commercial authorization are
+complete.
 
 Publishing is a separate job limited to a matching `v*` tag push. It requires
 a signed annotated tag and the `release` GitHub environment before receiving

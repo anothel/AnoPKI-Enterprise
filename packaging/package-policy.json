@@ -1,0 +1,94 @@
+{
+  "schema_version": 1,
+  "product": "AnoPKI Enterprise",
+  "edition": "enterprise",
+  "commercial_license_status": "incomplete",
+  "customer_distribution_authorized": false,
+  "package_classes": {
+    "internal-validation": {
+      "authorized": true,
+      "customer_distribution": false,
+      "distribution_scope": "internal-private-validation",
+      "allowed_archive_formats": [
+        "zip",
+        "tar.gz"
+      ],
+      "required_evidence": [
+        "package-manifest.json",
+        "local qualification result"
+      ]
+    },
+    "customer-release": {
+      "authorized": false,
+      "customer_distribution": true,
+      "distribution_scope": "customer-distribution-blocked",
+      "allowed_archive_formats": [
+        "zip",
+        "tar.gz"
+      ],
+      "blockers": [
+        "final commercial license is incomplete",
+        "third-party license inventory is incomplete",
+        "hosted qualification is incomplete",
+        "commercial release authorization is absent",
+        "required notices are missing",
+        "customer allow-lists and archive-member binding are incomplete"
+      ]
+    }
+  },
+  "profiles": {
+    "enterprise-openssl": {
+      "selected_adapter": "openssl",
+      "production_ready": false,
+      "kcmvp_status": "not_applicable",
+      "manifests": {
+        "internal-validation": "packaging/manifests/enterprise-openssl-internal.txt",
+        "customer-release": "packaging/manifests/enterprise-openssl-customer.txt"
+      },
+      "additional_blockers": [
+        "OpenSSL runtime license and attribution evidence is missing"
+      ]
+    },
+    "enterprise-anocrypto-c": {
+      "selected_adapter": "anocrypto-c",
+      "production_ready": false,
+      "kcmvp_status": "not_validated",
+      "manifests": {
+        "internal-validation": "packaging/manifests/enterprise-anocrypto-c-internal.txt",
+        "customer-release": "packaging/manifests/enterprise-anocrypto-c-customer.txt"
+      },
+      "additional_blockers": [
+        "exact trusted SDK evidence is absent",
+        "external SDK license is unresolved",
+        "PKI operation parity is incomplete",
+        "production readiness is false",
+        "KCMVP is not validated",
+        "fallback detection must remain false"
+      ]
+    }
+  },
+  "forbidden_path_patterns": [
+    ".git/**",
+    ".tmp/**",
+    "build/**",
+    "build-*/**",
+    "cmake-build-*/**",
+    "out/**",
+    "docs-pack/**",
+    "*.zip",
+    "*.tar.gz",
+    "**/__pycache__/**",
+    "**/.pytest_cache/**",
+    "**/.gocache/**",
+    "**/.gomodcache/**",
+    "**/*.pem",
+    "**/*.key",
+    "**/*credential*",
+    "**/*secret*",
+    "**/enterprise/anocrypto/include/**",
+    "**/enterprise/anocrypto/src/**",
+    "**/third_party/anocrypto/**",
+    "**/vendor/anocrypto/**"
+  ],
+  "approved_generated_paths": []
+}

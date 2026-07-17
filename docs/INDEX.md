@@ -83,6 +83,8 @@ This index is the public entry point for repository documentation. Keep it short
 | [Release readiness action plan](reference/release-readiness-action-plan.md) | Current grouped execution plan from repository analysis. |
 | [v0.1.0-alpha.0 candidate evidence](reference/release-candidate-v0.1.0-alpha.0.md) | Local draft checks, known gaps, and blockers; no publication status. |
 | [Release evidence](reference/release-evidence.md) | Release artifact and supply-chain evidence requirements. |
+| [Commercial packaging boundary](enterprise/commercial-packaging-boundary.md) | Internal-versus-customer package classes, exact allow-lists, profile separation, and fail-closed release rules. |
+| [License inventory baseline](enterprise/license-inventory.md) | Mixed-license component inventory and unresolved customer-distribution blockers. |
 | [Observability](reference/observability.md) | Structured logs, expvar counters, request IDs, and remaining observability gaps. |
 | [Fuzzing](reference/fuzzing.md) | Parser fuzzing scope and local invocation. |
 | [Issuance consistency](reference/issuance-consistency.md) | Signing claim, retry, and audit repair behavior. |

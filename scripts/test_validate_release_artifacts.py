@@ -392,6 +392,43 @@ def release_metadata(backend: dict[str, object]) -> dict[str, object]:
     }
 
 
+def package_manifest() -> dict[str, object]:
+    return {
+        "schema_version": 1,
+        "product": "AnoPKI Enterprise",
+        "edition": "enterprise",
+        "product_profile": "enterprise-openssl",
+        "enterprise_commit": "0123456789abcdef0123456789abcdef01234567",
+        "community_baseline_commit": "ae3ddee72dd05f274b9bbae1b514cdc4c4de03f5",
+        "package_class": "internal-validation",
+        "commercial_license_status": "incomplete",
+        "customer_distribution_authorized": False,
+        "selected_adapter": "openssl",
+        "fallback_enabled": False,
+        "fallback_used": False,
+        "files": [
+            {
+                "path": "LICENSE",
+                "sha256": "0" * 64,
+                "ownership": "mixed",
+                "license_expression": "MPL-2.0 AND LicenseRef-AnoPKI-Enterprise",
+                "distribution_scope": "internal-validation",
+            }
+        ],
+        "licenses": [
+            {
+                "component": "synchronized-community-mpl-files",
+                "license_expression": "MPL-2.0",
+                "license_file": "LICENSES/MPL-2.0.txt",
+                "evidence_status": "recorded",
+            }
+        ],
+        "notices": ["ENTERPRISE-LICENSE-NOTICE.md", "LICENSES/MPL-2.0.txt"],
+        "production_ready": False,
+        "kcmvp_status": "not_applicable",
+    }
+
+
 def rewrite_checksums(dist: Path) -> None:
     artifacts = [
         path
@@ -417,6 +454,7 @@ def write_valid_dist(dist: Path) -> tuple[Path, Path]:
     backend = backend_info()
     (dist / "anopki-backend-info.json").write_text(json.dumps(backend), encoding="utf-8")
     (dist / "anopki-release-metadata.json").write_text(json.dumps(release_metadata(backend)), encoding="utf-8")
+    (dist / "package-manifest.json").write_text(json.dumps(package_manifest()), encoding="utf-8")
     rewrite_checksums(dist)
     return service, core
 
@@ -565,6 +603,33 @@ def test_missing_release_metadata_fails() -> None:
 
     assert result.returncode == 1
     assert "missing release metadata" in result.stderr
+
+
+def test_missing_package_manifest_fails() -> None:
+    with tempfile.TemporaryDirectory() as tmp:
+        dist = Path(tmp)
+        write_valid_dist(dist)
+        (dist / "package-manifest.json").unlink()
+        rewrite_checksums(dist)
+        result = run_validator(dist)
+
+    assert result.returncode == 1
+    assert "missing package manifest" in result.stderr
+
+
+def test_customer_relabel_of_internal_artifacts_fails() -> None:
+    with tempfile.TemporaryDirectory() as tmp:
+        dist = Path(tmp)
+        write_valid_dist(dist)
+        path = dist / "package-manifest.json"
+        value = json.loads(path.read_text(encoding="utf-8"))
+        value["package_class"] = "customer-release"
+        path.write_text(json.dumps(value), encoding="utf-8")
+        rewrite_checksums(dist)
+        result = run_validator(dist)
+
+    assert result.returncode == 1
+    assert "lack completed license and distribution authorization" in result.stderr
 
 
 def test_backend_profile_mismatch_fails() -> None:
@@ -901,6 +966,8 @@ def main() -> None:
     test_extra_checksum_entry_fails()
     test_duplicate_checksum_entry_fails()
     test_missing_release_metadata_fails()
+    test_missing_package_manifest_fails()
+    test_customer_relabel_of_internal_artifacts_fails()
     test_backend_profile_mismatch_fails()
     test_release_metadata_backend_mismatch_fails()
     test_enterprise_openssl_anocrypto_claim_fails()

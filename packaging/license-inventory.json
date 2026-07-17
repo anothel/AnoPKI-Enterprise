@@ -1,0 +1,191 @@
+{
+  "schema_version": 1,
+  "product": "AnoPKI Enterprise",
+  "edition": "enterprise",
+  "generated_from_commit": "b79824db0ce04f5a81b41a18712b894fb29c1ba6",
+  "community_baseline_commit": "ae3ddee72dd05f274b9bbae1b514cdc4c4de03f5",
+  "commercial_license_status": "incomplete",
+  "customer_distribution_authorized": false,
+  "components": [
+    {
+      "name": "repository-license-materials",
+      "ownership": "mixed",
+      "source_scope": [
+        "LICENSE",
+        "LICENSES/**",
+        "ENTERPRISE-LICENSE-NOTICE.md"
+      ],
+      "license_expression": "MPL-2.0 AND LicenseRef-AnoPKI-Enterprise",
+      "license_file": "LICENSE",
+      "distribution_scope": "internal-validation",
+      "required_notices": [
+        "LICENSE",
+        "ENTERPRISE-LICENSE-NOTICE.md"
+      ],
+      "redistribution_allowed": false,
+      "customer_package_allowed": false,
+      "evidence_status": "commercial_terms_incomplete"
+    },
+    {
+      "name": "generated-metadata-and-evidence",
+      "ownership": "Enterprise",
+      "source_scope": [
+        ".edition/**",
+        "docs/enterprise/*evidence*.md",
+        "sdk-manifests/**"
+      ],
+      "license_expression": "LicenseRef-AnoPKI-Enterprise",
+      "license_file": "LICENSES/LicenseRef-AnoPKI-Enterprise.txt",
+      "distribution_scope": "private-evidence",
+      "required_notices": [
+        "ENTERPRISE-LICENSE-NOTICE.md"
+      ],
+      "redistribution_allowed": false,
+      "customer_package_allowed": false,
+      "evidence_status": "internal_only"
+    },
+    {
+      "name": "test-only-fixtures",
+      "ownership": "Community",
+      "source_scope": [
+        "tests/**",
+        "service/**/*_test.go",
+        "scripts/test_*.py",
+        "scripts/acme-smoke/test-*.ps1"
+      ],
+      "license_expression": "MPL-2.0",
+      "license_file": "LICENSES/MPL-2.0.txt",
+      "distribution_scope": "internal-validation-test-only",
+      "required_notices": [
+        "LICENSES/MPL-2.0.txt"
+      ],
+      "redistribution_allowed": true,
+      "customer_package_allowed": false,
+      "evidence_status": "recorded"
+    },
+    {
+      "name": "build-only-tools",
+      "ownership": "mixed",
+      "source_scope": [
+        "CMakeLists.txt",
+        "scripts/**",
+        ".github/workflows/**"
+      ],
+      "license_expression": "NOASSERTION",
+      "license_file": null,
+      "distribution_scope": "build-only-not-redistributed",
+      "required_notices": [],
+      "redistribution_allowed": false,
+      "customer_package_allowed": false,
+      "evidence_status": "inventory_incomplete"
+    },
+    {
+      "name": "customer-documentation",
+      "ownership": "Enterprise",
+      "source_scope": [
+        "docs/enterprise/commercial-packaging-boundary.md",
+        "docs/enterprise/license-inventory.md"
+      ],
+      "license_expression": "LicenseRef-AnoPKI-Enterprise",
+      "license_file": "LICENSES/LicenseRef-AnoPKI-Enterprise.txt",
+      "distribution_scope": "candidate-customer-documentation",
+      "required_notices": [
+        "ENTERPRISE-LICENSE-NOTICE.md"
+      ],
+      "redistribution_allowed": false,
+      "customer_package_allowed": false,
+      "evidence_status": "legal_review_required"
+    },
+    {
+      "name": "enterprise-commercial-overlay",
+      "ownership": "Enterprise",
+      "source_scope": [
+        "enterprise/**",
+        "docs/enterprise/**",
+        "include/anopki/enterprise/**",
+        "service/internal/enterprise/**",
+        "src/backends/anocrypto_c/**",
+        "src/enterprise/**"
+      ],
+      "license_expression": "LicenseRef-AnoPKI-Enterprise",
+      "license_file": "LICENSES/LicenseRef-AnoPKI-Enterprise.txt",
+      "distribution_scope": "internal-validation",
+      "required_notices": [
+        "ENTERPRISE-LICENSE-NOTICE.md"
+      ],
+      "redistribution_allowed": false,
+      "customer_package_allowed": false,
+      "evidence_status": "commercial_terms_incomplete"
+    },
+    {
+      "name": "synchronized-community-mpl-files",
+      "ownership": "Community",
+      "source_scope": [
+        "include/**",
+        "src/**",
+        "service/**",
+        "docs/**",
+        "README.md",
+        "VERSION"
+      ],
+      "license_expression": "MPL-2.0",
+      "license_file": "LICENSES/MPL-2.0.txt",
+      "distribution_scope": "source-available-subject-to-mpl",
+      "required_notices": [
+        "LICENSES/MPL-2.0.txt",
+        "ENTERPRISE-LICENSE-NOTICE.md"
+      ],
+      "redistribution_allowed": true,
+      "customer_package_allowed": true,
+      "evidence_status": "recorded"
+    },
+    {
+      "name": "openssl-runtime-dependency",
+      "ownership": "external",
+      "source_scope": [
+        "external:openssl-runtime"
+      ],
+      "license_expression": "NOASSERTION",
+      "license_file": null,
+      "distribution_scope": "external-runtime-dependency",
+      "required_notices": [
+        "OpenSSL license and attribution evidence"
+      ],
+      "redistribution_allowed": false,
+      "customer_package_allowed": false,
+      "evidence_status": "license_evidence_missing"
+    },
+    {
+      "name": "go-module-dependencies",
+      "ownership": "external",
+      "source_scope": [
+        "external:go-modules"
+      ],
+      "license_expression": "NOASSERTION",
+      "license_file": null,
+      "distribution_scope": "external-build-and-runtime-dependencies",
+      "required_notices": [
+        "Generated Go dependency license report"
+      ],
+      "redistribution_allowed": false,
+      "customer_package_allowed": false,
+      "evidence_status": "dependency_license_report_missing"
+    },
+    {
+      "name": "anocrypto-c-external-sdk",
+      "ownership": "external",
+      "source_scope": [
+        "external:anocrypto-c-sdk"
+      ],
+      "license_expression": "NOASSERTION",
+      "license_file": null,
+      "distribution_scope": "external-sdk-not-copied",
+      "required_notices": [
+        "AnoCrypto-C SDK license supplied by the SDK owner"
+      ],
+      "redistribution_allowed": false,
+      "customer_package_allowed": false,
+      "evidence_status": "external_license_unresolved"
+    }
+  ]
+}

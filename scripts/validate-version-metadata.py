@@ -75,7 +75,7 @@ def main() -> None:
         "pki_parity_status": "unsupported_pending",
         "validated_mode": False,
         "kcmvp_evidence": "none",
-        "commercial_license_status": "placeholder",
+        "commercial_license_status": "incomplete",
         "kcmvp_status": "not_validated",
         "provider_status": "not_implemented",
         "distribution_status": "prohibited",

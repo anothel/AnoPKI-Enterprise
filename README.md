@@ -281,11 +281,22 @@ and fixtures remain future work.
 
 ## License
 
-Licensed under the Mozilla Public License, Version 2.0. See [LICENSE](LICENSE).
+AnoPKI Enterprise is a mixed-license private repository. Community-derived
+files remain MPL-2.0; Enterprise-only files use the current internal
+`LicenseRef-AnoPKI-Enterprise` placeholder. See [LICENSE](LICENSE) and
+[ENTERPRISE-LICENSE-NOTICE.md](ENTERPRISE-LICENSE-NOTICE.md). Customer and
+production distribution are not authorized.
 
 ## Current Status
 
 This is a lifecycle-service implementation in progress. Core lifecycle, profile policy, status publication, auth, audit, notifications, security/contribution docs, CI workflow, and ACME adapter foundations exist. Live lego and certbot HTTP-01 smokes reach account, order, challenge validation, finalize, and certificate response against a harness-started local service. Current priority is release-candidate trust: API/doc/code parity, negative failure-mode tests, compatibility evidence, and release operations.
+
+| Release boundary | Current state |
+| --- | --- |
+| Enterprise/OpenSSL internal validation package | Manifest generation enabled; customer distribution is not implied |
+| Enterprise/OpenSSL customer package | Blocked by incomplete license/notices, hosted qualification, and commercial authorization |
+| Enterprise/AnoCrypto-C internal validation package | Adapter/evidence inputs only; external SDK is not copied |
+| Enterprise/AnoCrypto-C customer package | Blocked; trusted SDK not run, parity pending, production false, KCMVP not validated |
 
 
 ### Trusted AnoCrypto-C SDK integration

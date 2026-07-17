@@ -18,6 +18,8 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.x"
+      - name: Validate package boundary
+        run: python scripts/validate-package-boundary.py
       - name: Block Enterprise distribution until release gates close
         run: python scripts/validate-enterprise-release.py
       - uses: actions/setup-go@v5
@@ -71,8 +73,10 @@ jobs:
           if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
             test "${GITHUB_REF_NAME#v}" = "$VERSION"
             echo "RELEASE_MODE=tag" >> "$GITHUB_ENV"
+            echo "PACKAGE_CLASS=customer-release" >> "$GITHUB_ENV"
           else
             echo "RELEASE_MODE=dry-run" >> "$GITHUB_ENV"
+            echo "PACKAGE_CLASS=internal-validation" >> "$GITHUB_ENV"
           fi
           echo "VERSION=$VERSION" >> "$GITHUB_ENV"
           echo "BUILD_TIME=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_ENV"
@@ -90,10 +94,20 @@ jobs:
             --version "$VERSION" \
             --commit "$GITHUB_SHA" \
             --build-time "$BUILD_TIME"
+      - name: Record package boundary
+        run: >-
+          python scripts/generate-package-manifest.py
+          --profile enterprise-openssl
+          --package-class "$PACKAGE_CLASS"
+          --out dist/package-manifest.json
+      - name: Validate generated package manifest
+        run: >-
+          python scripts/validate-package-boundary.py
+          --manifest dist/package-manifest.json
       - run: tar -czf "dist/anopki-service-v${VERSION}-linux-amd64.tar.gz" -C dist anopki-service
       - run: tar -czf "dist/anopki-core-v${VERSION}-linux-amd64.tar.gz" -C dist anopki-core
       - run: rm dist/anopki-service dist/anopki-core
-      - run: sha256sum dist/*.tar.gz dist/anopki-backend-info.json dist/anopki-release-metadata.json > dist/SHA256SUMS
+      - run: sha256sum dist/*.tar.gz dist/anopki-backend-info.json dist/anopki-release-metadata.json dist/package-manifest.json > dist/SHA256SUMS
       - run: python scripts/validate-release-artifacts.py dist
       - run: syft scan dir:dist -o cyclonedx-json=dist/anopki.sbom.cdx.json
       - name: Record signing status
@@ -134,6 +148,10 @@ jobs:
         with:
           name: anopki-release-${{ github.run_id }}
           path: dist
+      - name: Require an authorized customer package manifest
+        run: >-
+          python scripts/validate-package-boundary.py
+          --manifest dist/package-manifest.json
       - uses: sigstore/cosign-installer@v3.8.1
       - name: Sign release evidence
         run: |

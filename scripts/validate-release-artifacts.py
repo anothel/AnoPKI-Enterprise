@@ -20,6 +20,7 @@ GO_EVIDENCE_NAME = "anopki-enterprise-go-verification.tar.gz"
 RECOVERY_EVIDENCE_NAME = "anopki-recovery-verification.tar.gz"
 STATUS_OUTAGE_EVIDENCE_NAME = "anopki-status-outage-verification.tar.gz"
 AUDIT_REPLAY_EVIDENCE_NAME = "anopki-audit-replay-verification.tar.gz"
+PACKAGE_MANIFEST_NAME = "package-manifest.json"
 COMMUNITY_BASELINE = json.loads((ROOT / ".edition" / "edition.json").read_text(encoding="utf-8"))[
     "community_baseline_commit"
 ]
@@ -800,6 +801,69 @@ def validate_release_metadata(metadata: dict[str, object], backend: dict[str, ob
             fail(f"release metadata contains forbidden sensitive field: {forbidden}")
 
 
+def validate_package_manifest(manifest: dict[str, object], metadata: dict[str, object]) -> None:
+    require_exact_fields(
+        manifest,
+        {
+            "schema_version",
+            "product",
+            "edition",
+            "product_profile",
+            "enterprise_commit",
+            "community_baseline_commit",
+            "package_class",
+            "commercial_license_status",
+            "customer_distribution_authorized",
+            "selected_adapter",
+            "fallback_enabled",
+            "fallback_used",
+            "files",
+            "licenses",
+            "notices",
+            "production_ready",
+            "kcmvp_status",
+        },
+        "package manifest",
+    )
+    if (
+        manifest["schema_version"] != 1
+        or manifest["product"] != "AnoPKI Enterprise"
+        or manifest["edition"] != "enterprise"
+        or manifest["product_profile"] != "enterprise-openssl"
+    ):
+        fail("package manifest identity/profile is invalid")
+    if manifest["enterprise_commit"] != metadata["commit"] or manifest["community_baseline_commit"] != COMMUNITY_BASELINE:
+        fail("package manifest source commit binding is invalid")
+    package_class = manifest["package_class"]
+    if package_class == "internal-validation":
+        if manifest["commercial_license_status"] != "incomplete" or manifest["customer_distribution_authorized"] is not False:
+            fail("internal release artifacts make an unauthorized commercial/customer claim")
+        if manifest["production_ready"] is not False:
+            fail("internal validation artifacts must not claim production readiness")
+    elif package_class == "customer-release":
+        if manifest["commercial_license_status"] != "complete" or manifest["customer_distribution_authorized"] is not True:
+            fail("customer release artifacts lack completed license and distribution authorization")
+        if manifest["production_ready"] is not True:
+            fail("customer release artifacts are not production ready")
+        required_notices = {"LICENSES/MPL-2.0.txt", "ENTERPRISE-LICENSE-NOTICE.md"}
+        if not isinstance(manifest["notices"], list) or not required_notices.issubset(set(manifest["notices"])):
+            fail("customer release artifacts are missing required license notices")
+    else:
+        fail("package manifest class is invalid")
+    if manifest["selected_adapter"] != "openssl":
+        fail("package manifest does not select only the OpenSSL adapter")
+    if manifest["fallback_enabled"] is not False or manifest["fallback_used"] is not False:
+        fail("package manifest enables or records fallback")
+    if manifest["kcmvp_status"] != "not_applicable":
+        fail("package manifest maturity claim is invalid")
+    if not isinstance(manifest["files"], list) or not manifest["files"]:
+        fail("package manifest has no allow-listed files")
+    if not isinstance(manifest["licenses"], list) or not manifest["licenses"]:
+        fail("package manifest has no license inventory")
+    if not isinstance(manifest["notices"], list) or "LICENSES/MPL-2.0.txt" not in manifest["notices"]:
+        fail("package manifest is missing MPL-2.0 notice evidence")
+
+
 def main() -> None:
     if len(sys.argv) != 2:
         fail("usage: validate-release-artifacts.py <dist-dir>")
@@ -833,8 +897,22 @@ def main() -> None:
     if audit_replay_evidence_value["commit"] != metadata["commit"]:
         fail("audit/replay verification commit does not match release metadata")
 
+    package_manifest_path = dist / PACKAGE_MANIFEST_NAME
+    package_manifest = read_json_object(package_manifest_path, "package manifest")
+    validate_package_manifest(package_manifest, metadata)
+
     checksums = read_checksums(dist / "SHA256SUMS")
-    artifacts = (service, core, go_evidence, recovery_evidence, status_outage_evidence, audit_replay_evidence, backend_path, metadata_path)
+    artifacts = (
+        service,
+        core,
+        go_evidence,
+        recovery_evidence,
+        status_outage_evidence,
+        audit_replay_evidence,
+        backend_path,
+        metadata_path,
+        package_manifest_path,
+    )
     expected_names = {artifact.name for artifact in artifacts}
     extra_names = sorted(set(checksums) - expected_names)
     missing_names = sorted(expected_names - set(checksums))
