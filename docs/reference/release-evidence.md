@@ -113,6 +113,33 @@ to the Enterprise release metadata commit and synchronized Community baseline.
 Missing, failed, incomplete, or mismatched evidence blocks artifact validation;
 the independent commercial release gate remains authoritative.
 
+## SQLite Recovery Evidence Runner
+
+`scripts/verify-recovery-drill.py` creates a deterministic current-schema SQLite
+database, backs it up, damages the live copy, restores it, and verifies
+migrations, foreign keys, active key references, CRL artifacts, issuance
+evidence, audit events, and delivery state. Strict redacted JSON and Markdown
+are packaged as `anopki-recovery-verification.tar.gz`; DB files and raw
+sensitive values are excluded.
+
+## CRL And OCSP Outage Evidence Runner
+
+`scripts/verify-status-outage-drill.py` proves fail-closed lifecycle and HTTP
+behavior, no phantom CRL publication or success audit, preserved numbering, and
+normal signing evidence after recovery. Its JSON, Markdown, and test log are
+packaged as `anopki-status-outage-verification.tar.gz`.
+
+## Audit Repair And Dead-Letter Replay Evidence Runner
+
+`scripts/verify-audit-replay-drill.py` proves current signing/policy evidence
+reconstruction, idempotent repair, scoped replay, preserved attempt history,
+recovered delivery, redaction, and exact-commit binding. Its JSON, Markdown,
+and test log are packaged as `anopki-audit-replay-verification.tar.gz`.
+
+All three archives must report `result=passed` and bind to the same Enterprise
+commit as release metadata. Raw key references, payloads, credentials, secrets,
+private-key material, and DB files are prohibited.
+
 
 ## Local ZIP Baseline Evidence - 2026-07-06
 
@@ -223,6 +250,12 @@ evidence still needs release workflow artifacts containing archives,
 - `python scripts/validate-version-metadata.py`
 - `python scripts/test_generate_enterprise_release_metadata.py`
 - `python scripts/test_verify_go_release.py`
+- `python scripts/test_verify_recovery_drill.py`
+- `python scripts/verify-recovery-drill.py --out-dir .tmp\recovery-evidence\verify-local`
+- `python scripts/test_verify_status_outage_drill.py`
+- `python scripts/verify-status-outage-drill.py --out-dir .tmp\status-outage-evidence\verify-local`
+- `python scripts/test_verify_audit_replay_drill.py`
+- `python scripts/verify-audit-replay-drill.py --out-dir .tmp\audit-replay-evidence\verify-local`
 - `python scripts/test_validate_release_artifacts.py`
 - `python scripts/test_validate_service_contracts.py`
 - `python scripts/validate-service-contracts.py`

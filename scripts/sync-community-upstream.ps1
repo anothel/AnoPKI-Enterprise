@@ -3,8 +3,8 @@ param(
     [string]$CommunityRemote = "community",
     [string]$CommunityBranch = "main",
     [string]$CommunityUrl = "",
-    [string]$TargetCommit = "71f0e898c32a7d6e00d0725eeab6ca150ccaa0af",
-    [string]$PreviousBaseline = "b4b5c475c3cb2f98f5bb6c180786c11a12a1dac8",
+    [string]$TargetCommit = "ae3ddee72dd05f274b9bbae1b514cdc4c4de03f5",
+    [string]$PreviousBaseline = "71f0e898c32a7d6e00d0725eeab6ca150ccaa0af",
     [switch]$ConfigureRemote,
     [switch]$Fetch,
     [switch]$Verify

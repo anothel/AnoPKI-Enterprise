@@ -2099,6 +2099,109 @@ func TestReplayDeadLetterOutboxMessagesFiltersByEventTypeAndTimeWindow(t *testin
 	}
 }
 
+func TestReplayDeadLetterOutboxMessagesRecoversAfterOperatorReplay(t *testing.T) {
+	api := newTestAPI(t)
+	requests := 0
+	receiver := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests++
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer receiver.Close()
+	endpoint := domain.NotificationEndpoint{
+		ID:         "endpoint-http-replay",
+		Name:       "HTTP replay receiver",
+		Type:       domain.NotificationEndpointWebhook,
+		Status:     domain.NotificationEndpointActive,
+		URL:        receiver.URL,
+		Secret:     "http-replay-secret-not-evidence",
+		EventTypes: []string{"certificate.issued"},
+		CreatedAt:  testNow.Add(-3 * time.Hour),
+		UpdatedAt:  testNow.Add(-3 * time.Hour),
+	}
+	if err := api.repo.CreateNotificationEndpoint(api.ctx, endpoint); err != nil {
+		t.Fatalf("CreateNotificationEndpoint returned error: %v", err)
+	}
+	message := domain.OutboxMessage{
+		ID:           "outbox-http-replay",
+		Type:         "certificate.issued",
+		PayloadJSON:  `{"certificate_id":"certificate-http-replay"}`,
+		Status:       domain.OutboxDeadLetter,
+		AvailableAt:  testNow.Add(-time.Hour),
+		AttemptCount: 2,
+		MaxAttempts:  2,
+		LastError:    "receiver unavailable",
+		CreatedAt:    testNow.Add(-2 * time.Hour),
+		UpdatedAt:    testNow.Add(-time.Hour),
+	}
+	if err := api.repo.CreateOutboxMessage(api.ctx, message); err != nil {
+		t.Fatalf("CreateOutboxMessage returned error: %v", err)
+	}
+	if err := api.repo.CreateJobAttempt(api.ctx, domain.JobAttempt{
+		ID:              "attempt-http-replay-1",
+		OutboxMessageID: message.ID,
+		Status:          domain.JobAttemptFailed,
+		Error:           "receiver unavailable",
+		StartedAt:       testNow.Add(-2 * time.Hour),
+		FinishedAt:      testNow.Add(-2*time.Hour + time.Minute),
+		CreatedAt:       testNow.Add(-2*time.Hour + time.Minute),
+	}); err != nil {
+		t.Fatalf("CreateJobAttempt returned error: %v", err)
+	}
+
+	var replayed apiOutboxBulkReplay
+	status := api.doJSON(t, http.MethodPost, "/outbox/messages/dead-letter/replay", "operator", map[string]any{
+		"event_type":   message.Type,
+		"created_from": testNow.Add(-3 * time.Hour),
+		"created_to":   testNow,
+		"limit":        10,
+	}, &replayed)
+	assertStatus(t, status, http.StatusOK)
+	if replayed.ReplayedCount != 1 || !reflect.DeepEqual(replayed.MessageIDs, []string{message.ID}) {
+		t.Fatalf("bulk replay response = %#v", replayed)
+	}
+
+	dispatcher := lifecycle.NewOutboxDispatcher(
+		api.repo,
+		lifecycle.NewWebhookOutboxHandler(api.repo, receiver.Client()),
+		fixedClock{now: testNow},
+		&fakeIDGenerator{},
+	)
+	processed, err := dispatcher.RunOnce(api.ctx, 10)
+	if err != nil {
+		t.Fatalf("RunOnce returned error: %v", err)
+	}
+	if processed != 1 || requests != 1 {
+		t.Fatalf("processed=%d requests=%d, want 1/1", processed, requests)
+	}
+	stored, err := api.repo.GetOutboxMessage(api.ctx, message.ID)
+	if err != nil {
+		t.Fatalf("GetOutboxMessage returned error: %v", err)
+	}
+	if stored.Status != domain.OutboxCompleted || stored.LastError != "" {
+		t.Fatalf("stored message after replay = %#v", stored)
+	}
+	attempts, err := api.repo.ListJobAttemptsByOutboxMessage(api.ctx, message.ID)
+	if err != nil {
+		t.Fatalf("ListJobAttemptsByOutboxMessage returned error: %v", err)
+	}
+	if len(attempts) != 2 || attempts[0].Status != domain.JobAttemptFailed || attempts[1].Status != domain.JobAttemptSucceeded {
+		t.Fatalf("attempt history = %#v", attempts)
+	}
+	var events []apiAuditEvent
+	status = api.doJSON(t, http.MethodGet, "/audit-events?action=outbox.bulk_replay_requested", "", nil, &events)
+	assertStatus(t, status, http.StatusOK)
+	if len(events) != 1 || events[0].Actor != "operator" {
+		t.Fatalf("bulk replay audit events = %#v", events)
+	}
+	metadata := apiAuditMetadata(t, events[0])
+	if metadata["replayed_count"] != "1" || metadata["outbox_message_type"] != message.Type {
+		t.Fatalf("bulk replay audit metadata = %#v", metadata)
+	}
+	if strings.Contains(events[0].MetadataJSON, message.PayloadJSON) || strings.Contains(events[0].MetadataJSON, endpoint.Secret) {
+		t.Fatalf("bulk replay audit exposes payload or secret: %s", events[0].MetadataJSON)
+	}
+}
+
 func TestCreateCertificateProfile(t *testing.T) {
 	api := newTestAPI(t)
 	issuer := api.createIssuer(t)
@@ -2244,6 +2347,20 @@ func TestCreateEnrollmentPolicyFailureRecordsReason(t *testing.T) {
 	if metadata["policy_decision"] != "reject" ||
 		metadata["policy_decision_reason"] != "identity_dns_not_allowed" {
 		t.Fatalf("failure audit metadata = %#v", metadata)
+	}
+	refs, ok := metadata["policy_validation_evidence_refs"].([]any)
+	if !ok || len(refs) < 5 {
+		t.Fatalf("failure policy evidence refs = %#v", metadata["policy_validation_evidence_refs"])
+	}
+	encodedRefs, err := json.Marshal(refs)
+	if err != nil {
+		t.Fatalf("marshal failure policy evidence refs: %v", err)
+	}
+	if !strings.Contains(string(encodedRefs), "identity:"+identity.ID) ||
+		!strings.Contains(string(encodedRefs), "issuer:"+issuer.ID) ||
+		strings.Contains(string(encodedRefs), "edge-01.example.test") ||
+		strings.Contains(string(encodedRefs), "csr-pem") {
+		t.Fatalf("failure policy evidence refs are missing references or expose raw input: %s", encodedRefs)
 	}
 }
 
@@ -2806,6 +2923,49 @@ func TestPublishCRL(t *testing.T) {
 	}
 }
 
+func TestPublishCRLOutageReturnsBadGatewayAndRecovers(t *testing.T) {
+	api := newTestAPI(t)
+	certificate := api.createCertificate(t)
+
+	var revoked apiCertificate
+	status := api.doJSON(t, http.MethodPost, "/certificates/"+certificate.ID+"/revoke", "operator", map[string]string{
+		"reason": string(domain.RevocationKeyCompromise),
+	}, &revoked)
+	assertStatus(t, status, http.StatusOK)
+
+	api.issuer.crlErr = errors.New("crl signer unavailable")
+	var failure errorResponse
+	status = api.doJSON(t, http.MethodPost, "/crls", "operator", map[string]any{
+		"issuer_id":          certificate.IssuerID,
+		"distribution_point": "https://pki.example.test/outage.crl",
+		"next_update":        testNow.Add(24 * time.Hour),
+	}, &failure)
+	assertStatus(t, status, http.StatusBadGateway)
+	if failure.Error != domain.ErrCRLGenerationFailed.Error() {
+		t.Fatalf("CRL outage error = %q, want %q", failure.Error, domain.ErrCRLGenerationFailed.Error())
+	}
+	status, _, _ = api.doRaw(t, http.MethodGet, "/issuers/"+certificate.IssuerID+"/crl", "")
+	assertStatus(t, status, http.StatusNotFound)
+
+	api.issuer.crlErr = nil
+	api.issuer.crlPEM = "recovered-crl-pem"
+	var recovered apiCRLPublication
+	status = api.doJSON(t, http.MethodPost, "/crls", "operator", map[string]any{
+		"issuer_id":          certificate.IssuerID,
+		"distribution_point": "https://pki.example.test/outage.crl",
+		"next_update":        testNow.Add(24 * time.Hour),
+	}, &recovered)
+	assertStatus(t, status, http.StatusCreated)
+	if recovered.CRLNumber != 1 || recovered.CRLPEM != "recovered-crl-pem" {
+		t.Fatalf("recovered CRL = %#v", recovered)
+	}
+	status, body, _ := api.doRaw(t, http.MethodGet, "/issuers/"+certificate.IssuerID+"/crl", "")
+	assertStatus(t, status, http.StatusOK)
+	if string(body) != "recovered-crl-pem" {
+		t.Fatalf("recovered CRL body = %q", body)
+	}
+}
+
 func TestGetLatestIssuerCRLFiltersByDistributionPoint(t *testing.T) {
 	api := newTestAPI(t)
 	certificate := api.createCertificate(t)
@@ -2870,6 +3030,42 @@ func TestRespondOCSP(t *testing.T) {
 	}
 	if contentType != "application/ocsp-response" {
 		t.Fatalf("OCSP content type = %q", contentType)
+	}
+}
+
+func TestRespondOCSPOutageReturnsBadGatewayAndRecovers(t *testing.T) {
+	api := newTestAPI(t)
+	certificate := api.createCertificate(t)
+	api.issuer.ocspInfo = corecli.OCSPRequestInfo{Certificates: []corecli.OCSPCertificateID{{
+		SerialNumber: certificate.SerialNumber, IssuerNameHash: "name-hash", IssuerKeyHash: "key-hash",
+	}}}
+	api.issuer.ocspResponseErr = errors.New("ocsp signer unavailable")
+
+	status, _, _ := api.doBinary(t, http.MethodPost, "/ocsp", "operator", "application/ocsp-request", []byte("ocsp-request-der"))
+	assertStatus(t, status, http.StatusBadGateway)
+
+	api.issuer.ocspResponseErr = nil
+	api.issuer.ocspResponseDER = []byte("recovered-ocsp-response")
+	status, body, contentType := api.doBinary(t, http.MethodPost, "/ocsp", "operator", "application/ocsp-request", []byte("ocsp-request-der"))
+	assertStatus(t, status, http.StatusOK)
+	if string(body) != "recovered-ocsp-response" {
+		t.Fatalf("recovered OCSP body = %q", body)
+	}
+	if contentType != "application/ocsp-response" {
+		t.Fatalf("recovered OCSP content type = %q", contentType)
+	}
+
+	var events []apiAuditEvent
+	status = api.doJSON(t, http.MethodGet, "/audit-events", "", nil, &events)
+	assertStatus(t, status, http.StatusOK)
+	successAudits := 0
+	for _, event := range events {
+		if event.Action == "ocsp.requested" {
+			successAudits++
+		}
+	}
+	if successAudits != 1 {
+		t.Fatalf("ocsp.requested audit count = %d, want 1", successAudits)
 	}
 }
 
@@ -4409,35 +4605,29 @@ func testACMECSRBase64URLWithSubject(t *testing.T, subject pkix.Name) string {
 	return base64.RawURLEncoding.EncodeToString(der)
 }
 
-func fakeSigningEvidence(operation string, algorithm string) corecli.SigningEvidence {
-	return corecli.SigningEvidence{
-		SchemaVersion:               1,
-		EvidenceSource:              "core_signing",
-		Operation:                   operation,
-		ProviderID:                  "openssl.file",
-		ProviderClass:               "file",
-		ProviderReadiness:           "ready",
-		ProviderExportability:       "exportable",
-		ReferenceClass:              "file",
-		KeyAlgorithm:                "rsa",
-		RequestedSignatureAlgorithm: algorithm,
-		IssuerBindingVerified:       true,
-		FallbackUsed:                false,
-		ResultCode:                  "ok",
-	}
-}
-
 type fakeIssuer struct {
 	requests                          []corecli.IssueRequest
 	crlRequests                       []corecli.GenerateCRLRequest
 	err                               error
+	crlErr                            error
 	crlPEM                            string
 	ocspInfo                          corecli.OCSPRequestInfo
 	ocspResponses                     []corecli.GenerateOCSPResponseRequest
 	ocspResponseDER                   []byte
+	ocspResponseErr                   error
 	ocspResponderValidationRequests   []ocspResponderValidationRequest
 	ocspResponderValidationConfigured bool
 	ocspResponderValidationResult     corecli.ValidateOCSPResponderResult
+}
+
+func httpTestSigningEvidence(operation string, algorithm string) corecli.SigningEvidence {
+	return corecli.SigningEvidence{
+		SchemaVersion: 1, EvidenceSource: "core_signing", Operation: operation,
+		ProviderID: "openssl.file", ProviderClass: "file", ProviderReadiness: "ready",
+		ProviderExportability: "exportable", ReferenceClass: "file", KeyAlgorithm: "rsa",
+		RequestedSignatureAlgorithm: algorithm, IssuerBindingVerified: true,
+		FallbackUsed: false, ResultCode: "ok",
+	}
 }
 
 func (f *fakeIssuer) InspectCSR(ctx context.Context, csrPEM string) (corecli.CSRInfo, error) {
@@ -4459,12 +4649,15 @@ func (f *fakeIssuer) Issue(ctx context.Context, req corecli.IssueRequest) (corec
 		Subject:         req.Subject,
 		NotBefore:       req.NotBefore,
 		NotAfter:        req.NotAfter,
-		SigningEvidence: fakeSigningEvidence("certificate_issue", req.SignatureAlgorithm),
+		SigningEvidence: httpTestSigningEvidence("certificate_issue", req.SignatureAlgorithm),
 	}, nil
 }
 
 func (f *fakeIssuer) GenerateCRL(ctx context.Context, req corecli.GenerateCRLRequest) (corecli.GenerateCRLResult, error) {
 	f.crlRequests = append(f.crlRequests, req)
+	if f.crlErr != nil {
+		return corecli.GenerateCRLResult{}, f.crlErr
+	}
 	if f.err != nil {
 		return corecli.GenerateCRLResult{}, f.err
 	}
@@ -4474,7 +4667,7 @@ func (f *fakeIssuer) GenerateCRL(ctx context.Context, req corecli.GenerateCRLReq
 	}
 	return corecli.GenerateCRLResult{
 		CRLPEM:          crlPEM,
-		SigningEvidence: fakeSigningEvidence("crl_generate_sign", "sha256"),
+		SigningEvidence: httpTestSigningEvidence("crl_generate_sign", "sha256"),
 	}, nil
 }
 
@@ -4508,12 +4701,15 @@ func (f *fakeIssuer) InspectOCSP(ctx context.Context, requestDER []byte) (corecl
 
 func (f *fakeIssuer) GenerateOCSPResponse(ctx context.Context, req corecli.GenerateOCSPResponseRequest) (corecli.GenerateOCSPResponseResult, error) {
 	f.ocspResponses = append(f.ocspResponses, req)
+	if f.ocspResponseErr != nil {
+		return corecli.GenerateOCSPResponseResult{}, f.ocspResponseErr
+	}
 	if f.err != nil {
 		return corecli.GenerateOCSPResponseResult{}, f.err
 	}
 	return corecli.GenerateOCSPResponseResult{
 		ResponseDER:     f.ocspResponseDER,
-		SigningEvidence: fakeSigningEvidence("ocsp_response_sign", "sha256"),
+		SigningEvidence: httpTestSigningEvidence("ocsp_response_sign", "sha256"),
 	}, nil
 }
 

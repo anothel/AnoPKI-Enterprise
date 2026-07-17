@@ -17,6 +17,9 @@ VERSION = (ROOT / "VERSION").read_text(encoding="utf-8").strip()
 BACKEND_INFO_NAME = "anopki-backend-info.json"
 RELEASE_METADATA_NAME = "anopki-release-metadata.json"
 GO_EVIDENCE_NAME = "anopki-enterprise-go-verification.tar.gz"
+RECOVERY_EVIDENCE_NAME = "anopki-recovery-verification.tar.gz"
+STATUS_OUTAGE_EVIDENCE_NAME = "anopki-status-outage-verification.tar.gz"
+AUDIT_REPLAY_EVIDENCE_NAME = "anopki-audit-replay-verification.tar.gz"
 COMMUNITY_BASELINE = json.loads((ROOT / ".edition" / "edition.json").read_text(encoding="utf-8"))[
     "community_baseline_commit"
 ]
@@ -235,6 +238,424 @@ def require_go_evidence_archive(dist: Path) -> tuple[Path, dict[str, object]]:
     return path, evidence
 
 
+def require_recovery_evidence_archive(dist: Path) -> tuple[Path, dict[str, object]]:
+    path = dist / RECOVERY_EVIDENCE_NAME
+    if not path.is_file():
+        fail(f"missing recovery verification evidence archive: {path}")
+    if path.stat().st_size > 5 * 1024 * 1024:
+        fail(f"recovery verification evidence archive is unexpectedly large: {path.name}")
+    expected_files = {"recovery-verification.json", "recovery-verification.md"}
+    try:
+        with tarfile.open(path, "r:gz") as archive:
+            files: dict[str, tarfile.TarInfo] = {}
+            for member in archive.getmembers():
+                normalized = member.name.removeprefix("./")
+                posix = PurePosixPath(normalized)
+                if not normalized or posix.is_absolute() or ".." in posix.parts:
+                    fail(f"{path.name} contains unsafe archive member: {member.name}")
+                if not member.isfile():
+                    fail(f"{path.name} contains non-regular member: {member.name}")
+                if normalized in files:
+                    fail(f"{path.name} contains duplicate member: {normalized}")
+                files[normalized] = member
+            missing = sorted(expected_files - set(files))
+            extra = sorted(set(files) - expected_files)
+            if missing:
+                fail(f"{path.name} missing recovery evidence members:\n" + "\n".join(missing))
+            if extra:
+                fail(f"{path.name} has unexpected recovery evidence members:\n" + "\n".join(extra))
+            member = files["recovery-verification.json"]
+            if member.size > 1024 * 1024:
+                fail("recovery verification JSON is unexpectedly large")
+            extracted = archive.extractfile(member)
+            if extracted is None:
+                fail(f"{path.name} cannot read recovery-verification.json")
+            try:
+                evidence = json.loads(extracted.read().decode("utf-8"))
+            except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+                fail(f"invalid recovery verification evidence: {exc}")
+    except tarfile.TarError as exc:
+        fail(f"invalid recovery verification evidence archive {path}: {exc}")
+
+    if not isinstance(evidence, dict):
+        fail("recovery verification evidence must be a JSON object")
+    expected_fields = {
+        "schema_version", "product", "edition", "product_profile", "commit",
+        "database_driver", "migration_version", "migration_checksum", "started_at",
+        "completed_at", "result", "backup_sha256", "restored_state_sha256",
+        "state_counts", "artifact_hashes", "checks", "redaction",
+    }
+    missing_fields = sorted(expected_fields - set(evidence))
+    extra_fields = sorted(set(evidence) - expected_fields)
+    if missing_fields:
+        fail("recovery verification evidence missing fields:\n" + "\n".join(missing_fields))
+    if extra_fields:
+        fail("recovery verification evidence has unknown fields:\n" + "\n".join(extra_fields))
+    if evidence["schema_version"] != 1 or evidence["product"] != "AnoPKI":
+        fail("recovery verification evidence identity is invalid")
+    if evidence["edition"] != "community" or evidence["product_profile"] != "community-openssl":
+        fail("recovery verification evidence profile is invalid")
+    if evidence["database_driver"] != "sqlite" or evidence["migration_version"] != 1:
+        fail("recovery verification database or migration is invalid")
+    if evidence["result"] != "passed":
+        fail("recovery verification drill did not pass")
+    if not isinstance(evidence["commit"], str) or not re.fullmatch(r"[0-9a-f]{40}", evidence["commit"]):
+        fail("recovery verification commit is invalid")
+    for field in ("migration_checksum", "backup_sha256", "restored_state_sha256"):
+        if not isinstance(evidence[field], str) or not re.fullmatch(r"[0-9a-f]{64}", evidence[field]):
+            fail(f"recovery verification {field} is invalid")
+
+    expected_counts = {
+        "schema_migrations", "issuers", "ocsp_responders", "certificates",
+        "certificate_issuance_attempts", "revocations", "crl_publications",
+        "audit_events", "outbox_messages", "job_attempts", "notification_endpoints",
+        "webhook_deliveries", "api_keys",
+    }
+    counts = evidence["state_counts"]
+    if not isinstance(counts, dict) or set(counts) != expected_counts:
+        fail("recovery verification state counts are invalid")
+    if not all(isinstance(value, int) and not isinstance(value, bool) and value > 0 for value in counts.values()):
+        fail("recovery verification state count values are invalid")
+
+    hashes = evidence["artifact_hashes"]
+    if not isinstance(hashes, dict) or set(hashes) != {"certificate_pem", "crl_pem", "signing_evidence"}:
+        fail("recovery verification artifact hashes are invalid")
+    if not all(isinstance(value, str) and re.fullmatch(r"sha256:[0-9a-f]{64}", value) for value in hashes.values()):
+        fail("recovery verification artifact hash values are invalid")
+
+    expected_checks = [
+        "sqlite-integrity", "foreign-key-integrity", "schema-migration",
+        "restore-state-match", "state-counts", "key-reference-preservation",
+        "crl-artifact", "issuance-attempt", "outbox-and-webhook-state",
+        "audit-state", "private-key-exclusion",
+    ]
+    checks = evidence["checks"]
+    if not isinstance(checks, list) or len(checks) != len(expected_checks):
+        fail("recovery verification check set is invalid")
+    names: list[str] = []
+    for check in checks:
+        if not isinstance(check, dict) or set(check) != {"name", "status"}:
+            fail("recovery verification check fields are invalid")
+        names.append(str(check["name"]))
+        if check["status"] != "passed":
+            fail("recovery verification contains a failed check")
+    if names != expected_checks:
+        fail("recovery verification check order is invalid")
+
+    redaction = evidence["redaction"]
+    expected_redaction = {
+        "private_key_markers_found": False,
+        "raw_key_references_in_evidence": False,
+        "sensitive_fixture_values_in_evidence": False,
+    }
+    if redaction != expected_redaction:
+        fail("recovery verification redaction evidence is invalid")
+    def collect_keys(value: object) -> set[str]:
+        if isinstance(value, dict):
+            keys = {str(key).lower() for key in value}
+            for child in value.values():
+                keys.update(collect_keys(child))
+            return keys
+        if isinstance(value, list):
+            keys: set[str] = set()
+            for child in value:
+                keys.update(collect_keys(child))
+            return keys
+        return set()
+
+    evidence_keys = collect_keys(evidence)
+    for forbidden in ("key_ref", "private_key", "password", "credential", "session_token", "webhook_secret"):
+        if forbidden in evidence_keys:
+            fail(f"recovery verification evidence contains forbidden sensitive field: {forbidden}")
+    serialized = json.dumps(evidence, sort_keys=True).lower()
+    if "-----begin private key-----" in serialized or "-----begin encrypted private key-----" in serialized:
+        fail("recovery verification evidence contains private-key material")
+    return path, evidence
+
+def require_status_outage_evidence_archive(dist: Path) -> tuple[Path, dict[str, object]]:
+    path = dist / STATUS_OUTAGE_EVIDENCE_NAME
+    if not path.is_file():
+        fail(f"missing status outage verification evidence archive: {path}")
+    if path.stat().st_size > 5 * 1024 * 1024:
+        fail(f"status outage verification evidence archive is unexpectedly large: {path.name}")
+    expected_files = {
+        "status-outage-verification.json",
+        "status-outage-verification.md",
+        "status-outage-test.log",
+    }
+    try:
+        with tarfile.open(path, "r:gz") as archive:
+            files: dict[str, tarfile.TarInfo] = {}
+            for member in archive.getmembers():
+                normalized = member.name.removeprefix("./")
+                posix = PurePosixPath(normalized)
+                if not normalized or posix.is_absolute() or ".." in posix.parts:
+                    fail(f"{path.name} contains unsafe archive member: {member.name}")
+                if not member.isfile():
+                    fail(f"{path.name} contains non-regular member: {member.name}")
+                if normalized in files:
+                    fail(f"{path.name} contains duplicate member: {normalized}")
+                files[normalized] = member
+            missing = sorted(expected_files - set(files))
+            extra = sorted(set(files) - expected_files)
+            if missing:
+                fail(f"{path.name} missing status outage evidence members:\n" + "\n".join(missing))
+            if extra:
+                fail(f"{path.name} has unexpected status outage evidence members:\n" + "\n".join(extra))
+            member = files["status-outage-verification.json"]
+            if member.size > 1024 * 1024:
+                fail("status outage verification JSON is unexpectedly large")
+            extracted = archive.extractfile(member)
+            if extracted is None:
+                fail(f"{path.name} cannot read status-outage-verification.json")
+            try:
+                evidence = json.loads(extracted.read().decode("utf-8"))
+            except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+                fail(f"invalid status outage verification evidence: {exc}")
+    except tarfile.TarError as exc:
+        fail(f"invalid status outage verification evidence archive {path}: {exc}")
+
+    if not isinstance(evidence, dict):
+        fail("status outage verification evidence must be a JSON object")
+    expected_fields = {
+        "schema_version", "evidence_type", "product", "edition", "product_profile",
+        "commit", "minimum_go_version", "started_at", "completed_at", "result",
+        "go_version", "test_command", "tests", "checks", "redaction", "blocker",
+    }
+    missing_fields = sorted(expected_fields - set(evidence))
+    extra_fields = sorted(set(evidence) - expected_fields)
+    if missing_fields:
+        fail("status outage verification evidence missing fields:\n" + "\n".join(missing_fields))
+    if extra_fields:
+        fail("status outage verification evidence has unknown fields:\n" + "\n".join(extra_fields))
+    if evidence["schema_version"] != 1 or evidence["evidence_type"] != "community_status_outage_drill":
+        fail("status outage verification evidence identity is invalid")
+    if evidence["product"] != "AnoPKI" or evidence["edition"] != "community" or evidence["product_profile"] != "community-openssl":
+        fail("status outage verification evidence profile is invalid")
+    if evidence["result"] != "passed" or evidence["blocker"] != "":
+        fail("status outage verification drill did not pass")
+    if evidence["minimum_go_version"] != "1.25.11":
+        fail("status outage verification minimum Go version is invalid")
+    if not isinstance(evidence["commit"], str) or not re.fullmatch(r"[0-9a-f]{40}", evidence["commit"]):
+        fail("status outage verification commit is invalid")
+    if not isinstance(evidence["go_version"], str) or "go version go" not in evidence["go_version"]:
+        fail("status outage verification Go identity is invalid")
+    if parse_go_version(evidence["go_version"]) < (1, 25, 11):
+        fail("status outage verification used an unsupported Go toolchain")
+
+    expected_tests = [
+        ("github.com/anothel/anopki/service/internal/lifecycle", "TestPublishCRLOutageRecoversWithoutPhantomPublication"),
+        ("github.com/anothel/anopki/service/internal/lifecycle", "TestRespondOCSPOutageRecoversWithoutSuccessAudit"),
+        ("github.com/anothel/anopki/service/internal/httpapi", "TestPublishCRLOutageReturnsBadGatewayAndRecovers"),
+        ("github.com/anothel/anopki/service/internal/httpapi", "TestRespondOCSPOutageReturnsBadGatewayAndRecovers"),
+    ]
+    tests = evidence["tests"]
+    if not isinstance(tests, list) or len(tests) != len(expected_tests):
+        fail("status outage verification test set is invalid")
+    observed_tests: list[tuple[str, str]] = []
+    for test in tests:
+        if not isinstance(test, dict) or set(test) != {"package", "name", "status"}:
+            fail("status outage verification test fields are invalid")
+        observed_tests.append((str(test["package"]), str(test["name"])))
+        if test["status"] != "pass":
+            fail("status outage verification contains a failed test")
+    if observed_tests != expected_tests:
+        fail("status outage verification test order is invalid")
+
+    expected_checks = [
+        "crl-failure-maps-bad-gateway",
+        "crl-no-phantom-publication",
+        "crl-recovery-preserves-numbering",
+        "ocsp-failure-maps-bad-gateway",
+        "ocsp-no-success-audit-on-failure",
+        "ocsp-recovery-writes-one-success-audit",
+        "provider-evidence-required-after-recovery",
+        "sensitive-evidence-exclusion",
+    ]
+    checks = evidence["checks"]
+    if not isinstance(checks, list) or len(checks) != len(expected_checks):
+        fail("status outage verification check set is invalid")
+    names: list[str] = []
+    for check in checks:
+        if not isinstance(check, dict) or set(check) != {"name", "status"}:
+            fail("status outage verification check fields are invalid")
+        names.append(str(check["name"]))
+        if check["status"] != "passed":
+            fail("status outage verification contains a failed check")
+    if names != expected_checks:
+        fail("status outage verification check order is invalid")
+
+    command = evidence["test_command"]
+    if not isinstance(command, list) or not all(isinstance(item, str) for item in command):
+        fail("status outage verification test command is invalid")
+    command_text = " ".join(command)
+    for required in ("test -json", "./internal/lifecycle", "./internal/httpapi", "TestPublishCRLOutage", "TestRespondOCSPOutage"):
+        if required not in command_text:
+            fail(f"status outage verification command drift: missing {required}")
+
+    expected_redaction = {
+        "private_key_markers_found": False,
+        "raw_key_references_in_evidence": False,
+        "sensitive_values_in_evidence": False,
+    }
+    if evidence["redaction"] != expected_redaction:
+        fail("status outage verification redaction evidence is invalid")
+    serialized = json.dumps(evidence, sort_keys=True).lower()
+    for forbidden in ('"key_ref"', '"private_key"', '"password"', '"credential"', '"session_token"'):
+        if forbidden in serialized:
+            fail(f"status outage verification evidence contains forbidden sensitive field: {forbidden}")
+    if "-----begin private key-----" in serialized or "-----begin encrypted private key-----" in serialized:
+        fail("status outage verification evidence contains private-key material")
+    return path, evidence
+
+
+def require_audit_replay_evidence_archive(dist: Path) -> tuple[Path, dict[str, object]]:
+    path = dist / AUDIT_REPLAY_EVIDENCE_NAME
+    if not path.is_file():
+        fail(f"missing audit/replay verification evidence archive: {path}")
+    if path.stat().st_size > 5 * 1024 * 1024:
+        fail(f"audit/replay verification evidence archive is unexpectedly large: {path.name}")
+    expected_files = {
+        "audit-replay-verification.json",
+        "audit-replay-verification.md",
+        "audit-replay-test.log",
+    }
+    try:
+        with tarfile.open(path, "r:gz") as archive:
+            files: dict[str, tarfile.TarInfo] = {}
+            for member in archive.getmembers():
+                normalized = member.name.removeprefix("./")
+                posix = PurePosixPath(normalized)
+                if not normalized or posix.is_absolute() or ".." in posix.parts:
+                    fail(f"{path.name} contains unsafe archive member: {member.name}")
+                if not member.isfile():
+                    fail(f"{path.name} contains non-regular member: {member.name}")
+                if normalized in files:
+                    fail(f"{path.name} contains duplicate member: {normalized}")
+                files[normalized] = member
+            missing = sorted(expected_files - set(files))
+            extra = sorted(set(files) - expected_files)
+            if missing:
+                fail(f"{path.name} missing audit/replay evidence members:\n" + "\n".join(missing))
+            if extra:
+                fail(f"{path.name} has unexpected audit/replay evidence members:\n" + "\n".join(extra))
+            member = files["audit-replay-verification.json"]
+            if member.size > 1024 * 1024:
+                fail("audit/replay verification JSON is unexpectedly large")
+            extracted = archive.extractfile(member)
+            if extracted is None:
+                fail(f"{path.name} cannot read audit-replay-verification.json")
+            try:
+                evidence = json.loads(extracted.read().decode("utf-8"))
+            except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+                fail(f"invalid audit/replay verification evidence: {exc}")
+    except tarfile.TarError as exc:
+        fail(f"invalid audit/replay verification evidence archive {path}: {exc}")
+
+    if not isinstance(evidence, dict):
+        fail("audit/replay verification evidence must be a JSON object")
+    expected_fields = {
+        "schema_version", "evidence_type", "product", "edition", "product_profile",
+        "commit", "minimum_go_version", "started_at", "completed_at", "result",
+        "go_version", "test_command", "tests", "checks", "redaction", "blocker",
+    }
+    missing_fields = sorted(expected_fields - set(evidence))
+    extra_fields = sorted(set(evidence) - expected_fields)
+    if missing_fields:
+        fail("audit/replay verification evidence missing fields:\n" + "\n".join(missing_fields))
+    if extra_fields:
+        fail("audit/replay verification evidence has unknown fields:\n" + "\n".join(extra_fields))
+    if evidence["schema_version"] != 1 or evidence["evidence_type"] != "community_audit_replay_drill":
+        fail("audit/replay verification evidence identity is invalid")
+    if evidence["product"] != "AnoPKI" or evidence["edition"] != "community" or evidence["product_profile"] != "community-openssl":
+        fail("audit/replay verification evidence profile is invalid")
+    if evidence["result"] != "passed" or evidence["blocker"] != "":
+        fail("audit/replay verification drill did not pass")
+    if evidence["minimum_go_version"] != "1.25.11":
+        fail("audit/replay verification minimum Go version is invalid")
+    if not isinstance(evidence["commit"], str) or not re.fullmatch(r"[0-9a-f]{40}", evidence["commit"]):
+        fail("audit/replay verification commit is invalid")
+    if not isinstance(evidence["go_version"], str) or "go version go" not in evidence["go_version"]:
+        fail("audit/replay verification Go identity is invalid")
+    if parse_go_version(evidence["go_version"]) < (1, 25, 11):
+        fail("audit/replay verification used an unsupported Go toolchain")
+
+    expected_tests = [
+        ("github.com/anothel/anopki/service/internal/lifecycle", "TestRepairMissingIssuanceAuditEventsPreservesCurrentEvidenceAndIsIdempotent"),
+        ("github.com/anothel/anopki/service/internal/lifecycle", "TestReplayDeadLetterOutboxMessagesPreservesHistoryAndCompletesAfterRecovery"),
+        ("github.com/anothel/anopki/service/internal/httpapi", "TestRepairMissingIssuanceAuditEvents"),
+        ("github.com/anothel/anopki/service/internal/httpapi", "TestReplayDeadLetterOutboxMessagesRecoversAfterOperatorReplay"),
+    ]
+    tests = evidence["tests"]
+    if not isinstance(tests, list) or len(tests) != len(expected_tests):
+        fail("audit/replay verification test set is invalid")
+    observed_tests: list[tuple[str, str]] = []
+    for test in tests:
+        if not isinstance(test, dict) or set(test) != {"package", "name", "status"}:
+            fail("audit/replay verification test fields are invalid")
+        observed_tests.append((str(test["package"]), str(test["name"])))
+        if test["status"] != "pass":
+            fail("audit/replay verification contains a failed test")
+    if observed_tests != expected_tests:
+        fail("audit/replay verification test order is invalid")
+
+    expected_checks = [
+        "audit-repair-current-signing-evidence",
+        "audit-repair-current-policy-evidence",
+        "audit-repair-idempotent",
+        "audit-repair-sensitive-input-redaction",
+        "dead-letter-scope-guarded",
+        "dead-letter-attempt-history-preserved",
+        "dead-letter-webhook-history-preserved",
+        "dead-letter-recovery-completes",
+        "dead-letter-replay-audited",
+        "sensitive-evidence-exclusion",
+    ]
+    checks = evidence["checks"]
+    if not isinstance(checks, list) or len(checks) != len(expected_checks):
+        fail("audit/replay verification check set is invalid")
+    names: list[str] = []
+    for check in checks:
+        if not isinstance(check, dict) or set(check) != {"name", "status"}:
+            fail("audit/replay verification check fields are invalid")
+        names.append(str(check["name"]))
+        if check["status"] != "passed":
+            fail("audit/replay verification contains a failed check")
+    if names != expected_checks:
+        fail("audit/replay verification check order is invalid")
+
+    command = evidence["test_command"]
+    if not isinstance(command, list) or not all(isinstance(item, str) for item in command):
+        fail("audit/replay verification test command is invalid")
+    command_text = " ".join(command)
+    for required in (
+        "test -json", "./internal/lifecycle", "./internal/httpapi",
+        "TestRepairMissingIssuanceAuditEvents", "TestReplayDeadLetterOutboxMessages",
+    ):
+        if required not in command_text:
+            fail(f"audit/replay verification command drift: missing {required}")
+
+    expected_redaction = {
+        "private_key_markers_found": False,
+        "raw_key_references_in_evidence": False,
+        "sensitive_values_in_evidence": False,
+    }
+    if evidence["redaction"] != expected_redaction:
+        fail("audit/replay verification redaction evidence is invalid")
+    serialized = json.dumps(evidence, sort_keys=True).lower()
+    for forbidden in (
+        '"key_ref"', '"private_key"', '"password"', '"credential"',
+        '"session_token"', '"payload_json"', '"endpoint_secret"',
+    ):
+        if forbidden in serialized:
+            fail(f"audit/replay verification evidence contains forbidden sensitive field: {forbidden}")
+    if "-----begin private key-----" in serialized or "-----begin encrypted private key-----" in serialized:
+        fail("audit/replay verification evidence contains private-key material")
+    return path, evidence
+
+
+
+
 def read_checksums(path: Path) -> dict[str, str]:
     if not path.is_file():
         fail(f"missing checksum file: {path}")
@@ -396,15 +817,24 @@ def main() -> None:
     backend_path = dist / BACKEND_INFO_NAME
     metadata_path = dist / RELEASE_METADATA_NAME
     go_evidence, go_evidence_value = require_go_evidence_archive(dist)
+    recovery_evidence, recovery_evidence_value = require_recovery_evidence_archive(dist)
+    status_outage_evidence, status_outage_evidence_value = require_status_outage_evidence_archive(dist)
+    audit_replay_evidence, audit_replay_evidence_value = require_audit_replay_evidence_archive(dist)
     backend = read_json_object(backend_path, "backend info")
     validate_backend_info(backend)
     metadata = read_json_object(metadata_path, "release metadata")
     validate_release_metadata(metadata, backend)
     if go_evidence_value["enterprise_commit"] != metadata["commit"]:
         fail("Enterprise Go verification commit does not match release metadata")
+    if recovery_evidence_value["commit"] != metadata["commit"]:
+        fail("recovery verification commit does not match release metadata")
+    if status_outage_evidence_value["commit"] != metadata["commit"]:
+        fail("status outage verification commit does not match release metadata")
+    if audit_replay_evidence_value["commit"] != metadata["commit"]:
+        fail("audit/replay verification commit does not match release metadata")
 
     checksums = read_checksums(dist / "SHA256SUMS")
-    artifacts = (service, core, go_evidence, backend_path, metadata_path)
+    artifacts = (service, core, go_evidence, recovery_evidence, status_outage_evidence, audit_replay_evidence, backend_path, metadata_path)
     expected_names = {artifact.name for artifact in artifacts}
     extra_names = sorted(set(checksums) - expected_names)
     missing_names = sorted(expected_names - set(checksums))

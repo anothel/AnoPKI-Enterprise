@@ -11,8 +11,8 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
-BASELINE_COMMIT = "71f0e898c32a7d6e00d0725eeab6ca150ccaa0af"
-PREVIOUS_BASELINE_COMMIT = "b4b5c475c3cb2f98f5bb6c180786c11a12a1dac8"
+BASELINE_COMMIT = "ae3ddee72dd05f274b9bbae1b514cdc4c4de03f5"
+PREVIOUS_BASELINE_COMMIT = "71f0e898c32a7d6e00d0725eeab6ca150ccaa0af"
 
 COMMUNITY_ONLY_FILES = {
     "docs-pack/README.md",
@@ -40,6 +40,12 @@ MIXED_REQUIRED_TEXT = {
         "ANOPKI_PRODUCT_PROFILE=enterprise-openssl",
         "ANOPKI_PRODUCT_PROFILE=enterprise-anocrypto-c",
         "validate-enterprise-release.py --expect-blocked",
+        "python scripts/verify-recovery-drill.py",
+        "anopki-recovery-verification",
+        "python scripts/verify-status-outage-drill.py",
+        "anopki-status-outage-verification",
+        "python scripts/verify-audit-replay-drill.py",
+        "anopki-audit-replay-verification",
     ),
     ".github/workflows/release.yml": (
         "validate-enterprise-release.py",
@@ -49,11 +55,18 @@ MIXED_REQUIRED_TEXT = {
         "anopki-enterprise-go-verification.tar.gz",
         "anopki-backend-info.json",
         "anopki-release-metadata.json",
+        "anopki-recovery-verification.tar.gz",
+        "anopki-status-outage-verification.tar.gz",
+        "anopki-audit-replay-verification.tar.gz",
     ),
     "CHANGELOG.md": (
         "FileKeyProvider",
         "ECDSA P-256",
         "no fallback",
+        "audit-repair",
+        "CRL/OCSP outage",
+        "SQLite backup/restore",
+        "policy-decision",
         "Enterprise Go release verification runner",
     ),
     "CMakeLists.txt": (
@@ -75,9 +88,17 @@ MIXED_REQUIRED_TEXT = {
         "test_verify_go_release.py",
         "enterprise-verify-local",
         "automatic fallback is disabled",
+        "verify-recovery-drill.py",
+        "verify-status-outage-drill.py",
+        "verify-audit-replay-drill.py",
     ),
     "docs/INDEX.md": ("Enterprise/OpenSSL", "Enterprise/AnoCrypto-C"),
-    "docs/ROADMAP.md": ("real local PKCS#11/HSM target", "AnoCrypto-C", "verify-go-release.py --profile full"),
+    "docs/ROADMAP.md": (
+        "real local PKCS#11/HSM target",
+        "AnoCrypto-C",
+        "verify-go-release.py --profile full",
+        "Keep SQLite backup/restore, CRL/OCSP outage-and-recovery, audit-repair",
+    ),
     "docs/adr/0006-crypto-backend-direction-anocrypto.md": (
         "Community owns the backend-neutral core contract and OpenSSL adapter",
         "Enterprise reuses Community",
@@ -109,6 +130,9 @@ MIXED_REQUIRED_TEXT = {
         "RSA and ECDSA",
         "non-interactive encrypted-PEM rejection",
         "A real non-exportable provider remains unimplemented",
+        "anopki-recovery-verification.tar.gz",
+        "anopki-status-outage-verification.tar.gz",
+        "anopki-audit-replay-verification.tar.gz",
     ),
     "docs/reference/target-architecture.md": (
         "reuses it without a fork",
@@ -121,6 +145,9 @@ MIXED_REQUIRED_TEXT = {
         "verify-go-release.py --profile full",
         "anopki-release-metadata.json",
         "kcmvp_status=not_applicable",
+        "verify-recovery-drill.py",
+        "verify-status-outage-drill.py",
+        "verify-audit-replay-drill.py",
     ),
     "docs/security/threat-model.md": ("Enterprise production non-exportable provider remains pending",),
     "scripts/test_validate_docs.py": (
@@ -136,6 +163,9 @@ MIXED_REQUIRED_TEXT = {
         "anopki-enterprise-go-verification.tar.gz",
         "commercial_release_authorized",
         'value["anocrypto_used"] = True',
+        "test_missing_recovery_evidence_fails",
+        "test_missing_status_outage_evidence_fails",
+        "test_missing_audit_replay_evidence_fails",
     ),
     "scripts/validate-release-artifacts.py": (
         "Enterprise/OpenSSL",
@@ -143,16 +173,25 @@ MIXED_REQUIRED_TEXT = {
         "community_baseline_commit",
         "anocrypto_used=false",
         "anopki-release-metadata.json",
+        "require_recovery_evidence_archive",
+        "require_status_outage_evidence_archive",
+        "require_audit_replay_evidence_archive",
     ),
     "scripts/test_validate_release_evidence.py": (
         "release evidence validator tests ok",
         "test_missing_release_go_evidence_fails",
+        "test_missing_release_recovery_evidence_fails",
+        "test_missing_release_status_outage_evidence_fails",
+        "test_missing_release_audit_replay_evidence_fails",
     ),
     "scripts/validate-release-evidence.py": (
         "test_generate_enterprise_release_metadata.py",
         "generate-enterprise-release-metadata.py",
         "REQUIRED_GO_RUNNER_TEXT",
         "anopki-enterprise-go-verification.tar.gz",
+        "REQUIRED_RECOVERY_RUNNER_TEXT",
+        "REQUIRED_STATUS_OUTAGE_RUNNER_TEXT",
+        "REQUIRED_AUDIT_REPLAY_RUNNER_TEXT",
     ),
     "scripts/test_validate_version_metadata.py": ("Enterprise edition metadata drift",),
     "scripts/validate-version-metadata.py": (BASELINE_COMMIT, "Enterprise edition metadata drift"),
@@ -177,11 +216,17 @@ MIXED_REQUIRED_TEXT = {
         "test_generate_enterprise_release_metadata.py",
         "test_verify_go_release.py",
         "enterprise-verify-local",
+        "verify-recovery-drill.py",
+        "verify-status-outage-drill.py",
+        "verify-audit-replay-drill.py",
     ),
     "scripts/verify-local.ps1": (
         "test_generate_enterprise_release_metadata.py",
         "test_verify_go_release.py",
         "enterprise-verify-local",
+        "verify-recovery-drill.py",
+        "verify-status-outage-drill.py",
+        "verify-audit-replay-drill.py",
     ),
 }
 

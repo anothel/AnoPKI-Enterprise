@@ -19,6 +19,9 @@ REQUIRED_DOC_TEXT = [
     "## Tool Decisions",
     "## Release Artifacts",
     "## Compatibility Matrix",
+    "## SQLite Recovery Evidence Runner",
+    "## CRL And OCSP Outage Evidence Runner",
+    "## Audit Repair And Dead-Letter Replay Evidence Runner",
     "## Supported-Go Evidence Runner",
     "## Required Evidence Per Release Candidate",
     "verify-go-release.py",
@@ -72,6 +75,15 @@ REQUIRED_CI_TEXT = [
     "python scripts/validate-version-metadata.py",
     "python scripts/test_generate_enterprise_release_metadata.py",
     "python scripts/test_verify_go_release.py",
+    "python scripts/test_verify_recovery_drill.py",
+    "python scripts/verify-recovery-drill.py",
+    "anopki-recovery-verification",
+    "python scripts/test_verify_status_outage_drill.py",
+    "python scripts/verify-status-outage-drill.py",
+    "anopki-status-outage-verification",
+    "python scripts/test_verify_audit_replay_drill.py",
+    "python scripts/verify-audit-replay-drill.py",
+    "anopki-audit-replay-verification",
     "python scripts/test_validate_release_artifacts.py",
     "python scripts/test_validate_release_evidence.py",
     "python scripts/validate-release-evidence.py",
@@ -126,6 +138,45 @@ REQUIRED_GO_RUNNER_TEXT = [
     '"kcmvp_status": "not_validated"',
 ]
 
+REQUIRED_RECOVERY_RUNNER_TEXT = [
+    "MIGRATION = Path",
+    "schema_migrations",
+    "certificate_issuance_attempts",
+    "crl_publications",
+    "webhook_deliveries",
+    "private-key-exclusion",
+    "recovery-verification.json",
+    "recovery-verification.md",
+    "resolve_commit",
+    "SENSITIVE_FIXTURES",
+]
+
+REQUIRED_STATUS_OUTAGE_RUNNER_TEXT = [
+    "MINIMUM_GO_VERSION = (1, 25, 11)",
+    "community_status_outage_drill",
+    "TestPublishCRLOutageRecoversWithoutPhantomPublication",
+    "TestRespondOCSPOutageRecoversWithoutSuccessAudit",
+    "TestPublishCRLOutageReturnsBadGatewayAndRecovers",
+    "TestRespondOCSPOutageReturnsBadGatewayAndRecovers",
+    "status-outage-verification.json",
+    "status-outage-verification.md",
+    "status-outage-test.log",
+    "resolve_commit",
+    "sensitive-evidence-exclusion",
+]
+
+REQUIRED_AUDIT_REPLAY_RUNNER_TEXT = [
+    "MINIMUM_GO_VERSION = (1, 25, 11)",
+    "community_audit_replay_drill",
+    "TestRepairMissingIssuanceAuditEventsPreservesCurrentEvidenceAndIsIdempotent",
+    "TestReplayDeadLetterOutboxMessagesPreservesHistoryAndCompletesAfterRecovery",
+    "audit-replay-verification.json",
+    "audit-replay-verification.md",
+    "audit-replay-test.log",
+    "dead-letter-attempt-history-preserved",
+    "sensitive-evidence-exclusion",
+]
+
 REQUIRED_RELEASE_TEXT = [
     "workflow_dispatch:",
     "tags:",
@@ -136,6 +187,12 @@ REQUIRED_RELEASE_TEXT = [
     "python scripts/verify-go-release.py",
     "--profile full",
     "anopki-enterprise-go-verification.tar.gz",
+    "python scripts/verify-recovery-drill.py",
+    "anopki-recovery-verification.tar.gz",
+    "python scripts/verify-status-outage-drill.py",
+    "anopki-status-outage-verification.tar.gz",
+    "python scripts/verify-audit-replay-drill.py",
+    "anopki-audit-replay-verification.tar.gz",
     '--commit "${GITHUB_SHA}"',
     'VERSION="$(cat VERSION)"',
     "go build -ldflags",
@@ -333,6 +390,9 @@ def main() -> None:
     check_local_verification_evidence(root, doc)
     check_hosted_execution_evidence(root)
     require_text(root / "scripts/verify-go-release.py", REQUIRED_GO_RUNNER_TEXT)
+    require_text(root / "scripts/verify-recovery-drill.py", REQUIRED_RECOVERY_RUNNER_TEXT)
+    require_text(root / "scripts/verify-status-outage-drill.py", REQUIRED_STATUS_OUTAGE_RUNNER_TEXT)
+    require_text(root / "scripts/verify-audit-replay-drill.py", REQUIRED_AUDIT_REPLAY_RUNNER_TEXT)
     require_text(root / ".github/workflows/ci.yml", REQUIRED_CI_TEXT)
     require_text(root / ".github/workflows/release.yml", REQUIRED_RELEASE_TEXT)
     print("release evidence ok")

@@ -8,8 +8,8 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
-TARGET = "71f0e898c32a7d6e00d0725eeab6ca150ccaa0af"
-PREVIOUS = "b4b5c475c3cb2f98f5bb6c180786c11a12a1dac8"
+TARGET = "ae3ddee72dd05f274b9bbae1b514cdc4c4de03f5"
+PREVIOUS = "71f0e898c32a7d6e00d0725eeab6ca150ccaa0af"
 
 
 def main() -> None:
@@ -57,6 +57,9 @@ def main() -> None:
         "drifted exact Community files",
         "src/backends/openssl/key_providers/file_key_provider.cpp",
         "test_generate_enterprise_release_metadata.py",
+        "anopki-recovery-verification",
+        "anopki-status-outage-verification",
+        "anopki-audit-replay-verification",
     ]
     missing = [text for text in required_validator_text if text not in validator]
     if missing:

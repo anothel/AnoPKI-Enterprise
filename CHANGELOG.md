@@ -9,6 +9,18 @@ commands and known gaps before tagging.
 
 ### Added
 
+- A fail-closed audit-repair and dead-letter replay drill proving current
+  signing/policy evidence reconstruction, idempotent repair, scoped replay,
+  preserved attempt history, recovered delivery, redaction, and exact-commit
+  release binding.
+- A fail-closed CRL/OCSP outage-and-recovery drill covering lifecycle
+  atomicity, public 502 mapping, no phantom publication or success audit,
+  recovery numbering, signing evidence, and release archive validation.
+- Stable allow/reject/unknown policy-decision audit metadata with redacted
+  validation-evidence references across enrollment, issuance, retry, and repair.
+- A deterministic fail-closed SQLite backup/restore drill with redacted
+  evidence, release archive validation, and dirty-migration, CRL-state, and
+  private-key-material regression checks.
 - Shared Community/OpenSSL ECDSA P-256 signing regression coverage for
   certificate issuance, CRL generation, and OCSP responses, with non-interactive
   encrypted-PEM rejection across all three `FileKeyProvider` operation boundaries.
@@ -59,6 +71,8 @@ commands and known gaps before tagging.
 
 ### Changed
 
+- Release-evidence validation pins canonical audit-replay minimum-Go tuple
+  spelling and rejects formatting drift.
 - The shared C++ OpenSSL parity harness builds without the range-loop
   temporary-binding or unused-helper warnings fixed by Community.
 - OpenSSL certificate, CRL, and OCSP signing resolve one adapter-private

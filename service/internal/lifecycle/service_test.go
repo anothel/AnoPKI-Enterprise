@@ -190,9 +190,12 @@ func TestManualEnrollmentLifecycle(t *testing.T) {
 	enrollmentMetadata := auditMetadata(t, events[2])
 	if enrollmentMetadata["identity_id"] != identity.ID ||
 		enrollmentMetadata["issuer_id"] != issuer.ID ||
-		enrollmentMetadata["enrollment_id"] != enrollment.ID {
+		enrollmentMetadata["enrollment_id"] != enrollment.ID ||
+		enrollmentMetadata["policy_decision"] != "allow" ||
+		enrollmentMetadata["policy_decision_reason"] != "enrollment_policy_passed" {
 		t.Fatalf("enrollment audit metadata = %#v", enrollmentMetadata)
 	}
+	assertPolicyEvidenceRefs(t, enrollmentMetadata, identity.ID, issuer.ID, "")
 	certificateMetadata := auditMetadata(t, events[4])
 	if certificateMetadata["identity_id"] != identity.ID ||
 		certificateMetadata["issuer_id"] != issuer.ID ||
@@ -206,9 +209,12 @@ func TestManualEnrollmentLifecycle(t *testing.T) {
 		certificateMetadata["key_provider_signing_proven"] != true ||
 		certificateMetadata["key_provider_binding_verified"] != true ||
 		certificateMetadata["key_provider_fallback_used"] != false ||
-		certificateMetadata["key_provider_result_code"] != "ok" {
+		certificateMetadata["key_provider_result_code"] != "ok" ||
+		certificateMetadata["policy_decision"] != "allow" ||
+		certificateMetadata["policy_decision_reason"] != "issuance_policy_passed" {
 		t.Fatalf("certificate audit metadata = %#v", certificateMetadata)
 	}
+	assertPolicyEvidenceRefs(t, certificateMetadata, identity.ID, issuer.ID, "")
 }
 
 func TestIssueCertificateRecordsSignerMetrics(t *testing.T) {
@@ -1023,6 +1029,74 @@ func TestPublishCRLMapsCoreFailure(t *testing.T) {
 	}
 }
 
+func TestPublishCRLOutageRecoversWithoutPhantomPublication(t *testing.T) {
+	ctx := context.Background()
+	repo := store.NewMemoryStore()
+	coreClient := &fakeIssuer{crlErr: errors.New("crl signer unavailable")}
+	clock := fixedClock{now: time.Date(2026, time.January, 2, 3, 4, 5, 0, time.UTC)}
+	service := New(repo, coreClient, clock, &fakeIDGenerator{})
+
+	issuer, err := service.CreateIssuer(ctx, "admin", CreateIssuerRequest{
+		Name:           "intermediate-ca",
+		Kind:           domain.IssuerIntermediateCA,
+		CertificatePEM: "issuer-cert-pem",
+		KeyRef:         "issuer-key-ref",
+	})
+	if err != nil {
+		t.Fatalf("CreateIssuer returned error: %v", err)
+	}
+
+	request := PublishCRLRequest{
+		IssuerID:          issuer.ID,
+		DistributionPoint: "https://pki.example.test/intermediate.crl",
+		NextUpdate:        clock.now.Add(24 * time.Hour),
+	}
+	if _, err := service.PublishCRL(ctx, "operator", request); !errors.Is(err, domain.ErrCRLGenerationFailed) {
+		t.Fatalf("PublishCRL outage error = %v, want ErrCRLGenerationFailed", err)
+	}
+	publications, err := repo.ListCRLPublicationsByIssuer(ctx, issuer.ID)
+	if err != nil {
+		t.Fatalf("ListCRLPublicationsByIssuer returned error: %v", err)
+	}
+	if len(publications) != 0 {
+		t.Fatalf("CRL publications during outage = %#v, want none", publications)
+	}
+	for _, event := range mustListAuditEvents(t, service, ctx) {
+		if event.Action == "crl.published" {
+			t.Fatalf("success audit written during CRL outage: %#v", event)
+		}
+	}
+
+	coreClient.crlErr = nil
+	coreClient.crlResult = corecli.GenerateCRLResult{CRLPEM: "recovered-crl-pem"}
+	publication, err := service.PublishCRL(ctx, "operator", request)
+	if err != nil {
+		t.Fatalf("PublishCRL after recovery returned error: %v", err)
+	}
+	if publication.CRLNumber != 1 || publication.CRLPEM != "recovered-crl-pem" {
+		t.Fatalf("recovered CRL publication = %#v", publication)
+	}
+	publications, err = repo.ListCRLPublicationsByIssuer(ctx, issuer.ID)
+	if err != nil {
+		t.Fatalf("ListCRLPublicationsByIssuer after recovery returned error: %v", err)
+	}
+	if len(publications) != 1 || publications[0].CRLNumber != 1 {
+		t.Fatalf("CRL publications after recovery = %#v", publications)
+	}
+	publishedAudits := 0
+	for _, event := range mustListAuditEvents(t, service, ctx) {
+		if event.Action == "crl.published" {
+			publishedAudits++
+		}
+	}
+	if publishedAudits != 1 {
+		t.Fatalf("crl.published audit count = %d, want 1", publishedAudits)
+	}
+	if len(coreClient.crlRequests) != 2 {
+		t.Fatalf("CRL request count = %d, want 2", len(coreClient.crlRequests))
+	}
+}
+
 func TestPublishCRLRejectsReadinessWithoutCoreSigningEvidence(t *testing.T) {
 	ctx := context.Background()
 	repo := store.NewMemoryStore()
@@ -1261,6 +1335,66 @@ func TestRespondOCSPMapsResponseFailure(t *testing.T) {
 	}
 	if len(coreClient.ocspResponses) != 1 {
 		t.Fatalf("OCSP response request count = %d, want 1", len(coreClient.ocspResponses))
+	}
+}
+
+func TestRespondOCSPOutageRecoversWithoutSuccessAudit(t *testing.T) {
+	ctx := context.Background()
+	repo := store.NewMemoryStore()
+	coreClient := &fakeIssuer{
+		issuerOCSPInfo: corecli.OCSPIssuerInfo{IssuerNameHash: "name-hash", IssuerKeyHash: "key-hash"},
+		ocspInfo: corecli.OCSPRequestInfo{Certificates: []corecli.OCSPCertificateID{{
+			SerialNumber: "1001", IssuerNameHash: "name-hash", IssuerKeyHash: "key-hash",
+		}}},
+		ocspResponseErr: errors.New("ocsp signer unavailable"),
+	}
+	clock := fixedClock{now: time.Date(2026, time.January, 2, 3, 4, 5, 0, time.UTC)}
+	service := New(repo, coreClient, clock, &fakeIDGenerator{})
+
+	issuer, err := service.CreateIssuer(ctx, "admin", CreateIssuerRequest{
+		Name: "intermediate-ca", Kind: domain.IssuerIntermediateCA,
+		CertificatePEM: "issuer-cert-pem", KeyRef: "issuer-key-ref",
+	})
+	if err != nil {
+		t.Fatalf("CreateIssuer returned error: %v", err)
+	}
+	if err := repo.CreateCertificate(ctx, domain.Certificate{
+		ID: "cert-valid", IdentityID: "identity-1", IssuerID: issuer.ID,
+		SerialNumber: "1001", Status: domain.CertificateValid,
+		CreatedAt: clock.now, UpdatedAt: clock.now,
+	}); err != nil {
+		t.Fatalf("CreateCertificate returned error: %v", err)
+	}
+
+	if _, err := service.RespondOCSP(ctx, "ocsp-client", []byte("ocsp-request-der")); !errors.Is(err, domain.ErrOCSPResponseFailed) {
+		t.Fatalf("RespondOCSP outage error = %v, want ErrOCSPResponseFailed", err)
+	}
+	for _, event := range mustListAuditEvents(t, service, ctx) {
+		if event.Action == "ocsp.requested" {
+			t.Fatalf("success audit written during OCSP outage: %#v", event)
+		}
+	}
+
+	coreClient.ocspResponseErr = nil
+	coreClient.ocspResponseDER = []byte("recovered-ocsp-response")
+	response, err := service.RespondOCSP(ctx, "ocsp-client", []byte("ocsp-request-der"))
+	if err != nil {
+		t.Fatalf("RespondOCSP after recovery returned error: %v", err)
+	}
+	if string(response.ResponseDER) != "recovered-ocsp-response" {
+		t.Fatalf("recovered OCSP response = %q", response.ResponseDER)
+	}
+	successAudits := 0
+	for _, event := range mustListAuditEvents(t, service, ctx) {
+		if event.Action == "ocsp.requested" {
+			successAudits++
+		}
+	}
+	if successAudits != 1 {
+		t.Fatalf("ocsp.requested audit count = %d, want 1", successAudits)
+	}
+	if len(coreClient.ocspResponses) != 2 {
+		t.Fatalf("OCSP response request count = %d, want 2", len(coreClient.ocspResponses))
 	}
 }
 
@@ -2831,6 +2965,59 @@ func TestCreateEnrollmentRejectsInvalidRequest(t *testing.T) {
 				t.Fatalf("CreateEnrollment error = %v, want ErrInvalidRequest", err)
 			}
 		})
+	}
+}
+
+func TestPolicyValidationEvidenceRefsAreDeterministicAndRedacted(t *testing.T) {
+	now := time.Date(2026, time.January, 3, 4, 5, 6, 0, time.UTC)
+	reqA := CreateEnrollmentRequest{
+		IdentityID:           "identity-1",
+		IssuerID:             "issuer-1",
+		CertificateProfileID: "profile-1",
+		CSRPEM:               "sensitive-csr-pem",
+		RequestedSubject:     "CN=edge-01",
+		RequestedDNSNames:    []string{"b.example.test", "a.example.test"},
+		RequestedIPAddresses: []string{"192.0.2.20", "192.0.2.10"},
+		RequestedNotAfter:    now,
+	}
+	reqB := reqA
+	reqB.RequestedDNSNames = []string{"a.example.test", "b.example.test"}
+	reqB.RequestedIPAddresses = []string{"192.0.2.10", "192.0.2.20"}
+	profileA := domain.CertificateProfile{
+		ID:                         "profile-1",
+		ValidityPeriodSeconds:      86400,
+		AllowedDNSPatterns:         []string{"*.b.example.test", "*.a.example.test"},
+		AllowedIPRanges:            []string{"192.0.2.0/25", "192.0.2.128/25"},
+		AllowedKeyAlgorithms:       []string{"rsa", "ecdsa"},
+		AllowedSignatureAlgorithms: []string{"rsa_with_sha256", "ecdsa_with_sha256"},
+	}
+	profileB := profileA
+	profileB.AllowedDNSPatterns = []string{"*.a.example.test", "*.b.example.test"}
+	profileB.AllowedIPRanges = []string{"192.0.2.128/25", "192.0.2.0/25"}
+	profileB.AllowedKeyAlgorithms = []string{"ecdsa", "rsa"}
+	profileB.AllowedSignatureAlgorithms = []string{"ecdsa_with_sha256", "rsa_with_sha256"}
+	identityA := domain.Identity{
+		ID:                 "identity-1",
+		AllowedDNSNames:    []string{"b.example.test", "a.example.test"},
+		AllowedIPAddresses: []string{"192.0.2.20", "192.0.2.10"},
+	}
+	identityB := identityA
+	identityB.AllowedDNSNames = []string{"a.example.test", "b.example.test"}
+	identityB.AllowedIPAddresses = []string{"192.0.2.10", "192.0.2.20"}
+
+	refsA := policyValidationEvidenceRefs(reqA, profileA, identityA)
+	refsB := policyValidationEvidenceRefs(reqB, profileB, identityB)
+	if !reflect.DeepEqual(refsA, refsB) {
+		t.Fatalf("policy evidence refs differ after list reordering:\nA=%#v\nB=%#v", refsA, refsB)
+	}
+	encoded, err := json.Marshal(refsA)
+	if err != nil {
+		t.Fatalf("marshal policy evidence refs: %v", err)
+	}
+	for _, raw := range []string{"sensitive-csr-pem", "a.example.test", "192.0.2.10"} {
+		if strings.Contains(string(encoded), raw) {
+			t.Fatalf("policy evidence refs expose %q: %s", raw, encoded)
+		}
 	}
 }
 
@@ -5323,9 +5510,12 @@ func TestRepairMissingIssuanceAuditEvents(t *testing.T) {
 	}
 	metadata := auditMetadata(t, event)
 	if metadata["key_provider_class"] != "file" ||
-		metadata["key_provider_exportability"] != "exportable" {
+		metadata["key_provider_exportability"] != "exportable" ||
+		metadata["policy_decision"] != "unknown" ||
+		metadata["policy_decision_reason"] != "legacy_policy_evidence_unavailable" {
 		t.Fatalf("repair audit metadata = %#v", metadata)
 	}
+	assertPolicyEvidenceRefs(t, metadata, certificate.IdentityID, certificate.IssuerID, certificate.CertificateProfileID)
 
 	repaired, err = service.RepairMissingIssuanceAuditEvents(ctx, "operator")
 	if err != nil {
@@ -5333,6 +5523,331 @@ func TestRepairMissingIssuanceAuditEvents(t *testing.T) {
 	}
 	if repaired != 0 {
 		t.Fatalf("second repaired count = %d, want 0", repaired)
+	}
+}
+
+func TestRepairMissingIssuanceAuditEventsPreservesCurrentEvidenceAndIsIdempotent(t *testing.T) {
+	ctx := context.Background()
+	repo := store.NewMemoryStore()
+	now := time.Date(2026, time.January, 2, 3, 4, 5, 0, time.UTC)
+	service := New(repo, &fakeIssuer{}, fixedClock{now: now}, &fakeIDGenerator{})
+
+	identity := domain.Identity{
+		ID:              "identity-repair-current",
+		Type:            domain.IdentityMachine,
+		Name:            "edge-01",
+		AllowedDNSNames: []string{"edge-01.example.test"},
+		Status:          domain.IdentityActive,
+		CreatedAt:       now,
+		UpdatedAt:       now,
+	}
+	issuer := domain.Issuer{
+		ID:             "issuer-repair-current",
+		Name:           "issuer",
+		Kind:           domain.IssuerIntermediateCA,
+		Status:         domain.IssuerActive,
+		CertificatePEM: "issuer-cert-pem",
+		KeyRef:         "file:/sensitive/issuer-repair-current.key",
+		CreatedAt:      now,
+		UpdatedAt:      now,
+	}
+	profile := domain.CertificateProfile{
+		ID:                         "profile-repair-current",
+		Name:                       "repair-profile",
+		IssuerID:                   issuer.ID,
+		ValidityPeriodSeconds:      int64((24 * time.Hour).Seconds()),
+		AllowedDNSPatterns:         []string{"edge-01.example.test"},
+		AllowedKeyAlgorithms:       []string{"rsa"},
+		MinKeySizeBits:             2048,
+		AllowedSignatureAlgorithms: []string{"rsa-sha256"},
+		CreatedAt:                  now,
+		UpdatedAt:                  now,
+	}
+	enrollment := domain.Enrollment{
+		ID:                   "enrollment-repair-current",
+		IdentityID:           identity.ID,
+		IssuerID:             issuer.ID,
+		CertificateProfileID: profile.ID,
+		CSRPEM:               "csr-pem-sensitive-repair-current",
+		Status:               domain.EnrollmentIssued,
+		RequestedSubject:     "CN=edge-01",
+		RequestedDNSNames:    []string{"edge-01.example.test"},
+		CSRDNSNames:          []string{"edge-01.example.test"},
+		RequestedNotAfter:    now.Add(24 * time.Hour),
+		ApprovedBy:           "approver",
+		ApprovedAt:           now,
+		CreatedAt:            now,
+		UpdatedAt:            now,
+	}
+	certificate := domain.Certificate{
+		ID:                   "certificate-repair-current",
+		IdentityID:           identity.ID,
+		IssuerID:             issuer.ID,
+		EnrollmentID:         enrollment.ID,
+		CertificateProfileID: profile.ID,
+		SerialNumber:         "serial-repair-current",
+		Subject:              "CN=edge-01",
+		DNSNames:             []string{"edge-01.example.test"},
+		NotBefore:            now,
+		NotAfter:             now.Add(24 * time.Hour),
+		Status:               domain.CertificateValid,
+		CertificatePEM:       "cert-pem",
+		CreatedAt:            now,
+		UpdatedAt:            now,
+	}
+	for name, create := range map[string]func() error{
+		"identity":    func() error { return repo.CreateIdentity(ctx, identity) },
+		"issuer":      func() error { return repo.CreateIssuer(ctx, issuer) },
+		"profile":     func() error { return repo.CreateCertificateProfile(ctx, profile) },
+		"enrollment":  func() error { return repo.CreateEnrollment(ctx, enrollment) },
+		"certificate": func() error { return repo.CreateCertificate(ctx, certificate) },
+	} {
+		if err := create(); err != nil {
+			t.Fatalf("create %s returned error: %v", name, err)
+		}
+	}
+	evidenceJSON, err := json.Marshal(corecli.SigningEvidence{
+		SchemaVersion:               1,
+		EvidenceSource:              "core_signing",
+		Operation:                   "certificate_issue",
+		ProviderID:                  "file",
+		ProviderClass:               "file",
+		ProviderReadiness:           "ready",
+		ProviderExportability:       "exportable",
+		ReferenceClass:              "file",
+		KeyAlgorithm:                "rsa",
+		RequestedSignatureAlgorithm: "rsa-sha256",
+		IssuerBindingVerified:       true,
+		FallbackUsed:                false,
+		ResultCode:                  "ok",
+	})
+	if err != nil {
+		t.Fatalf("marshal signing evidence: %v", err)
+	}
+	if err := repo.CreateIssuanceAttempt(ctx, domain.IssuanceAttempt{
+		EnrollmentID:        enrollment.ID,
+		Status:              domain.IssuanceAttemptFinalized,
+		CertificateID:       certificate.ID,
+		CertificatePEM:      certificate.CertificatePEM,
+		SerialNumber:        certificate.SerialNumber,
+		Subject:             certificate.Subject,
+		NotBefore:           certificate.NotBefore,
+		NotAfter:            certificate.NotAfter,
+		SigningStartedAt:    now,
+		SignedAt:            now,
+		FinalizedAt:         now,
+		SigningEvidenceJSON: string(evidenceJSON),
+		CreatedAt:           now,
+		UpdatedAt:           now,
+	}); err != nil {
+		t.Fatalf("CreateIssuanceAttempt returned error: %v", err)
+	}
+
+	repaired, err := service.RepairMissingIssuanceAuditEvents(ctx, "repair-operator")
+	if err != nil {
+		t.Fatalf("RepairMissingIssuanceAuditEvents returned error: %v", err)
+	}
+	if repaired != 1 {
+		t.Fatalf("repaired count = %d, want 1", repaired)
+	}
+	events, err := repo.ListAuditEvents(ctx)
+	if err != nil {
+		t.Fatalf("ListAuditEvents returned error: %v", err)
+	}
+	event := findAuditEventForResource(t, events, "certificate.issued", certificate.ID)
+	metadata := auditMetadata(t, event)
+	if metadata["key_provider_evidence_source"] != "core_signing" ||
+		metadata["key_provider_signing_proven"] != true ||
+		metadata["key_provider_fallback_used"] != false ||
+		metadata["policy_decision"] != "allow" ||
+		metadata["policy_decision_reason"] != "issuance_policy_passed" {
+		t.Fatalf("repaired audit metadata = %#v", metadata)
+	}
+	assertPolicyEvidenceRefs(t, metadata, identity.ID, issuer.ID, profile.ID)
+	if strings.Contains(event.MetadataJSON, issuer.KeyRef) ||
+		strings.Contains(event.MetadataJSON, enrollment.CSRPEM) ||
+		strings.Contains(event.MetadataJSON, "edge-01.example.test") {
+		t.Fatalf("repaired audit metadata exposes sensitive policy/key input: %s", event.MetadataJSON)
+	}
+
+	repaired, err = service.RepairMissingIssuanceAuditEvents(ctx, "repair-operator")
+	if err != nil {
+		t.Fatalf("second RepairMissingIssuanceAuditEvents returned error: %v", err)
+	}
+	if repaired != 0 {
+		t.Fatalf("second repaired count = %d, want 0", repaired)
+	}
+	events, err = repo.ListAuditEvents(ctx)
+	if err != nil {
+		t.Fatalf("second ListAuditEvents returned error: %v", err)
+	}
+	count := 0
+	for _, candidate := range events {
+		if candidate.Action == "certificate.issued" && candidate.ResourceID == certificate.ID {
+			count++
+		}
+	}
+	if count != 1 {
+		t.Fatalf("certificate.issued audit count = %d, want 1", count)
+	}
+}
+
+func TestReplayDeadLetterOutboxMessagesPreservesHistoryAndCompletesAfterRecovery(t *testing.T) {
+	ctx := context.Background()
+	repo := store.NewMemoryStore()
+	now := time.Date(2026, time.January, 2, 3, 4, 5, 0, time.UTC)
+	service := New(repo, &fakeIssuer{}, fixedClock{now: now}, &fakeIDGenerator{})
+	requests := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests++
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer server.Close()
+
+	endpoint := domain.NotificationEndpoint{
+		ID:         "endpoint-replay-recovery",
+		Name:       "recovered receiver",
+		Type:       domain.NotificationEndpointWebhook,
+		Status:     domain.NotificationEndpointActive,
+		URL:        server.URL,
+		Secret:     "test-secret-not-evidence",
+		EventTypes: []string{"certificate.issued"},
+		CreatedAt:  now.Add(-3 * time.Hour),
+		UpdatedAt:  now.Add(-3 * time.Hour),
+	}
+	if err := repo.CreateNotificationEndpoint(ctx, endpoint); err != nil {
+		t.Fatalf("CreateNotificationEndpoint returned error: %v", err)
+	}
+	message := domain.OutboxMessage{
+		ID:                   "outbox-replay-recovery",
+		Type:                 "certificate.issued",
+		PayloadJSON:          `{"certificate_id":"certificate-replay-recovery"}`,
+		Status:               domain.OutboxDeadLetter,
+		AvailableAt:          now.Add(-time.Hour),
+		ProcessingDeadlineAt: time.Time{},
+		AttemptCount:         2,
+		MaxAttempts:          2,
+		LastError:            "receiver unavailable",
+		CreatedAt:            now.Add(-2 * time.Hour),
+		UpdatedAt:            now.Add(-time.Hour),
+	}
+	other := message
+	other.ID = "outbox-replay-unrelated"
+	other.Type = "certificate.revoked"
+	if err := repo.CreateOutboxMessage(ctx, message); err != nil {
+		t.Fatalf("CreateOutboxMessage returned error: %v", err)
+	}
+	if err := repo.CreateOutboxMessage(ctx, other); err != nil {
+		t.Fatalf("CreateOutboxMessage unrelated returned error: %v", err)
+	}
+	for index := 1; index <= 2; index++ {
+		if err := repo.CreateJobAttempt(ctx, domain.JobAttempt{
+			ID:              fmt.Sprintf("attempt-replay-%d", index),
+			OutboxMessageID: message.ID,
+			Status:          domain.JobAttemptFailed,
+			Error:           "receiver unavailable",
+			StartedAt:       now.Add(time.Duration(index-3) * time.Hour),
+			FinishedAt:      now.Add(time.Duration(index-3)*time.Hour + time.Minute),
+			CreatedAt:       now.Add(time.Duration(index-3)*time.Hour + time.Minute),
+		}); err != nil {
+			t.Fatalf("CreateJobAttempt(%d) returned error: %v", index, err)
+		}
+	}
+	if err := repo.UpsertWebhookDelivery(ctx, domain.WebhookDelivery{
+		OutboxMessageID: message.ID,
+		EndpointID:      endpoint.ID,
+		Status:          domain.JobAttemptFailed,
+		AttemptCount:    2,
+		LastError:       "receiver unavailable",
+		LastAttemptedAt: now.Add(-time.Hour),
+		CreatedAt:       now.Add(-2 * time.Hour),
+		UpdatedAt:       now.Add(-time.Hour),
+	}); err != nil {
+		t.Fatalf("UpsertWebhookDelivery returned error: %v", err)
+	}
+
+	result, err := service.ReplayDeadLetterOutboxMessages(ctx, "recovery-operator", ReplayDeadLetterOutboxRequest{
+		EventType:   message.Type,
+		CreatedFrom: now.Add(-3 * time.Hour),
+		CreatedTo:   now,
+		Limit:       10,
+	})
+	if err != nil {
+		t.Fatalf("ReplayDeadLetterOutboxMessages returned error: %v", err)
+	}
+	if len(result.ReplayedMessages) != 1 || result.ReplayedMessages[0].ID != message.ID {
+		t.Fatalf("replayed messages = %#v", result.ReplayedMessages)
+	}
+	replayed, err := repo.GetOutboxMessage(ctx, message.ID)
+	if err != nil {
+		t.Fatalf("GetOutboxMessage returned error: %v", err)
+	}
+	if replayed.Status != domain.OutboxPending || replayed.AttemptCount != 0 || replayed.LastError != "" ||
+		replayed.MaxAttempts != message.MaxAttempts || !replayed.AvailableAt.Equal(now) {
+		t.Fatalf("replayed message = %#v", replayed)
+	}
+	unchanged, err := repo.GetOutboxMessage(ctx, other.ID)
+	if err != nil {
+		t.Fatalf("GetOutboxMessage unrelated returned error: %v", err)
+	}
+	if unchanged.Status != domain.OutboxDeadLetter || unchanged.AttemptCount != other.AttemptCount || unchanged.LastError != other.LastError {
+		t.Fatalf("unrelated message changed = %#v", unchanged)
+	}
+	attempts, err := repo.ListJobAttemptsByOutboxMessage(ctx, message.ID)
+	if err != nil {
+		t.Fatalf("ListJobAttemptsByOutboxMessage returned error: %v", err)
+	}
+	if len(attempts) != 2 || attempts[0].Status != domain.JobAttemptFailed || attempts[1].Status != domain.JobAttemptFailed {
+		t.Fatalf("preserved attempts = %#v", attempts)
+	}
+	delivery, err := repo.GetWebhookDelivery(ctx, message.ID, endpoint.ID)
+	if err != nil {
+		t.Fatalf("GetWebhookDelivery returned error: %v", err)
+	}
+	if delivery.Status != domain.JobAttemptFailed || delivery.AttemptCount != 2 || delivery.LastError == "" {
+		t.Fatalf("preserved delivery = %#v", delivery)
+	}
+
+	dispatcher := NewOutboxDispatcher(repo, NewWebhookOutboxHandler(repo, server.Client()), fixedClock{now: now}, &fakeIDGenerator{})
+	processed, err := dispatcher.RunOnce(ctx, 10)
+	if err != nil {
+		t.Fatalf("RunOnce after recovery returned error: %v", err)
+	}
+	if processed != 1 || requests != 1 {
+		t.Fatalf("processed=%d requests=%d, want 1/1", processed, requests)
+	}
+	completed, err := repo.GetOutboxMessage(ctx, message.ID)
+	if err != nil {
+		t.Fatalf("GetOutboxMessage completed returned error: %v", err)
+	}
+	if completed.Status != domain.OutboxCompleted || completed.AttemptCount != 0 || completed.LastError != "" {
+		t.Fatalf("completed message = %#v", completed)
+	}
+	attempts, err = repo.ListJobAttemptsByOutboxMessage(ctx, message.ID)
+	if err != nil {
+		t.Fatalf("ListJobAttemptsByOutboxMessage after recovery returned error: %v", err)
+	}
+	if len(attempts) != 3 || attempts[2].Status != domain.JobAttemptSucceeded || attempts[2].Error != "" {
+		t.Fatalf("attempt history after recovery = %#v", attempts)
+	}
+	delivery, err = repo.GetWebhookDelivery(ctx, message.ID, endpoint.ID)
+	if err != nil {
+		t.Fatalf("GetWebhookDelivery after recovery returned error: %v", err)
+	}
+	if delivery.Status != domain.JobAttemptSucceeded || delivery.AttemptCount != 3 || delivery.LastError != "" {
+		t.Fatalf("delivery after recovery = %#v", delivery)
+	}
+	events, err := repo.ListAuditEvents(ctx)
+	if err != nil {
+		t.Fatalf("ListAuditEvents returned error: %v", err)
+	}
+	event := findAuditEvent(t, events, "outbox.bulk_replay_requested")
+	metadata := auditMetadata(t, event)
+	if metadata["outbox_message_type"] != message.Type || metadata["replayed_count"] != "1" {
+		t.Fatalf("bulk replay audit metadata = %#v", metadata)
+	}
+	if strings.Contains(event.MetadataJSON, message.PayloadJSON) || strings.Contains(event.MetadataJSON, endpoint.Secret) {
+		t.Fatalf("bulk replay audit exposes payload or secret: %s", event.MetadataJSON)
 	}
 }
 
@@ -5864,6 +6379,15 @@ type fakeIssuer struct {
 	err                             error
 }
 
+func mustListAuditEvents(t *testing.T, service *Service, ctx context.Context) []domain.AuditEvent {
+	t.Helper()
+	events, err := service.ListAuditEvents(ctx)
+	if err != nil {
+		t.Fatalf("ListAuditEvents returned error: %v", err)
+	}
+	return events
+}
+
 func testSigningEvidence(operation string, algorithm string) corecli.SigningEvidence {
 	return corecli.SigningEvidence{
 		SchemaVersion:               1,
@@ -6273,6 +6797,45 @@ func (tx *staleRevocationTx) UpdateCertificateIfStatus(ctx context.Context, cert
 func (tx *staleRevocationTx) CreateRevocation(ctx context.Context, revocation domain.Revocation) error {
 	tx.parent.createRevocationCalled = true
 	return errors.New("CreateRevocation should not be called")
+}
+
+func assertPolicyEvidenceRefs(t *testing.T, metadata map[string]any, identityID string, issuerID string, profileID string) {
+	t.Helper()
+	values, ok := metadata["policy_validation_evidence_refs"].([]any)
+	if !ok || len(values) < 4 {
+		t.Fatalf("policy evidence refs = %#v; metadata=%#v", metadata["policy_validation_evidence_refs"], metadata)
+	}
+	refs := make([]string, 0, len(values))
+	for _, value := range values {
+		ref, ok := value.(string)
+		if !ok {
+			t.Fatalf("policy evidence ref = %#v, want string", value)
+		}
+		refs = append(refs, ref)
+	}
+	want := []string{"schema:" + policyValidationEvidenceSchema, "identity:" + identityID, "issuer:" + issuerID}
+	if profileID != "" {
+		want = append(want, "profile:"+profileID)
+	}
+	for _, expected := range want {
+		found := false
+		for _, ref := range refs {
+			if ref == expected {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Fatalf("missing policy evidence ref %q in %#v", expected, refs)
+		}
+	}
+	encoded, err := json.Marshal(refs)
+	if err != nil {
+		t.Fatalf("marshal policy evidence refs: %v", err)
+	}
+	if strings.Contains(string(encoded), "edge-01.example.test") || strings.Contains(string(encoded), "csr-pem") {
+		t.Fatalf("policy evidence refs expose raw policy input: %s", encoded)
+	}
 }
 
 func auditMetadata(t *testing.T, event domain.AuditEvent) map[string]any {

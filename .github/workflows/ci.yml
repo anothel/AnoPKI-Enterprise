@@ -88,6 +88,76 @@ jobs:
       - name: Validate release evidence
         run: python scripts/validate-release-evidence.py
 
+  recovery-drill:
+    name: SQLite recovery drill
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+      - name: Test recovery drill
+        run: python scripts/test_verify_recovery_drill.py
+      - name: Run recovery drill
+        run: >-
+          python scripts/verify-recovery-drill.py
+          --out-dir .tmp/recovery-evidence/ci
+          --commit "${GITHUB_SHA}"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: anopki-recovery-verification
+          path: .tmp/recovery-evidence/ci/
+          if-no-files-found: error
+
+  status-outage-drill:
+    name: CRL and OCSP outage drill
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.25.12"
+          cache-dependency-path: |
+            service/go.mod
+            service/go.sum
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+      - name: Test status outage drill
+        run: python scripts/test_verify_status_outage_drill.py
+      - name: Run status outage drill
+        run: >-
+          python scripts/verify-status-outage-drill.py
+          --out-dir .tmp/status-outage-evidence/ci
+          --commit "${GITHUB_SHA}"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: anopki-status-outage-verification
+          path: .tmp/status-outage-evidence/ci/
+          if-no-files-found: error
+
+  audit-replay-drill:
+    name: Audit repair and dead-letter replay drill
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.25.12"
+          cache-dependency-path: |
+            service/go.mod
+            service/go.sum
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+      - run: python scripts/test_verify_audit_replay_drill.py
+      - run: python scripts/verify-audit-replay-drill.py --out-dir .tmp/audit-replay-evidence/ci --commit "${GITHUB_SHA}"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: anopki-audit-replay-verification
+          path: .tmp/audit-replay-evidence/ci/
+          if-no-files-found: error
+
   secret-baseline:
     name: Secret baseline scan
     runs-on: ubuntu-latest

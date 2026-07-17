@@ -32,6 +32,9 @@ def require_release_workflow() -> None:
         "python scripts/verify-go-release.py",
         "--profile full",
         "anopki-enterprise-go-verification.tar.gz",
+        "anopki-recovery-verification.tar.gz",
+        "anopki-status-outage-verification.tar.gz",
+        "anopki-audit-replay-verification.tar.gz",
         "cmake --build build-release --config Release",
         'VERSION="$(cat VERSION)"',
         "go build -ldflags",
@@ -64,6 +67,9 @@ def copy_release_evidence_inputs(dst: Path) -> None:
         ".edition/edition.json",
         "scripts/verify-local.ps1",
         "scripts/verify-go-release.py",
+        "scripts/verify-recovery-drill.py",
+        "scripts/verify-status-outage-drill.py",
+        "scripts/verify-audit-replay-drill.py",
         ".github/workflows/ci.yml",
         ".github/workflows/release.yml",
     ]
@@ -81,6 +87,15 @@ def run_validator(root: Path) -> subprocess.CompletedProcess[str]:
         capture_output=True,
         check=False,
     )
+
+
+def mutate(path: Path, old: str, new: str = "") -> None:
+    text = path.read_text(encoding="utf-8")
+    if old not in text:
+        raise AssertionError(f"missing fixture text: {old}")
+    path.write_text(text.replace(old, new, 1), encoding="utf-8")
+
+
 
 
 def test_missing_compatibility_matrix_row_fails(tmp_path: Path) -> None:
@@ -309,6 +324,66 @@ def test_hosted_execution_contradictions_fail(tmp_path: Path) -> None:
         assert expected in result.stderr
 
 
+def test_missing_recovery_runner_fails(tmp_path: Path) -> None:
+    copy_release_evidence_inputs(tmp_path)
+    mutate(tmp_path / "scripts/verify-recovery-drill.py", "private-key-exclusion")
+    result = run_validator(tmp_path)
+    assert result.returncode == 1
+    assert "private-key-exclusion" in result.stderr
+
+
+def test_missing_release_recovery_evidence_fails(tmp_path: Path) -> None:
+    copy_release_evidence_inputs(tmp_path)
+    mutate(tmp_path / ".github/workflows/release.yml", "anopki-recovery-verification.tar.gz")
+    result = run_validator(tmp_path)
+    assert result.returncode == 1
+    assert "anopki-recovery-verification.tar.gz" in result.stderr
+
+
+def test_missing_status_outage_runner_fails(tmp_path: Path) -> None:
+    copy_release_evidence_inputs(tmp_path)
+    mutate(tmp_path / "scripts/verify-status-outage-drill.py", "sensitive-evidence-exclusion")
+    result = run_validator(tmp_path)
+    assert result.returncode == 1
+    assert "sensitive-evidence-exclusion" in result.stderr
+
+
+def test_missing_release_status_outage_evidence_fails(tmp_path: Path) -> None:
+    copy_release_evidence_inputs(tmp_path)
+    mutate(tmp_path / ".github/workflows/release.yml", "anopki-status-outage-verification.tar.gz")
+    result = run_validator(tmp_path)
+    assert result.returncode == 1
+    assert "anopki-status-outage-verification.tar.gz" in result.stderr
+
+
+
+def test_audit_replay_minimum_go_version_format_drift_fails(tmp_path: Path) -> None:
+    copy_release_evidence_inputs(tmp_path)
+    mutate(
+        tmp_path / "scripts/verify-audit-replay-drill.py",
+        "MINIMUM_GO_VERSION = (1, 25, 11)",
+        "MINIMUM_GO_VERSION=(1,25,11)",
+    )
+    result = run_validator(tmp_path)
+    assert result.returncode == 1
+    assert "MINIMUM_GO_VERSION = (1, 25, 11)" in result.stderr
+
+
+def test_missing_audit_replay_runner_fails(tmp_path: Path) -> None:
+    copy_release_evidence_inputs(tmp_path)
+    mutate(tmp_path / "scripts/verify-audit-replay-drill.py", "dead-letter-attempt-history-preserved")
+    result = run_validator(tmp_path)
+    assert result.returncode == 1
+
+
+def test_missing_release_audit_replay_evidence_fails(tmp_path: Path) -> None:
+    copy_release_evidence_inputs(tmp_path)
+    mutate(tmp_path / ".github/workflows/release.yml", "anopki-audit-replay-verification.tar.gz")
+    result = run_validator(tmp_path)
+    assert result.returncode == 1
+
+
+
 def main() -> None:
     result = run_validator(ROOT)
     if result.returncode != 0:
@@ -345,6 +420,20 @@ def main() -> None:
         test_missing_local_verification_evidence_fails(Path(dirname))
     with tempfile.TemporaryDirectory() as dirname:
         test_missing_compatibility_evidence_template_fails(Path(dirname))
+    with tempfile.TemporaryDirectory() as dirname:
+        test_missing_recovery_runner_fails(Path(dirname))
+    with tempfile.TemporaryDirectory() as dirname:
+        test_missing_release_recovery_evidence_fails(Path(dirname))
+    with tempfile.TemporaryDirectory() as dirname:
+        test_missing_status_outage_runner_fails(Path(dirname))
+    with tempfile.TemporaryDirectory() as dirname:
+        test_missing_release_status_outage_evidence_fails(Path(dirname))
+    with tempfile.TemporaryDirectory() as dirname:
+        test_audit_replay_minimum_go_version_format_drift_fails(Path(dirname))
+    with tempfile.TemporaryDirectory() as dirname:
+        test_missing_audit_replay_runner_fails(Path(dirname))
+    with tempfile.TemporaryDirectory() as dirname:
+        test_missing_release_audit_replay_evidence_fails(Path(dirname))
     with tempfile.TemporaryDirectory() as dirname:
         test_hosted_execution_contradictions_fail(Path(dirname))
     require_release_workflow()

@@ -97,13 +97,15 @@ Community/OpenSSL baseline and keeping key providers separate.
 
 Goal: raise operator accountability and recovery confidence.
 
-- Add policy decision reason and validation evidence ref.
+- Keep policy-decision reasons and redacted validation-evidence references
+  stable across enrollment, issuance, retry, and audit repair.
+- Keep SQLite backup/restore, CRL/OCSP outage-and-recovery, audit-repair, and
+  dead-letter replay drills plus their release evidence contracts current.
 - Add synthetic checks for CRL, OCSP, ACME order/finalize, and post-deployment
   certificate health after a deployment target is selected.
-- Add issuer key rotation, intermediate rollover, CRL/OCSP outage, audit repair,
-  webhook dead-letter, migration rollback, and restore drill evidence updates
-  to runbooks as implementations change.
-- Add executable migration rollback and backup/restore tests when SQL migration
+- Add issuer key rotation, intermediate rollover, PostgreSQL, multi-node
+  recovery, and migration rollback evidence as implementations change.
+- Add executable migration rollback tests when SQL migration
   compatibility becomes release-gating.
 
 ## P2: Inventory And Discovery

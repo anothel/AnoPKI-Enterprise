@@ -28,6 +28,12 @@ Run Enterprise supported-Go checks from the repository root:
 ```powershell
 python scripts\test_verify_go_release.py
 python scripts\verify-go-release.py --profile full --out-dir .tmp\go-evidence\enterprise-full
+python scripts\test_verify_recovery_drill.py
+python scripts\verify-recovery-drill.py --out-dir .tmp\recovery-evidence\full
+python scripts\test_verify_status_outage_drill.py
+python scripts\verify-status-outage-drill.py --out-dir .tmp\status-outage-evidence\full
+python scripts\test_verify_audit_replay_drill.py
+python scripts\verify-audit-replay-drill.py --out-dir .tmp\audit-replay-evidence\full
 ```
 
 The full profile runs baseline test/vet/build plus race, Staticcheck, gosec,
@@ -99,7 +105,10 @@ Certbot smoke requires Linux/WSL or elevated Windows with certbot installed.
 12. Manually dispatch `.github/workflows/release.yml` from the candidate commit.
    Attach its run URL and versioned `anopki-release-<run-id>` artifact containing
    validated service/core archives, full-profile
-   `anopki-enterprise-go-verification.tar.gz`, `anopki-backend-info.json`,
+   `anopki-enterprise-go-verification.tar.gz`,
+   `anopki-recovery-verification.tar.gz`,
+   `anopki-status-outage-verification.tar.gz`,
+   `anopki-audit-replay-verification.tar.gz`, `anopki-backend-info.json`,
    `anopki-release-metadata.json`, `SHA256SUMS`, CycloneDX SBOM, and
    `SIGNING-STATUS.txt`. Enterprise/OpenSSL metadata must record
    `anocrypto_used=false`, `fallback_enabled=false`, `fallback_used=false`, and

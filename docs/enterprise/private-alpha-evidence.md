@@ -9,7 +9,7 @@ blocked.
 
 | Field | Value |
 | --- | --- |
-| Community baseline | `71f0e898c32a7d6e00d0725eeab6ca150ccaa0af` |
+| Community baseline | `ae3ddee72dd05f274b9bbae1b514cdc4c4de03f5` |
 | Base version | `0.1.0-alpha.0` |
 | Edition | AnoPKI Enterprise |
 | Enterprise overlay version | `unreleased` |
@@ -28,9 +28,10 @@ The service `/version`, C++ library version, release workflow, and release
 artifact names use the Community base version. Enterprise edition and adapter
 status are separate metadata and do not create a production release version.
 
-Enterprise commit `22f5ebde6bfe2e3b40f874bb52dd5957152e4f22`
-contains the shared Community/OpenSSL tree synchronized to the reviewed baseline
-above. Durable hosted CI evidence remains required before release review.
+The current tree contains the shared Community/OpenSSL tree synchronized to the
+reviewed baseline above. The hosted attempt recorded below remains historical
+evidence for its exact older Enterprise commit and Community baseline. Durable
+hosted CI evidence remains required before release review.
 
 ## AnoCrypto-C Integration Status
 
@@ -111,7 +112,7 @@ GitHub Actions run.
 | --- | --- |
 | Reviewed commit SHA | `PENDING` |
 | GitHub Actions run URL | `PENDING` |
-| Community baseline commit | `71f0e898c32a7d6e00d0725eeab6ca150ccaa0af` |
+| Community baseline commit | `ae3ddee72dd05f274b9bbae1b514cdc4c4de03f5` |
 | Active OpenSSL version | `PENDING` |
 | Enterprise metadata result | `PENDING` |
 | AnoCrypto-C SDK integration result | `PENDING` |

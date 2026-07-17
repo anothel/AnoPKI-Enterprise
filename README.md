@@ -125,6 +125,24 @@ python scripts\test_verify_go_release.py
 python scripts\verify-go-release.py --profile baseline --out-dir .tmp\go-evidence\enterprise-verify-local
 # requires Go 1.25.11+; records Enterprise commit and Community baseline separately
 
+python scripts\test_verify_recovery_drill.py
+# recovery drill tests passed: 5
+
+python scripts\verify-recovery-drill.py --out-dir .tmp\recovery-evidence\verify-local
+# recovery drill passed: 11 checks
+
+python scripts\test_verify_status_outage_drill.py
+# status outage drill tests passed: 5
+
+python scripts\verify-status-outage-drill.py --out-dir .tmp\status-outage-evidence\verify-local
+# requires Go 1.25.11+ and proves CRL/OCSP failure and recovery semantics
+
+python scripts\test_verify_audit_replay_drill.py
+# audit/replay drill tests passed: 5
+
+python scripts\verify-audit-replay-drill.py --out-dir .tmp\audit-replay-evidence\verify-local
+# requires Go 1.25.11+ and proves idempotent audit repair and scoped dead-letter recovery
+
 python scripts\test_validate_release_artifacts.py
 # release artifact tests ok
 
