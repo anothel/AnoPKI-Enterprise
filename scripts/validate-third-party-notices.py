@@ -18,6 +18,9 @@ INVENTORY_PATH = Path("packaging/dependency-license-inventory.json")
 LEGACY_INVENTORY_PATH = Path("packaging/license-inventory.json")
 POLICY_PATH = Path("packaging/package-policy.json")
 GENERATOR = ROOT / "scripts/generate-third-party-notices.py"
+ATTRIBUTES_PATH = Path(".gitattributes")
+WHITESPACE_EVIDENCE_PATH = "LICENSES/third-party/go/gopkg.in_check.v1/v1.0.0-20201130134442-10cb98267c6c/LICENSE"
+WHITESPACE_ATTRIBUTE = "whitespace=-trailing-space"
 SHA_RE = re.compile(r"[0-9a-f]{64}")
 COMMIT_RE = re.compile(r"[0-9a-f]{40}")
 LOCAL_PATH_RE = re.compile(r"(?:[A-Za-z]:[\\/]|/(?:home|Users|var|tmp)/)")
@@ -341,6 +344,23 @@ def load_generator():
     return module
 
 
+def validate_attributes(root: Path) -> None:
+    try:
+        lines = (root / ATTRIBUTES_PATH).read_text(encoding="utf-8").splitlines()
+    except OSError as exc:
+        fail(f"invalid third-party whitespace policy: {exc}")
+    rules = []
+    for raw in lines:
+        parts = raw.partition("#")[0].split()
+        if len(parts) > 1 and any(
+            item in {"whitespace", "-whitespace", "!whitespace"} or item.startswith("whitespace=")
+            for item in parts[1:]
+        ):
+            rules.append(parts)
+    if rules != [[WHITESPACE_EVIDENCE_PATH, WHITESPACE_ATTRIBUTE]]:
+        fail("third-party whitespace policy must contain only the exact pinned evidence exception")
+
+
 def validate_inventory(root: Path, inventory: dict[str, object]) -> None:
     require_fields(inventory, TOP_FIELDS, "dependency license inventory")
     if inventory.get("schema_version") != 1 or inventory.get("product") != "AnoPKI Enterprise" or inventory.get("edition") != "enterprise":
@@ -376,6 +396,7 @@ def validate_inventory(root: Path, inventory: dict[str, object]) -> None:
 
 def validate(root: Path = ROOT) -> None:
     root = root.resolve()
+    validate_attributes(root)
     inventory = read_json(root / INVENTORY_PATH, "dependency license inventory")
     validate_inventory(root, inventory)
     generator = load_generator()

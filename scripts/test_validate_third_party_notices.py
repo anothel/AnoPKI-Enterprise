@@ -8,6 +8,7 @@ import copy
 import importlib.util
 import json
 import sys
+import tempfile
 from pathlib import Path
 
 
@@ -63,6 +64,10 @@ def main() -> None:
 
     local = json.dumps(inventory).replace("service/go.mod", "C:/Users/example/go.mod", 1)
     assert validator.LOCAL_PATH_RE.search(local)
+
+    with tempfile.TemporaryDirectory() as tmp:
+        Path(tmp, ".gitattributes").write_text("LICENSES/** whitespace=-trailing-space\n", encoding="utf-8")
+        expect_failure(lambda: validator.validate_attributes(Path(tmp)), "exact pinned evidence exception")
     print("third-party notice validator tests ok")
 
 
