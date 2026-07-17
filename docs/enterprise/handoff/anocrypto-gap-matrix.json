@@ -20,7 +20,7 @@
       "negative_test": "malformed encoding and invalid CSR signature fail with stable redacted errors",
       "no_fallback_test": "enterprise/tests/anocrypto_no_fallback_test.cpp",
       "acceptance_criteria": "semantic_equal, or exact_der_equal where a fixed DER fixture applies",
-      "current_blocker": "exact AnoCrypto-C PKI/API capability discovery and trusted SDK execution not run",
+      "current_blocker": "unsupported_pending; exact AnoCrypto-C PKI/API capability discovery and trusted SDK execution pending",
       "current_status": "unsupported_pending"
     },
     {

@@ -26,7 +26,7 @@ Status: `design_decision_required`.
 
 Neither model is production-validated. Do not implement both speculatively.
 
-| PKI operation | Backend-neutral behavior | Required crypto primitives | Key-provider responsibility | AnoCrypto-C SDK responsibility | Enterprise adapter responsibility | Community responsibility | Enterprise product responsibility | Current status |
+| PKI operation | Backend-neutral behavior | Required crypto primitives | Key-provider responsibility | AnoCrypto-C SDK responsibility | Enterprise adapter responsibility | Community responsibility | Enterprise product responsibility | Current status (all pending/unverified) |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | CSR PEM/DER parse | decode CSR, normalize requested subject/SAN/public-key/signature metadata | PEM/base64, ASN.1 DER, hash, public-key signature verification | none | provide high-level CSR APIs or verified primitives under the selected codec model; capability unverified | map Core input/output/errors, never invoke OpenSSL fallback | own backend-neutral contract, provide OpenSSL adapter and fixtures | validate API input, apply profile policy, audit stable result | unsupported_pending |
 | CSR signature validation | verify CSR proof-of-possession and return stable validity/error semantics | ASN.1 DER, hash, RSA/ECDSA verification per approved scope | none | verify CSR signature or expose verified public-key primitives; capability unverified | map verification result and stable errors, no fallback | define behavior and OpenSSL reference implementation | reject invalid CSR before lifecycle transition | unsupported_pending |

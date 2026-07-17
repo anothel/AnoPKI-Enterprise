@@ -69,7 +69,7 @@ def load(name: str) -> dict[str, object]:
 
 def main() -> None:
     capabilities = load("anocrypto-required-capabilities.json")
-    assert capabilities["current_anocrypto_capabilities"] == []
+    assert capabilities["observed_anocrypto_capabilities"] == []
     assert {row["stable_operation_name"] for row in capabilities["capabilities"]} == BACKEND_OPERATIONS
     assert all(row["current_anocrypto_c_state"] == "unsupported_pending" for row in capabilities["capabilities"])
 

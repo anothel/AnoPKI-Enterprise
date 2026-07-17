@@ -85,7 +85,7 @@ This index is the public entry point for repository documentation. Keep it short
 | [Release evidence](reference/release-evidence.md) | Release artifact and supply-chain evidence requirements. |
 | [Commercial packaging boundary](enterprise/commercial-packaging-boundary.md) | Internal-versus-customer package classes, exact allow-lists, profile separation, and fail-closed release rules. |
 | [License inventory baseline](enterprise/license-inventory.md) | Mixed-license component inventory and unresolved customer-distribution blockers. |
-| [AnoCrypto-C handoff status](enterprise/anocrypto-handoff-current-status.md) | Current SDK/parity state, source/test index, work queue, and canonical handoff files. |
+| [AnoCrypto-C handoff status](enterprise/anocrypto-handoff-current-status.md) | Pending SDK/parity state, source/test index, work queue, and canonical handoff files. |
 | [AnoCrypto-C capability requirements](enterprise/anocrypto-sdk-capability-requirements.md) | Full backend operation contract and external SDK evidence requirements. |
 | [AnoCrypto-C parity matrix](enterprise/anocrypto-operation-parity-matrix.md) | Phase-1 parity gaps, fixtures, tests, blockers, and allowed results. |
 | [AnoCrypto-C responsibility boundary](enterprise/anocrypto-product-sdk-responsibility-boundary.md) | Product, Community, adapter, SDK, and key-provider responsibility matrix. |

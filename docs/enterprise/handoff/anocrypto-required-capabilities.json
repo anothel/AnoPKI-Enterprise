@@ -2,7 +2,7 @@
   "schema_version": 1,
   "enterprise_commit": "152a657c8cc49775e8fa3bf33a3819b62c9d8e36",
   "community_baseline_commit": "ae3ddee72dd05f274b9bbae1b514cdc4c4de03f5",
-  "current_anocrypto_capabilities": [],
+  "observed_anocrypto_capabilities": [],
   "capabilities": [
     {
       "stable_operation_name": "csr_inspect",
@@ -22,7 +22,7 @@
       "current_openssl_state": "available",
       "current_anocrypto_c_state": "unsupported_pending",
       "unavailable_error": "backend.capability_unavailable",
-      "release_impact": "blocks Enterprise/AnoCrypto-C production release"
+      "release_impact": "production release blocked pending parity evidence"
     },
     {
       "stable_operation_name": "certificate_issue",
@@ -42,7 +42,7 @@
       "current_openssl_state": "available",
       "current_anocrypto_c_state": "unsupported_pending",
       "unavailable_error": "backend.capability_unavailable",
-      "release_impact": "blocks Enterprise/AnoCrypto-C production release"
+      "release_impact": "production release blocked pending parity evidence"
     },
     {
       "stable_operation_name": "crl_generate",
@@ -62,7 +62,7 @@
       "current_openssl_state": "available",
       "current_anocrypto_c_state": "unsupported_pending",
       "unavailable_error": "backend.capability_unavailable",
-      "release_impact": "blocks Enterprise/AnoCrypto-C production release"
+      "release_impact": "production release blocked pending parity evidence"
     },
     {
       "stable_operation_name": "crl_inspect",
@@ -82,7 +82,7 @@
       "current_openssl_state": "available",
       "current_anocrypto_c_state": "unsupported_pending",
       "unavailable_error": "backend.capability_unavailable",
-      "release_impact": "blocks Enterprise/AnoCrypto-C production release"
+      "release_impact": "production release blocked pending parity evidence"
     },
     {
       "stable_operation_name": "ocsp_request_inspect",
@@ -102,7 +102,7 @@
       "current_openssl_state": "available",
       "current_anocrypto_c_state": "unsupported_pending",
       "unavailable_error": "backend.capability_unavailable",
-      "release_impact": "blocks Enterprise/AnoCrypto-C production release"
+      "release_impact": "production release blocked pending parity evidence"
     },
     {
       "stable_operation_name": "ocsp_issuer_inspect",
@@ -122,7 +122,7 @@
       "current_openssl_state": "available",
       "current_anocrypto_c_state": "unsupported_pending",
       "unavailable_error": "backend.capability_unavailable",
-      "release_impact": "blocks Enterprise/AnoCrypto-C production release"
+      "release_impact": "production release blocked pending parity evidence"
     },
     {
       "stable_operation_name": "ocsp_response_generate",
@@ -142,7 +142,7 @@
       "current_openssl_state": "available",
       "current_anocrypto_c_state": "unsupported_pending",
       "unavailable_error": "backend.capability_unavailable",
-      "release_impact": "blocks Enterprise/AnoCrypto-C production release"
+      "release_impact": "production release blocked pending parity evidence"
     },
     {
       "stable_operation_name": "ocsp_responder_validate",
@@ -162,7 +162,7 @@
       "current_openssl_state": "available",
       "current_anocrypto_c_state": "unsupported_pending",
       "unavailable_error": "backend.capability_unavailable",
-      "release_impact": "blocks Enterprise/AnoCrypto-C production release"
+      "release_impact": "production release blocked pending parity evidence"
     }
   ]
 }

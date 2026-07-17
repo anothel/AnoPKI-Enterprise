@@ -17,7 +17,8 @@ that the SDK lacks a capability; it means no trusted observation exists.
 | ocsp_response_generate | GenerateOCSPResponseRequest: request DER, issuer certificate, issuer key reference, update times and statuses | GenerateOCSPResponseResult: signed OCSP response DER | backend id, dependency name, dependency version, build fingerprint, ABI version, readiness, capability set, selected product profile, fallback_enabled=false | available | unsupported_pending | backend.capability_unavailable | blocks Enterprise/AnoCrypto-C production release |
 | ocsp_responder_validate | issuer certificate PEM and responder certificate PEM | ValidateOCSPResponderResult: valid boolean | backend id, dependency name, dependency version, build fingerprint, ABI version, readiness, capability set, selected product profile, fallback_enabled=false | available | unsupported_pending | backend.capability_unavailable | blocks Enterprise/AnoCrypto-C production release |
 
-AnoCrypto-C currently advertises an empty operation capability set. No SDK PKI capability is marked implemented without trusted discovery and execution.
+AnoCrypto-C PKI capabilities are not implemented in this adapter; the observed
+operation capability set is empty pending trusted discovery and execution.
 
 ## SDK Integration Requirements
 
@@ -36,5 +37,5 @@ AnoCrypto-C currently advertises an empty operation capability set. No SDK PKI c
 - capability-unavailable, dependency-failure, and no-OpenSSL-fallback tests.
 
 The source and test index is
-`docs/enterprise/anocrypto-handoff-current-status.md`; the canonical machine
+`docs/enterprise/anocrypto-handoff-current-status.md` (pending); the canonical machine
 contract is `docs/enterprise/handoff/anocrypto-required-capabilities.json`.

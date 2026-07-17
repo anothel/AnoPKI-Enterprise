@@ -10,7 +10,7 @@ Allowed results: semantic_equal, exact_der_equal, unsupported_pending, failure.
 `unsupported_pending` without a real pinned SDK run and the listed positive,
 negative, dependency-failure, and no-fallback evidence.
 
-| Operation | OpenSSL implementation | AnoCrypto-C state | Result | Current blocker |
+| Operation | OpenSSL implementation | AnoCrypto-C state | Result | Current blocker (pending) |
 | --- | --- | --- | --- | --- |
 | csr_parse | src/backends/openssl/csr.cpp | throws backend.capability_unavailable; unsupported_pending | unsupported_pending | exact AnoCrypto-C PKI/API capability discovery and trusted SDK execution not run |
 | certificate_issue | src/backends/openssl/issue.cpp | throws backend.capability_unavailable; unsupported_pending | unsupported_pending | SDK certificate/signing and key-handle contracts unverified |
@@ -29,7 +29,7 @@ negative, dependency-failure, and no-fallback evidence.
 - negative test: malformed encoding and invalid CSR signature fail with stable redacted errors
 - no fallback test: enterprise/tests/anocrypto_no_fallback_test.cpp
 - acceptance criteria: semantic_equal, or exact_der_equal where a fixed DER fixture applies
-- current blocker: exact AnoCrypto-C PKI/API capability discovery and trusted SDK execution not run
+- current blocker: `unsupported_pending`; exact AnoCrypto-C PKI/API capability discovery and trusted SDK execution pending
 - current status: unsupported_pending
 
 ## certificate_issue

@@ -1,4 +1,4 @@
-# AnoCrypto-C Handoff Current Status
+# AnoCrypto-C Handoff Current Status (Pending)
 
 Recorded source state: Enterprise
 `152a657c8cc49775e8fa3bf33a3819b62c9d8e36`, Community
@@ -17,14 +17,15 @@ Recorded source state: Enterprise
 | Commercial license | `incomplete` |
 | Hosted qualification | `REMOTE_DEFERRED/BLOCKED_EXTERNAL` |
 
-No AnoCrypto-C capability is recorded as implemented. The adapter reports
+AnoCrypto-C PKI capabilities are not implemented in this adapter. It reports
 runtime identity/readiness metadata only when the external SDK is present and
 throws `backend.capability_unavailable` for the eight PKI backend operations.
 
 ## Source And Test Index
 
 - adapter contract: `include/anopki/enterprise/anocrypto_backend.hpp`
-- adapter implementation: `src/backends/anocrypto_c/anocrypto_backend.cpp`
+- adapter source: `src/backends/anocrypto_c/anocrypto_backend.cpp`
+  (`unsupported_pending` operations)
 - SDK consumption test: `enterprise/tests/anocrypto_sdk_integration_test.cpp`
 - capability/no-fallback test: `enterprise/tests/anocrypto_no_fallback_test.cpp`
 - parity-pending test: `enterprise/tests/anocrypto_parity_pending_test.cpp`
