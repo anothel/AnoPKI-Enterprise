@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import argparse
 import fnmatch
+import hashlib
 import importlib.util
 import json
 import re
@@ -17,6 +18,7 @@ from pathlib import Path, PurePosixPath
 
 ROOT = Path(__file__).resolve().parents[1]
 GENERATOR = ROOT / "scripts/generate-package-manifest.py"
+DEPENDENCY_VALIDATOR = ROOT / "scripts/validate-third-party-notices.py"
 INVENTORY_FIELDS = {
     "schema_version",
     "product",
@@ -57,6 +59,7 @@ MANIFEST_FIELDS = {
     "product_profile",
     "enterprise_commit",
     "community_baseline_commit",
+    "dependency_inventory_sha256",
     "package_class",
     "commercial_license_status",
     "customer_distribution_authorized",
@@ -99,6 +102,16 @@ def load_generator():
     module = importlib.util.module_from_spec(spec)
     if spec.loader is None:
         fail("cannot load package manifest generator")
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+    return module
+
+
+def load_dependency_validator():
+    spec = importlib.util.spec_from_file_location("validate_third_party_notices", DEPENDENCY_VALIDATOR)
+    module = importlib.util.module_from_spec(spec)
+    if spec.loader is None:
+        fail("cannot load third-party notice validator")
     sys.modules[spec.name] = module
     spec.loader.exec_module(module)
     return module
@@ -191,10 +204,9 @@ def validate_inventory(root: Path, inventory: dict[str, object], policy: dict[st
     customer_blockers = customer.get("blockers")
     required_customer_blockers = {
         "final commercial license is incomplete",
-        "third-party license inventory is incomplete",
+        "third-party redistribution review is incomplete",
         "hosted qualification is incomplete",
         "commercial release authorization is absent",
-        "required notices are missing",
         "customer allow-lists and archive-member binding are incomplete",
     }
     if not isinstance(customer_blockers, list) or not required_customer_blockers.issubset(set(customer_blockers)):
@@ -264,6 +276,9 @@ def validate_manifest(root: Path, manifest: dict[str, object], generator=None) -
         fail("package manifest Enterprise commit is invalid")
     if manifest.get("fallback_enabled") is not False or manifest.get("fallback_used") is not False:
         fail("package manifest enables or records fallback")
+    dependency_inventory = root / "packaging/dependency-license-inventory.json"
+    if manifest.get("dependency_inventory_sha256") != hashlib.sha256(dependency_inventory.read_bytes()).hexdigest():
+        fail("package manifest dependency inventory SHA-256 mismatch")
     if manifest.get("kcmvp_status") == "validated":
         fail("package manifest makes an unsupported KCMVP validated claim")
     if manifest.get("package_class") == "customer-release":
@@ -272,7 +287,13 @@ def validate_manifest(root: Path, manifest: dict[str, object], generator=None) -
         if manifest.get("customer_distribution_authorized") is not True:
             fail("internal validation manifest cannot be relabeled as a customer package")
         notices = manifest.get("notices")
-        required = {"LICENSES/MPL-2.0.txt", "ENTERPRISE-LICENSE-NOTICE.md"}
+        required = {
+            "LICENSES/MPL-2.0.txt",
+            "ENTERPRISE-LICENSE-NOTICE.md",
+            "THIRD_PARTY_NOTICES.md",
+            "THIRD_PARTY_NOTICES.json",
+            "packaging/dependency-license-inventory.json",
+        }
         if not isinstance(notices, list) or not required.issubset(set(notices)):
             fail("customer package is missing MPL-2.0 license/source notice")
 
@@ -360,8 +381,6 @@ def validate_archive(path: Path, manifest: dict[str, object]) -> None:
         fail(f"package archive contains invalid package-manifest.json: {exc}")
     if embedded != manifest:
         fail("package archive embedded manifest does not match validated package-manifest.json")
-    import hashlib
-
     for name, digest in expected.items():
         if hashlib.sha256(values[name]).hexdigest() != digest:
             fail(f"package archive SHA-256 mismatch: {name}")
@@ -379,6 +398,7 @@ def read_json(path: Path) -> dict[str, object]:
 
 def validate(root: Path = ROOT) -> None:
     root = root.resolve()
+    load_dependency_validator().validate(root)
     inventory = read_json(root / "packaging/license-inventory.json")
     policy = read_json(root / "packaging/package-policy.json")
     edition = read_json(root / ".edition/edition.json")

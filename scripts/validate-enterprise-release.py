@@ -37,9 +37,14 @@ def release_blockers(root: Path) -> list[str]:
 
     packaging_paths = (
         root / "packaging/license-inventory.json",
+        root / "packaging/dependency-license-inventory.json",
         root / "packaging/package-policy.json",
+        root / "THIRD_PARTY_NOTICES.md",
+        root / "THIRD_PARTY_NOTICES.json",
         root / "scripts/generate-package-manifest.py",
+        root / "scripts/generate-third-party-notices.py",
         root / "scripts/validate-package-boundary.py",
+        root / "scripts/validate-third-party-notices.py",
     )
     missing_packaging = [str(path.relative_to(root)) for path in packaging_paths if not path.is_file()]
     if missing_packaging:
@@ -48,7 +53,7 @@ def release_blockers(root: Path) -> list[str]:
         package_policy: dict[str, object] = {}
     else:
         inventory = json.loads(packaging_paths[0].read_text(encoding="utf-8"))
-        package_policy = json.loads(packaging_paths[1].read_text(encoding="utf-8"))
+        package_policy = json.loads((root / "packaging/package-policy.json").read_text(encoding="utf-8"))
 
     if "PLACEHOLDER" in enterprise_license.upper() or edition.get("commercial_license_status") != "complete":
         blockers.append("commercial license is incomplete")

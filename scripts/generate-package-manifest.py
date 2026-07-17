@@ -15,6 +15,7 @@ from pathlib import Path, PurePosixPath
 
 ROOT = Path(__file__).resolve().parents[1]
 INVENTORY_PATH = Path("packaging/license-inventory.json")
+DEPENDENCY_INVENTORY_PATH = Path("packaging/dependency-license-inventory.json")
 POLICY_PATH = Path("packaging/package-policy.json")
 SHA_RE = re.compile(r"[0-9a-f]{40}")
 
@@ -107,6 +108,7 @@ def selected_components(
 def build_manifest(root: Path, profile: str, package_class: str) -> dict[str, object]:
     root = root.resolve()
     inventory = read_json(root / INVENTORY_PATH, "license inventory")
+    dependency_inventory = read_json(root / DEPENDENCY_INVENTORY_PATH, "dependency license inventory")
     policy = read_json(root / POLICY_PATH, "package policy")
     profiles = policy.get("profiles")
     classes = policy.get("package_classes")
@@ -129,6 +131,25 @@ def build_manifest(root: Path, profile: str, package_class: str) -> dict[str, ob
             blockers.append("customer package policy is not authorized")
         if profile_policy.get("production_ready") is not True:
             blockers.append(f"{profile} is not production ready")
+        dependencies = dependency_inventory.get("dependencies")
+        if dependency_inventory.get("unresolved_count") != 0 or not isinstance(dependencies, list):
+            blockers.append("third-party dependency license evidence is unresolved")
+        elif any(
+            not isinstance(item, dict)
+            or item.get("evidence_status") != "verified"
+            or item.get("redistribution_review_required") is not False
+            or item.get("customer_package_allowed") is not True
+            for item in dependencies
+        ):
+            blockers.append("third-party dependency redistribution review is incomplete")
+        components = inventory.get("components")
+        if profile == "enterprise-anocrypto-c" and isinstance(components, list):
+            anocrypto = next(
+                (item for item in components if isinstance(item, dict) and item.get("name") == "anocrypto-c-external-sdk"),
+                {},
+            )
+            if anocrypto.get("evidence_status") == "external_license_unresolved":
+                blockers.append("AnoCrypto-C SDK license is unresolved")
         if blockers:
             fail("customer release blocked:\n" + "\n".join(blockers))
 
@@ -139,10 +160,30 @@ def build_manifest(root: Path, profile: str, package_class: str) -> dict[str, ob
     if not paths:
         fail(f"package allow-list is empty: {profile}/{package_class}")
 
+    dependencies = dependency_inventory.get("dependencies")
+    if not isinstance(dependencies, list) or not all(isinstance(item, dict) for item in dependencies):
+        fail("dependency license inventory dependencies must be objects")
+    required_dependency_paths = {
+        "THIRD_PARTY_NOTICES.md",
+        "THIRD_PARTY_NOTICES.json",
+        DEPENDENCY_INVENTORY_PATH.as_posix(),
+        *(
+            path
+            for item in dependencies
+            for field in ("license_files", "notice_files")
+            for path in item.get(field, [])
+            if isinstance(path, str)
+        ),
+    }
+    missing_dependency_paths = sorted(required_dependency_paths - set(paths))
+    if missing_dependency_paths:
+        fail("package allow-list is missing dependency license evidence:\n" + "\n".join(missing_dependency_paths))
+
     approved_generated = policy.get("approved_generated_paths")
     if not isinstance(approved_generated, list) or not all(isinstance(item, str) for item in approved_generated):
         fail("approved_generated_paths must be a list of exact paths")
     approved = {normalized_path(item) for item in approved_generated}
+    approved.update(required_dependency_paths)
     tracked = tracked_paths(root)
     unapproved = sorted(set(paths) - tracked - approved)
     if unapproved:
@@ -195,6 +236,7 @@ def build_manifest(root: Path, profile: str, package_class: str) -> dict[str, ob
         "product_profile": profile,
         "enterprise_commit": git_head(root),
         "community_baseline_commit": inventory.get("community_baseline_commit"),
+        "dependency_inventory_sha256": hashlib.sha256((root / DEPENDENCY_INVENTORY_PATH).read_bytes()).hexdigest(),
         "package_class": package_class,
         "commercial_license_status": inventory.get("commercial_license_status"),
         "customer_distribution_authorized": inventory.get("customer_distribution_authorized"),

@@ -343,6 +343,9 @@ jobs:
       - run: python scripts/test_validate_enterprise_release.py
       - run: python scripts/validate-enterprise-release.py --expect-blocked
       - run: python scripts/test_generate_package_manifest.py
+      - run: python scripts/test_generate_third_party_notices.py
+      - run: python scripts/generate-third-party-notices.py --check
+      - run: python scripts/test_validate_third_party_notices.py
       - run: python scripts/test_validate_package_boundary.py
       - run: python scripts/validate-package-boundary.py
       - run: python scripts/test_validate_pending_parity_junit.py

@@ -15,7 +15,11 @@
       ],
       "required_evidence": [
         "package-manifest.json",
-        "local qualification result"
+        "local qualification result",
+        "THIRD_PARTY_NOTICES.md",
+        "THIRD_PARTY_NOTICES.json",
+        "LICENSES/third-party/**",
+        "packaging/dependency-license-inventory.json"
       ]
     },
     "customer-release": {
@@ -28,10 +32,9 @@
       ],
       "blockers": [
         "final commercial license is incomplete",
-        "third-party license inventory is incomplete",
+        "third-party redistribution review is incomplete",
         "hosted qualification is incomplete",
         "commercial release authorization is absent",
-        "required notices are missing",
         "customer allow-lists and archive-member binding are incomplete"
       ]
     }
@@ -45,9 +48,7 @@
         "internal-validation": "packaging/manifests/enterprise-openssl-internal.txt",
         "customer-release": "packaging/manifests/enterprise-openssl-customer.txt"
       },
-      "additional_blockers": [
-        "OpenSSL runtime license and attribution evidence is missing"
-      ]
+      "additional_blockers": []
     },
     "enterprise-anocrypto-c": {
       "selected_adapter": "anocrypto-c",

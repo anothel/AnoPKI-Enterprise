@@ -34,3 +34,15 @@ The Enterprise terms are an internal placeholder, not an approved customer
 license. Customer distribution and production distribution remain prohibited
 until owner/legal review replaces the placeholder with an approved commercial
 agreement.
+
+## Third-Party Material
+
+Exact OpenSSL and Go module license evidence is stored under
+[`LICENSES/third-party/`](LICENSES/third-party/). The selected dependency graph,
+versions, provenance, evidence hashes, and review state are recorded in
+[`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md) and
+[`packaging/dependency-license-inventory.json`](packaging/dependency-license-inventory.json).
+
+Recorded evidence does not itself authorize customer distribution. The
+commercial license, dependency redistribution review, package allow-list,
+hosted qualification, and release authorization gates remain fail-closed.

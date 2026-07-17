@@ -44,9 +44,14 @@ def write_fixture(root: Path) -> None:
         "package_classes": {"customer-release": {"authorized": True}},
     }
     (root / "packaging/license-inventory.json").write_text(json.dumps(inventory), encoding="utf-8")
+    (root / "packaging/dependency-license-inventory.json").write_text("{}\n", encoding="utf-8")
     (root / "packaging/package-policy.json").write_text(json.dumps(policy), encoding="utf-8")
+    (root / "THIRD_PARTY_NOTICES.md").write_text("fixture\n", encoding="utf-8")
+    (root / "THIRD_PARTY_NOTICES.json").write_text("{}\n", encoding="utf-8")
     (root / "scripts/generate-package-manifest.py").write_text("# fixture\n", encoding="utf-8")
+    (root / "scripts/generate-third-party-notices.py").write_text("# fixture\n", encoding="utf-8")
     (root / "scripts/validate-package-boundary.py").write_text("# fixture\n", encoding="utf-8")
+    (root / "scripts/validate-third-party-notices.py").write_text("# fixture\n", encoding="utf-8")
     rows = "\n".join(f"| {field} | `recorded` |" for field in (
         "Reviewed commit SHA",
         "GitHub Actions run URL",

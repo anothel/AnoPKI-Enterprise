@@ -2,7 +2,7 @@
   "schema_version": 1,
   "product": "AnoPKI Enterprise",
   "edition": "enterprise",
-  "generated_from_commit": "b79824db0ce04f5a81b41a18712b894fb29c1ba6",
+  "generated_from_commit": "68b379e7684c9d8b44c53728949774088352a9d9",
   "community_baseline_commit": "ae3ddee72dd05f274b9bbae1b514cdc4c4de03f5",
   "commercial_license_status": "incomplete",
   "customer_distribution_authorized": false,
@@ -12,8 +12,12 @@
       "ownership": "mixed",
       "source_scope": [
         "LICENSE",
-        "LICENSES/**",
-        "ENTERPRISE-LICENSE-NOTICE.md"
+        "LICENSES/LicenseRef-AnoPKI-Enterprise.txt",
+        "LICENSES/MPL-2.0.txt",
+        "ENTERPRISE-LICENSE-NOTICE.md",
+        "THIRD_PARTY_NOTICES.md",
+        "THIRD_PARTY_NOTICES.json",
+        "packaging/dependency-license-inventory.json"
       ],
       "license_expression": "MPL-2.0 AND LicenseRef-AnoPKI-Enterprise",
       "license_file": "LICENSE",
@@ -84,7 +88,8 @@
       "ownership": "Enterprise",
       "source_scope": [
         "docs/enterprise/commercial-packaging-boundary.md",
-        "docs/enterprise/license-inventory.md"
+        "docs/enterprise/license-inventory.md",
+        "docs/enterprise/third-party-license-evidence.md"
       ],
       "license_expression": "LicenseRef-AnoPKI-Enterprise",
       "license_file": "LICENSES/LicenseRef-AnoPKI-Enterprise.txt",
@@ -143,33 +148,37 @@
       "name": "openssl-runtime-dependency",
       "ownership": "external",
       "source_scope": [
-        "external:openssl-runtime"
+        "external:openssl-runtime",
+        "LICENSES/third-party/openssl/**"
       ],
-      "license_expression": "NOASSERTION",
-      "license_file": null,
+      "license_expression": "Apache-2.0",
+      "license_file": "LICENSES/third-party/openssl/copyright",
       "distribution_scope": "external-runtime-dependency",
       "required_notices": [
-        "OpenSSL license and attribution evidence"
+        "THIRD_PARTY_NOTICES.md",
+        "THIRD_PARTY_NOTICES.json"
       ],
       "redistribution_allowed": false,
       "customer_package_allowed": false,
-      "evidence_status": "license_evidence_missing"
+      "evidence_status": "verified"
     },
     {
       "name": "go-module-dependencies",
       "ownership": "external",
       "source_scope": [
-        "external:go-modules"
+        "external:go-modules",
+        "LICENSES/third-party/go/**"
       ],
-      "license_expression": "NOASSERTION",
-      "license_file": null,
+      "license_expression": "Apache-2.0 AND BSD-2-Clause AND BSD-3-Clause AND ISC AND MIT",
+      "license_file": "THIRD_PARTY_NOTICES.json",
       "distribution_scope": "external-build-and-runtime-dependencies",
       "required_notices": [
-        "Generated Go dependency license report"
+        "THIRD_PARTY_NOTICES.md",
+        "THIRD_PARTY_NOTICES.json"
       ],
       "redistribution_allowed": false,
       "customer_package_allowed": false,
-      "evidence_status": "dependency_license_report_missing"
+      "evidence_status": "verified"
     },
     {
       "name": "anocrypto-c-external-sdk",

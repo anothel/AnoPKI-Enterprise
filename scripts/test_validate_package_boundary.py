@@ -53,6 +53,10 @@ def main() -> None:
     bad_hash["files"][0]["sha256"] = "0" * 64
     expect_failure(lambda: validator.validate_manifest(ROOT, bad_hash, generator), "SHA-256 mismatch")
 
+    bad_inventory_hash = copy.deepcopy(manifest)
+    bad_inventory_hash["dependency_inventory_sha256"] = "0" * 64
+    expect_failure(lambda: validator.validate_manifest(ROOT, bad_inventory_hash, generator), "dependency inventory SHA-256")
+
     unallowlisted = copy.deepcopy(manifest)
     item = copy.deepcopy(unallowlisted["files"][-1])
     item["path"] = "unallowlisted.txt"

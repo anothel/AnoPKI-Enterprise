@@ -40,7 +40,15 @@ def main() -> None:
     assert first["customer_distribution_authorized"] is False
     assert first["fallback_enabled"] is False and first["fallback_used"] is False
     assert first["production_ready"] is False and first["kcmvp_status"] == "not_applicable"
+    assert len(first["dependency_inventory_sha256"]) == 64
     assert first["files"] == sorted(first["files"], key=lambda item: item["path"])
+    paths = {item["path"] for item in first["files"]}
+    assert {
+        "THIRD_PARTY_NOTICES.md",
+        "THIRD_PARTY_NOTICES.json",
+        "packaging/dependency-license-inventory.json",
+        "LICENSES/third-party/openssl/copyright",
+    }.issubset(paths)
     for item in first["files"]:
         assert item["sha256"] == hashlib.sha256((ROOT / item["path"]).read_bytes()).hexdigest()
         assert not Path(item["path"]).is_absolute()
@@ -71,6 +79,8 @@ def main() -> None:
         )
         assert blocked.returncode != 0
         assert "customer release blocked" in (blocked.stderr + blocked.stdout)
+        if profile == "enterprise-anocrypto-c":
+            assert "AnoCrypto-C SDK license is unresolved" in (blocked.stderr + blocked.stdout)
 
     with tempfile.TemporaryDirectory() as tmp:
         allowlist = Path(tmp) / "manifest.txt"
