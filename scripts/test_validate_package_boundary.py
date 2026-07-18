@@ -57,6 +57,18 @@ def main() -> None:
     bad_inventory_hash["dependency_inventory_sha256"] = "0" * 64
     expect_failure(lambda: validator.validate_manifest(ROOT, bad_inventory_hash, generator), "dependency inventory SHA-256")
 
+    bad_notices_hash = copy.deepcopy(manifest)
+    bad_notices_hash["third_party_notices_sha256"] = "0" * 64
+    expect_failure(lambda: validator.validate_manifest(ROOT, bad_notices_hash, generator), "third-party notices SHA-256")
+
+    bad_size = copy.deepcopy(manifest)
+    bad_size["files"][0]["size"] = -1
+    expect_failure(lambda: validator.validate_manifest(ROOT, bad_size, generator), "size is invalid")
+
+    bad_mode = copy.deepcopy(manifest)
+    bad_mode["files"][0]["mode"] = "0777"
+    expect_failure(lambda: validator.validate_manifest(ROOT, bad_mode, generator), "mode is invalid")
+
     unallowlisted = copy.deepcopy(manifest)
     item = copy.deepcopy(unallowlisted["files"][-1])
     item["path"] = "unallowlisted.txt"
@@ -77,6 +89,16 @@ def main() -> None:
     copied["files"].append(item)
     copied["files"].sort(key=lambda value: value["path"])
     expect_failure(lambda: validator.validate_manifest(ROOT, copied, generator), "copied AnoCrypto-C")
+
+    forbidden = copy.deepcopy(manifest)
+    forbidden["files"][0]["path"] = "build/customer-credential.txt"
+    forbidden["files"].sort(key=lambda value: value["path"])
+    expect_failure(lambda: validator.validate_manifest(ROOT, forbidden, generator), "forbidden build/cache/secret")
+
+    nested = copy.deepcopy(manifest)
+    nested["files"][0]["path"] = "source.zip"
+    nested["files"].sort(key=lambda value: value["path"])
+    expect_failure(lambda: validator.validate_manifest(ROOT, nested, generator), "forbidden build/cache/secret")
 
     sdk_binary = copy.deepcopy(generator.build_manifest(ROOT, "enterprise-anocrypto-c", "internal-validation"))
     item = copy.deepcopy(sdk_binary["files"][-1])
@@ -115,10 +137,11 @@ def main() -> None:
 
     with tempfile.TemporaryDirectory() as tmp:
         archive = Path(tmp) / "internal.zip"
+        sources = generator.git_files(ROOT, [item["path"] for item in manifest["files"]])
         with zipfile.ZipFile(archive, "w") as package:
             package.writestr("package-manifest.json", json.dumps(manifest))
             for item in manifest["files"]:
-                package.write(ROOT / item["path"], arcname=item["path"])
+                package.writestr(item["path"], sources[item["path"]][0])
         validator.validate_archive(archive, manifest)
         with zipfile.ZipFile(archive, "a") as package:
             package.writestr("unexpected.txt", "unexpected")

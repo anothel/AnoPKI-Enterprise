@@ -18,10 +18,40 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.x"
+      - name: Determine package class and release version
+        run: |
+          VERSION="$(cat VERSION)"
+          if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
+            test "${GITHUB_REF_NAME#v}" = "$VERSION"
+            echo "RELEASE_MODE=tag" >> "$GITHUB_ENV"
+            echo "PACKAGE_CLASS=customer-release" >> "$GITHUB_ENV"
+          else
+            echo "RELEASE_MODE=dry-run" >> "$GITHUB_ENV"
+            echo "PACKAGE_CLASS=internal-validation" >> "$GITHUB_ENV"
+          fi
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+          echo "BUILD_TIME=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_ENV"
       - name: Validate package boundary
         run: python scripts/validate-package-boundary.py
       - name: Block Enterprise distribution until release gates close
-        run: python scripts/validate-enterprise-release.py
+        run: |
+          if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
+            python scripts/validate-enterprise-release.py
+          else
+            python scripts/validate-enterprise-release.py --expect-blocked
+          fi
+      - name: Build deterministic internal validation package
+        if: env.PACKAGE_CLASS == 'internal-validation'
+        run: >-
+          python scripts/build-internal-package.py
+          --profile enterprise-openssl
+          --format zip
+          --out .tmp/anopki-enterprise-openssl-internal.zip
+      - name: Validate deterministic internal validation package
+        if: env.PACKAGE_CLASS == 'internal-validation'
+        run: >-
+          python scripts/validate-reproducible-package.py
+          .tmp/anopki-enterprise-openssl-internal.zip
       - uses: actions/setup-go@v5
         with:
           go-version: "1.25.12"
@@ -67,19 +97,6 @@ jobs:
       - name: Package audit/replay verification evidence
         run: |
           tar -czf dist/anopki-audit-replay-verification.tar.gz -C .tmp/release-audit-replay-evidence audit-replay-verification.json audit-replay-verification.md audit-replay-test.log
-      - name: Read release version
-        run: |
-          VERSION="$(cat VERSION)"
-          if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
-            test "${GITHUB_REF_NAME#v}" = "$VERSION"
-            echo "RELEASE_MODE=tag" >> "$GITHUB_ENV"
-            echo "PACKAGE_CLASS=customer-release" >> "$GITHUB_ENV"
-          else
-            echo "RELEASE_MODE=dry-run" >> "$GITHUB_ENV"
-            echo "PACKAGE_CLASS=internal-validation" >> "$GITHUB_ENV"
-          fi
-          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
-          echo "BUILD_TIME=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_ENV"
       - run: go build -ldflags "-X main.serviceVersion=${VERSION} -X main.serviceCommit=${GITHUB_SHA} -X main.serviceBuildTime=${BUILD_TIME}" -o ../dist/anopki-service ./cmd/anopki-service
         working-directory: service
       - run: cmake -S . -B build-release -DCMAKE_BUILD_TYPE=Release -DANOPKI_PRODUCT_PROFILE=enterprise-openssl
@@ -110,6 +127,9 @@ jobs:
       - run: sha256sum dist/*.tar.gz dist/anopki-backend-info.json dist/anopki-release-metadata.json dist/package-manifest.json > dist/SHA256SUMS
       - run: python scripts/validate-release-artifacts.py dist
       - run: syft scan dir:dist -o cyclonedx-json=dist/anopki.sbom.cdx.json
+      - name: Add deterministic internal validation package to dry-run evidence
+        if: env.PACKAGE_CLASS == 'internal-validation'
+        run: cp .tmp/anopki-enterprise-openssl-internal.* dist/
       - name: Record signing status
         run: |
           if [[ "$RELEASE_MODE" == "dry-run" ]]; then

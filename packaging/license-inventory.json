@@ -17,7 +17,9 @@
         "ENTERPRISE-LICENSE-NOTICE.md",
         "THIRD_PARTY_NOTICES.md",
         "THIRD_PARTY_NOTICES.json",
-        "packaging/dependency-license-inventory.json"
+        "packaging/dependency-license-inventory.json",
+        "packaging/license-inventory.json",
+        "packaging/package-policy.json"
       ],
       "license_expression": "MPL-2.0 AND LicenseRef-AnoPKI-Enterprise",
       "license_file": "LICENSE",

@@ -7,6 +7,7 @@ from __future__ import annotations
 import hashlib
 import importlib.util
 import json
+import os
 import subprocess
 import sys
 import tempfile
@@ -39,18 +40,26 @@ def main() -> None:
     assert first["selected_adapter"] == "openssl"
     assert first["customer_distribution_authorized"] is False
     assert first["fallback_enabled"] is False and first["fallback_used"] is False
-    assert first["production_ready"] is False and first["kcmvp_status"] == "not_applicable"
+    assert first["production_ready"] is False and first["kcmvp_status"] == "not_validated"
+    assert first["archive_format"] == "zip"
+    assert first["source_date_epoch"] == int(subprocess.check_output(["git", "show", "-s", "--format=%ct", "HEAD"], cwd=ROOT))
     assert len(first["dependency_inventory_sha256"]) == 64
-    assert first["files"] == sorted(first["files"], key=lambda item: item["path"])
+    assert len(first["third_party_notices_sha256"]) == 64
+    assert first["files"] == sorted(first["files"], key=lambda item: item["path"].encode("utf-8"))
     paths = {item["path"] for item in first["files"]}
     assert {
         "THIRD_PARTY_NOTICES.md",
         "THIRD_PARTY_NOTICES.json",
         "packaging/dependency-license-inventory.json",
+        "packaging/license-inventory.json",
+        "packaging/package-policy.json",
         "LICENSES/third-party/openssl/copyright",
     }.issubset(paths)
+    sources = generator.git_files(ROOT, sorted(paths, key=lambda value: value.encode("utf-8")))
     for item in first["files"]:
-        assert item["sha256"] == hashlib.sha256((ROOT / item["path"]).read_bytes()).hexdigest()
+        data, mode = sources[item["path"]]
+        assert item["sha256"] == hashlib.sha256(data).hexdigest()
+        assert item["size"] == len(data) and item["mode"] == mode
         assert not Path(item["path"]).is_absolute()
 
     anocrypto = generator.build_manifest(ROOT, "enterprise-anocrypto-c", "internal-validation")
@@ -91,6 +100,29 @@ def main() -> None:
             assert "must be exact" in str(exc)
         else:
             raise AssertionError("glob allow-list unexpectedly passed")
+
+        allowlist.write_text("README.md\nreadme.md\n", encoding="utf-8")
+        try:
+            generator.parse_allowlist(allowlist)
+        except SystemExit as exc:
+            assert "case-insensitive" in str(exc)
+        else:
+            raise AssertionError("case-colliding allow-list unexpectedly passed")
+
+    previous_epoch = os.environ.get("SOURCE_DATE_EPOCH")
+    os.environ["SOURCE_DATE_EPOCH"] = "1"
+    try:
+        try:
+            generator.build_manifest(ROOT, "enterprise-openssl", "internal-validation")
+        except SystemExit as exc:
+            assert "SOURCE_DATE_EPOCH" in str(exc)
+        else:
+            raise AssertionError("mismatched SOURCE_DATE_EPOCH unexpectedly passed")
+    finally:
+        if previous_epoch is None:
+            del os.environ["SOURCE_DATE_EPOCH"]
+        else:
+            os.environ["SOURCE_DATE_EPOCH"] = previous_epoch
 
     serialized = json.dumps(first, sort_keys=True)
     assert str(ROOT) not in serialized

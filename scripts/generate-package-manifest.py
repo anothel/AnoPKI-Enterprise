@@ -8,8 +8,11 @@ import argparse
 import fnmatch
 import hashlib
 import json
+import os
 import re
 import subprocess
+from collections import Counter
+from io import BytesIO
 from pathlib import Path, PurePosixPath
 
 
@@ -52,10 +55,14 @@ def parse_allowlist(path: Path) -> list[str]:
     except OSError as exc:
         fail(f"cannot read package allow-list {path}: {exc}")
     values = [normalized_path(line.strip()) for line in lines if line.strip() and not line.lstrip().startswith("#")]
-    duplicates = sorted({value for value in values if values.count(value) > 1})
+    duplicates = sorted(value for value, count in Counter(values).items() if count > 1)
     if duplicates:
         fail("duplicate package allow-list paths:\n" + "\n".join(duplicates))
-    return sorted(values)
+    case_counts = Counter(value.casefold() for value in values)
+    collisions = sorted(value for value in values if case_counts[value.casefold()] > 1)
+    if collisions:
+        fail("case-insensitive package path collision:\n" + "\n".join(collisions))
+    return sorted(values, key=lambda value: value.encode("utf-8"))
 
 
 def git_head(root: Path) -> str:
@@ -72,17 +79,90 @@ def git_head(root: Path) -> str:
     return value
 
 
-def tracked_paths(root: Path) -> set[str]:
+def source_date_epoch(root: Path) -> int:
     result = subprocess.run(
-        ["git", "ls-files"],
+        ["git", "show", "-s", "--format=%ct", "HEAD"],
         cwd=root,
         text=True,
         capture_output=True,
         check=False,
     )
-    if result.returncode != 0:
-        fail(result.stderr.strip() or "unable to inspect tracked repository files")
-    return {line.replace("\\", "/") for line in result.stdout.splitlines() if line}
+    value = result.stdout.strip()
+    if result.returncode != 0 or not re.fullmatch(r"-?[0-9]+", value):
+        fail(result.stderr.strip() or "unable to resolve SOURCE_DATE_EPOCH from HEAD")
+    epoch = int(value)
+    injected = os.environ.get("SOURCE_DATE_EPOCH")
+    if injected is not None and (not re.fullmatch(r"-?[0-9]+", injected) or int(injected) != epoch):
+        fail("SOURCE_DATE_EPOCH must exactly match the HEAD commit timestamp")
+    return epoch
+
+
+def git_files(root: Path, paths: list[str]) -> dict[str, tuple[bytes, str]]:
+    tree = subprocess.run(
+        ["git", "ls-tree", "-rz", "HEAD"],
+        cwd=root,
+        capture_output=True,
+        check=False,
+    )
+    if tree.returncode != 0:
+        fail(tree.stderr.decode(errors="replace").strip() or "unable to inspect HEAD tree")
+    head_entries: dict[str, tuple[str, bytes]] = {}
+    for record in tree.stdout.split(b"\0"):
+        if not record:
+            continue
+        metadata, raw_path = record.split(b"\t", 1)
+        mode, kind, object_id = metadata.split()
+        path = raw_path.decode("utf-8")
+        if kind == b"blob":
+            head_entries[path] = (mode.decode("ascii"), object_id)
+
+    index = subprocess.run(
+        ["git", "ls-files", "--stage", "-z"],
+        cwd=root,
+        capture_output=True,
+        check=False,
+    )
+    if index.returncode != 0:
+        fail(index.stderr.decode(errors="replace").strip() or "unable to inspect Git index")
+    entries: dict[str, tuple[str, bytes]] = {}
+    for record in index.stdout.split(b"\0"):
+        if not record:
+            continue
+        metadata, raw_path = record.split(b"\t", 1)
+        mode, object_id, stage = metadata.split()
+        if stage == b"0":
+            entries[raw_path.decode("utf-8")] = (mode.decode("ascii"), object_id)
+
+    missing = sorted((set(paths) - set(entries)) | (set(paths) - set(head_entries)))
+    if missing:
+        fail("package allow-list contains paths absent from HEAD or index:\n" + "\n".join(missing))
+    mismatched = sorted(path for path in paths if entries[path] != head_entries[path])
+    if mismatched:
+        fail("package index entry does not match HEAD:\n" + "\n".join(mismatched))
+    invalid_modes = sorted(path for path in paths if entries[path][0] not in {"100644", "100755"})
+    if invalid_modes:
+        fail("package contains a symlink or unsupported Git mode:\n" + "\n".join(invalid_modes))
+
+    process = subprocess.run(
+        ["git", "cat-file", "--batch"],
+        cwd=root,
+        input=b"".join(entries[path][1] + b"\n" for path in paths),
+        capture_output=True,
+        check=False,
+    )
+    if process.returncode != 0:
+        fail(process.stderr.decode(errors="replace").strip() or "unable to read package blobs from HEAD")
+    output = BytesIO(process.stdout)
+    result: dict[str, tuple[bytes, str]] = {}
+    for path in paths:
+        header = output.readline().split()
+        if len(header) != 3 or header[1] != b"blob" or not header[2].isdigit():
+            fail(f"invalid Git blob response for package path: {path}")
+        data = output.read(int(header[2]))
+        if len(data) != int(header[2]) or output.read(1) != b"\n":
+            fail(f"truncated Git blob response for package path: {path}")
+        result[path] = (data, "0755" if entries[path][0] == "100755" else "0644")
+    return result
 
 
 def component_for_path(components: list[dict[str, object]], path: str) -> dict[str, object]:
@@ -105,11 +185,12 @@ def selected_components(
     return sorted((component for component in components if str(component.get("name")) in names), key=lambda item: str(item["name"]))
 
 
-def build_manifest(root: Path, profile: str, package_class: str) -> dict[str, object]:
+def build_manifest(root: Path, profile: str, package_class: str, archive_format: str = "zip") -> dict[str, object]:
     root = root.resolve()
     inventory = read_json(root / INVENTORY_PATH, "license inventory")
     dependency_inventory = read_json(root / DEPENDENCY_INVENTORY_PATH, "dependency license inventory")
     policy = read_json(root / POLICY_PATH, "package policy")
+    edition_metadata = read_json(root / ".edition/edition.json", "edition metadata")
     profiles = policy.get("profiles")
     classes = policy.get("package_classes")
     if not isinstance(profiles, dict) or profile not in profiles:
@@ -120,6 +201,9 @@ def build_manifest(root: Path, profile: str, package_class: str) -> dict[str, ob
     class_policy = classes[package_class]
     if not isinstance(profile_policy, dict) or not isinstance(class_policy, dict):
         fail("invalid package policy structure")
+    formats = class_policy.get("allowed_archive_formats")
+    if archive_format != "zip" or not isinstance(formats, list) or archive_format not in formats:
+        fail(f"unsupported archive format for {package_class}: {archive_format}")
 
     if package_class == "customer-release":
         blockers: list[str] = []
@@ -182,12 +266,9 @@ def build_manifest(root: Path, profile: str, package_class: str) -> dict[str, ob
     approved_generated = policy.get("approved_generated_paths")
     if not isinstance(approved_generated, list) or not all(isinstance(item, str) for item in approved_generated):
         fail("approved_generated_paths must be a list of exact paths")
-    approved = {normalized_path(item) for item in approved_generated}
-    approved.update(required_dependency_paths)
-    tracked = tracked_paths(root)
-    unapproved = sorted(set(paths) - tracked - approved)
-    if unapproved:
-        fail("package allow-list contains untracked, unapproved paths:\n" + "\n".join(unapproved))
+    if approved_generated:
+        fail("internal packages require every allow-listed path to be tracked")
+    sources = git_files(root, paths)
 
     components_value = inventory.get("components")
     if not isinstance(components_value, list) or not all(isinstance(item, dict) for item in components_value):
@@ -196,18 +277,18 @@ def build_manifest(root: Path, profile: str, package_class: str) -> dict[str, ob
     files: list[dict[str, object]] = []
     file_components: list[dict[str, object]] = []
     for path in paths:
-        source = root / Path(path)
-        if not source.is_file():
-            fail(f"allow-listed package file is missing: {path}")
+        data, mode = sources[path]
         component = component_for_path(components, path)
         file_components.append(component)
         files.append(
             {
                 "path": path,
-                "sha256": hashlib.sha256(source.read_bytes()).hexdigest(),
+                "sha256": hashlib.sha256(data).hexdigest(),
+                "size": len(data),
                 "ownership": component["ownership"],
                 "license_expression": component["license_expression"],
                 "distribution_scope": component["distribution_scope"],
+                "mode": mode,
             }
         )
 
@@ -236,7 +317,10 @@ def build_manifest(root: Path, profile: str, package_class: str) -> dict[str, ob
         "product_profile": profile,
         "enterprise_commit": git_head(root),
         "community_baseline_commit": inventory.get("community_baseline_commit"),
-        "dependency_inventory_sha256": hashlib.sha256((root / DEPENDENCY_INVENTORY_PATH).read_bytes()).hexdigest(),
+        "source_date_epoch": source_date_epoch(root),
+        "archive_format": archive_format,
+        "dependency_inventory_sha256": hashlib.sha256(sources[DEPENDENCY_INVENTORY_PATH.as_posix()][0]).hexdigest(),
+        "third_party_notices_sha256": hashlib.sha256(sources["THIRD_PARTY_NOTICES.json"][0]).hexdigest(),
         "package_class": package_class,
         "commercial_license_status": inventory.get("commercial_license_status"),
         "customer_distribution_authorized": inventory.get("customer_distribution_authorized"),
@@ -247,7 +331,7 @@ def build_manifest(root: Path, profile: str, package_class: str) -> dict[str, ob
         "licenses": licenses,
         "notices": notices,
         "production_ready": profile_policy.get("production_ready"),
-        "kcmvp_status": profile_policy.get("kcmvp_status"),
+        "kcmvp_status": edition_metadata.get("kcmvp_status"),
     }
     serialized = json.dumps(manifest, sort_keys=True)
     if re.search(r"(?:[A-Za-z]:[\\/]|/(?:home|Users|var|tmp)/)", serialized):
@@ -260,9 +344,10 @@ def main() -> None:
     parser.add_argument("--root", default=ROOT, type=Path)
     parser.add_argument("--profile", required=True, choices=("enterprise-openssl", "enterprise-anocrypto-c"))
     parser.add_argument("--package-class", required=True, choices=("internal-validation", "customer-release"))
+    parser.add_argument("--archive-format", default="zip", choices=("zip",))
     parser.add_argument("--out", required=True, type=Path)
     args = parser.parse_args()
-    manifest = build_manifest(args.root, args.profile, args.package_class)
+    manifest = build_manifest(args.root, args.profile, args.package_class, args.archive_format)
     args.out.parent.mkdir(parents=True, exist_ok=True)
     args.out.write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     print(f"package manifest generated: {args.out}")

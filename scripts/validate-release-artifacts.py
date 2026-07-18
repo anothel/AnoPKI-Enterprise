@@ -811,6 +811,10 @@ def validate_package_manifest(manifest: dict[str, object], metadata: dict[str, o
             "product_profile",
             "enterprise_commit",
             "community_baseline_commit",
+            "source_date_epoch",
+            "archive_format",
+            "dependency_inventory_sha256",
+            "third_party_notices_sha256",
             "package_class",
             "commercial_license_status",
             "customer_distribution_authorized",
@@ -834,6 +838,13 @@ def validate_package_manifest(manifest: dict[str, object], metadata: dict[str, o
         fail("package manifest identity/profile is invalid")
     if manifest["enterprise_commit"] != metadata["commit"] or manifest["community_baseline_commit"] != COMMUNITY_BASELINE:
         fail("package manifest source commit binding is invalid")
+    if not isinstance(manifest["source_date_epoch"], int):
+        fail("package manifest SOURCE_DATE_EPOCH is invalid")
+    if manifest["archive_format"] != "zip" or any(
+        not re.fullmatch(r"[0-9a-f]{64}", str(manifest[field]))
+        for field in ("dependency_inventory_sha256", "third_party_notices_sha256")
+    ):
+        fail("package manifest archive or evidence digest metadata is invalid")
     package_class = manifest["package_class"]
     if package_class == "internal-validation":
         if manifest["commercial_license_status"] != "incomplete" or manifest["customer_distribution_authorized"] is not False:
@@ -854,7 +865,7 @@ def validate_package_manifest(manifest: dict[str, object], metadata: dict[str, o
         fail("package manifest does not select only the OpenSSL adapter")
     if manifest["fallback_enabled"] is not False or manifest["fallback_used"] is not False:
         fail("package manifest enables or records fallback")
-    if manifest["kcmvp_status"] != "not_applicable":
+    if manifest["kcmvp_status"] != "not_validated":
         fail("package manifest maturity claim is invalid")
     if not isinstance(manifest["files"], list) or not manifest["files"]:
         fail("package manifest has no allow-listed files")

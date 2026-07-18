@@ -10,12 +10,13 @@
       "customer_distribution": false,
       "distribution_scope": "internal-private-validation",
       "allowed_archive_formats": [
-        "zip",
-        "tar.gz"
+        "zip"
       ],
       "required_evidence": [
         "package-manifest.json",
         "local qualification result",
+        "archive SHA-256 sidecar",
+        "reproducibility build metadata",
         "THIRD_PARTY_NOTICES.md",
         "THIRD_PARTY_NOTICES.json",
         "LICENSES/third-party/**",

@@ -59,7 +59,10 @@ MANIFEST_FIELDS = {
     "product_profile",
     "enterprise_commit",
     "community_baseline_commit",
+    "source_date_epoch",
+    "archive_format",
     "dependency_inventory_sha256",
+    "third_party_notices_sha256",
     "package_class",
     "commercial_license_status",
     "customer_distribution_authorized",
@@ -72,7 +75,7 @@ MANIFEST_FIELDS = {
     "production_ready",
     "kcmvp_status",
 }
-FILE_FIELDS = {"path", "sha256", "ownership", "license_expression", "distribution_scope"}
+FILE_FIELDS = {"path", "sha256", "size", "ownership", "license_expression", "distribution_scope", "mode"}
 REQUIRED_COMPONENTS = {
     "synchronized-community-mpl-files",
     "enterprise-commercial-overlay",
@@ -272,13 +275,22 @@ def validate_manifest(root: Path, manifest: dict[str, object], generator=None) -
     require_exact_fields(manifest, MANIFEST_FIELDS, "package manifest")
     if manifest.get("schema_version") != 1 or manifest.get("product") != "AnoPKI Enterprise" or manifest.get("edition") != "enterprise":
         fail("package manifest identity is invalid")
-    if not re.fullmatch(r"[0-9a-f]{40}", str(manifest.get("enterprise_commit", ""))):
-        fail("package manifest Enterprise commit is invalid")
+    generator = generator or load_generator()
+    if manifest.get("enterprise_commit") != generator.git_head(root):
+        fail("package manifest Enterprise commit does not match HEAD")
+    if manifest.get("source_date_epoch") != generator.source_date_epoch(root):
+        fail("package manifest SOURCE_DATE_EPOCH does not match HEAD")
+    if manifest.get("archive_format") != "zip":
+        fail("package manifest archive format is unsupported")
     if manifest.get("fallback_enabled") is not False or manifest.get("fallback_used") is not False:
         fail("package manifest enables or records fallback")
-    dependency_inventory = root / "packaging/dependency-license-inventory.json"
-    if manifest.get("dependency_inventory_sha256") != hashlib.sha256(dependency_inventory.read_bytes()).hexdigest():
+    evidence = generator.git_files(
+        root, ["packaging/dependency-license-inventory.json", "THIRD_PARTY_NOTICES.json"]
+    )
+    if manifest.get("dependency_inventory_sha256") != hashlib.sha256(evidence["packaging/dependency-license-inventory.json"][0]).hexdigest():
         fail("package manifest dependency inventory SHA-256 mismatch")
+    if manifest.get("third_party_notices_sha256") != hashlib.sha256(evidence["THIRD_PARTY_NOTICES.json"][0]).hexdigest():
+        fail("package manifest third-party notices SHA-256 mismatch")
     if manifest.get("kcmvp_status") == "validated":
         fail("package manifest makes an unsupported KCMVP validated claim")
     if manifest.get("package_class") == "customer-release":
@@ -308,12 +320,17 @@ def validate_manifest(root: Path, manifest: dict[str, object], generator=None) -
             fail("package manifest contains a non-relative file path")
         if not re.fullmatch(r"[0-9a-f]{64}", str(item.get("sha256", ""))):
             fail(f"package manifest SHA-256 is invalid: {path}")
+        if not isinstance(item.get("size"), int) or item["size"] < 0:
+            fail(f"package manifest size is invalid: {path}")
+        if item.get("mode") not in {"0644", "0755"}:
+            fail(f"package manifest mode is invalid: {path}")
         paths.append(path)
-    if paths != sorted(paths) or len(paths) != len(set(paths)):
-        fail("package manifest file paths must be sorted and unique")
+    if paths != sorted(paths, key=lambda value: value.encode("utf-8")) or len(paths) != len(set(paths)):
+        fail("package manifest file paths must be byte-sorted and unique")
+    if len({path.casefold() for path in paths}) != len(paths):
+        fail("package manifest contains a case-insensitive path collision")
     validate_file_security(paths, read_json(root / "packaging/package-policy.json"))
 
-    generator = generator or load_generator()
     expected = generator.build_manifest(root, str(manifest["product_profile"]), str(manifest["package_class"]))
     if manifest != expected:
         for expected_file, actual_file in zip(expected["files"], files):
@@ -369,7 +386,7 @@ def archive_contents(path: Path) -> dict[str, bytes]:
 def validate_archive(path: Path, manifest: dict[str, object]) -> None:
     values = archive_contents(path)
     files = manifest["files"]
-    expected = {item["path"]: item["sha256"] for item in files}
+    expected = {item["path"]: item for item in files}
     allowed = set(expected) | {"package-manifest.json"}
     if set(values) != allowed:
         missing = sorted(allowed - set(values))
@@ -381,8 +398,8 @@ def validate_archive(path: Path, manifest: dict[str, object]) -> None:
         fail(f"package archive contains invalid package-manifest.json: {exc}")
     if embedded != manifest:
         fail("package archive embedded manifest does not match validated package-manifest.json")
-    for name, digest in expected.items():
-        if hashlib.sha256(values[name]).hexdigest() != digest:
+    for name, item in expected.items():
+        if len(values[name]) != item["size"] or hashlib.sha256(values[name]).hexdigest() != item["sha256"]:
             fail(f"package archive SHA-256 mismatch: {name}")
 
 

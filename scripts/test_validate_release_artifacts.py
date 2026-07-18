@@ -400,6 +400,10 @@ def package_manifest() -> dict[str, object]:
         "product_profile": "enterprise-openssl",
         "enterprise_commit": "0123456789abcdef0123456789abcdef01234567",
         "community_baseline_commit": "ae3ddee72dd05f274b9bbae1b514cdc4c4de03f5",
+        "source_date_epoch": 1784332483,
+        "archive_format": "zip",
+        "dependency_inventory_sha256": "0" * 64,
+        "third_party_notices_sha256": "0" * 64,
         "package_class": "internal-validation",
         "commercial_license_status": "incomplete",
         "customer_distribution_authorized": False,
@@ -425,7 +429,7 @@ def package_manifest() -> dict[str, object]:
         ],
         "notices": ["ENTERPRISE-LICENSE-NOTICE.md", "LICENSES/MPL-2.0.txt"],
         "production_ready": False,
-        "kcmvp_status": "not_applicable",
+        "kcmvp_status": "not_validated",
     }
 
 

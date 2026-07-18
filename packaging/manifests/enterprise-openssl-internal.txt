@@ -5,6 +5,8 @@ ENTERPRISE-LICENSE-NOTICE.md
 LICENSE
 LICENSES/LicenseRef-AnoPKI-Enterprise.txt
 LICENSES/MPL-2.0.txt
+packaging/license-inventory.json
+packaging/package-policy.json
 README.md
 VERSION
 docs/enterprise/backend-profile-release-gates.md
