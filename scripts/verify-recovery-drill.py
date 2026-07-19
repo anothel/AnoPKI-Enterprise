@@ -21,6 +21,7 @@ from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
 MIGRATION = Path("service/internal/store/migrations/0001_init_sqlite.sql")
+AUDIT_MIGRATION = Path("service/internal/store/migrations/0002_audit_hash_chain_sqlite.sql")
 PRIVATE_KEY_MARKERS = (
     b"-----BEGIN " + b"PRIVATE KEY-----",
     b"-----BEGIN " + b"RSA PRIVATE KEY-----",
@@ -41,7 +42,9 @@ SELECTED_TABLES = (
     "certificate_issuance_attempts",
     "revocations",
     "crl_publications",
+    "crl_generation_claims",
     "audit_events",
+    "audit_chain_state",
     "outbox_messages",
     "job_attempts",
     "notification_endpoints",
@@ -49,14 +52,16 @@ SELECTED_TABLES = (
     "api_keys",
 )
 EXPECTED_COUNTS = {
-    "schema_migrations": 1,
+    "schema_migrations": 2,
     "issuers": 1,
     "ocsp_responders": 1,
     "certificates": 1,
     "certificate_issuance_attempts": 1,
     "revocations": 1,
     "crl_publications": 1,
+    "crl_generation_claims": 0,
     "audit_events": 2,
+    "audit_chain_state": 1,
     "outbox_messages": 1,
     "job_attempts": 1,
     "notification_endpoints": 1,
@@ -74,6 +79,7 @@ class DrillContext:
     root: Path
     work_dir: Path
     migration_checksum: str
+    audit_migration_checksum: str
     commit: str
 
 
@@ -87,6 +93,34 @@ def sha256_bytes(value: bytes) -> str:
 
 def sha256_text(value: str) -> str:
     return sha256_bytes(value.encode("utf-8"))
+
+
+def audit_event_hash(
+    previous_hash: str,
+    *,
+    sequence: int,
+    event_id: str,
+    actor: str,
+    action: str,
+    resource_type: str,
+    resource_id: str,
+    metadata_json: str,
+    created_at: str,
+) -> str:
+    metadata = json.loads(metadata_json)
+    payload = {
+        "hash_algorithm": "sha256-v1",
+        "sequence": sequence,
+        "id": event_id,
+        "actor": actor,
+        "action": action,
+        "resource_type": resource_type,
+        "resource_id": resource_id,
+        "metadata": metadata,
+        "created_at": created_at,
+    }
+    encoded = json.dumps(payload, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
+    return sha256_bytes(previous_hash.encode("utf-8") + encoded)
 
 
 def resolve_commit(root: Path, explicit: str | None) -> str:
@@ -120,6 +154,7 @@ def connect(path: Path) -> sqlite3.Connection:
 def initialize_database(ctx: DrillContext, path: Path) -> None:
     migration_path = ctx.root / MIGRATION
     sql = migration_path.read_text(encoding="utf-8")
+    audit_sql = (ctx.root / AUDIT_MIGRATION).read_text(encoding="utf-8")
     with connect(path) as db:
         db.execute(
             """
@@ -156,11 +191,27 @@ def initialize_database(ctx: DrillContext, path: Path) -> None:
             );
             CREATE INDEX IF NOT EXISTS idx_webhook_deliveries_endpoint
                 ON webhook_deliveries(endpoint_id, updated_at);
+            CREATE TABLE IF NOT EXISTS crl_generation_claims (
+                issuer_id TEXT NOT NULL REFERENCES issuers(id),
+                distribution_point TEXT NOT NULL,
+                crl_number INTEGER NOT NULL,
+                lease_expires_at TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                PRIMARY KEY (issuer_id, distribution_point)
+            );
+            CREATE INDEX IF NOT EXISTS idx_crl_generation_claims_lease
+                ON crl_generation_claims(lease_expires_at, issuer_id, distribution_point);
             """
         )
         db.execute(
             "INSERT INTO schema_migrations(version, checksum, applied_at, dirty) VALUES (?, ?, ?, 0)",
             (1, ctx.migration_checksum, "2026-07-17T00:00:00Z"),
+        )
+        db.executescript(audit_sql)
+        db.execute(
+            "INSERT INTO schema_migrations(version, checksum, applied_at, dirty) VALUES (?, ?, ?, 0)",
+            (2, ctx.audit_migration_checksum, "2026-07-17T00:00:01Z"),
         )
         seed_database(db)
 
@@ -266,19 +317,56 @@ def seed_database(db: sqlite3.Connection) -> None:
             "2026-07-18T00:00:00Z", "published", crl_pem, now, now,
         ),
     )
+    audit_metadata_1 = '{"result":"ok","signing_proven":true}'
+    audit_metadata_2 = '{"reason":"key_compromise"}'
+    audit_created_1 = now
+    audit_created_2 = "2026-07-17T00:01:00Z"
+    audit_hash_1 = audit_event_hash(
+        "", sequence=1, event_id="audit-restore-1", actor="operator",
+        action="certificate.issued", resource_type="certificate",
+        resource_id="certificate-restore-1", metadata_json=audit_metadata_1,
+        created_at=audit_created_1,
+    )
+    audit_hash_2 = audit_event_hash(
+        audit_hash_1, sequence=2, event_id="audit-restore-2", actor="operator",
+        action="certificate.revoked", resource_type="certificate",
+        resource_id="certificate-restore-1", metadata_json=audit_metadata_2,
+        created_at=audit_created_2,
+    )
     db.execute(
-        "INSERT INTO audit_events VALUES (?, ?, ?, ?, ?, ?, ?)",
+        """
+        INSERT INTO audit_events (
+            id, actor, action, resource_type, resource_id, metadata_json, created_at,
+            sequence, hash_algorithm, previous_event_hash, event_hash
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """,
         (
-            "audit-restore-1", "operator", "certificate.issued", "certificate", "certificate-restore-1",
-            '{"result":"ok","signing_proven":true}', now,
+            "audit-restore-1", "operator", "certificate.issued", "certificate",
+            "certificate-restore-1", audit_metadata_1, audit_created_1,
+            1, "sha256-v1", "", audit_hash_1,
         ),
     )
     db.execute(
-        "INSERT INTO audit_events VALUES (?, ?, ?, ?, ?, ?, ?)",
+        """
+        INSERT INTO audit_events (
+            id, actor, action, resource_type, resource_id, metadata_json, created_at,
+            sequence, hash_algorithm, previous_event_hash, event_hash
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """,
         (
-            "audit-restore-2", "operator", "certificate.revoked", "certificate", "certificate-restore-1",
-            '{"reason":"key_compromise"}', "2026-07-17T00:01:00Z",
+            "audit-restore-2", "operator", "certificate.revoked", "certificate",
+            "certificate-restore-1", audit_metadata_2, audit_created_2,
+            2, "sha256-v1", audit_hash_1, audit_hash_2,
         ),
+    )
+    db.execute(
+        """
+        INSERT INTO audit_chain_state (
+            singleton_id, hash_algorithm, latest_sequence, latest_event_hash,
+            checkpoint_sequence, checkpoint_event_hash, updated_at
+        ) VALUES (1, ?, ?, ?, 0, '', ?)
+        """,
+        ("sha256-v1", 2, audit_hash_2, audit_created_2),
     )
     db.execute(
         "INSERT INTO outbox_messages VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
@@ -344,6 +432,9 @@ def mutate_live_database(path: Path) -> None:
 
 def verify_restored_database(ctx: DrillContext, path: Path, expected_digest: str) -> tuple[list[dict[str, str]], dict[str, int], dict[str, str]]:
     checks: list[dict[str, str]] = []
+    database_bytes = path.read_bytes()
+    if any(marker in database_bytes for marker in PRIVATE_KEY_MARKERS):
+        raise DrillFailure("restored database contains private-key material")
     with connect(path) as db:
         integrity = db.execute("PRAGMA integrity_check").fetchone()[0]
         if integrity != "ok":
@@ -354,10 +445,16 @@ def verify_restored_database(ctx: DrillContext, path: Path, expected_digest: str
             raise DrillFailure("SQLite foreign-key check failed")
         checks.append({"name": "foreign-key-integrity", "status": "passed"})
 
-        migration = db.execute(
-            "SELECT version, checksum, dirty FROM schema_migrations WHERE version = 1"
-        ).fetchone()
-        if migration != (1, ctx.migration_checksum, 0):
+        migrations = list(
+            db.execute(
+                "SELECT version, checksum, dirty FROM schema_migrations ORDER BY version"
+            )
+        )
+        expected_migrations = [
+            (1, ctx.migration_checksum, 0),
+            (2, ctx.audit_migration_checksum, 0),
+        ]
+        if migrations != expected_migrations:
             raise DrillFailure("schema migration state is missing, dirty, or checksum-mismatched")
         checks.append({"name": "schema-migration", "status": "passed"})
 
@@ -411,10 +508,44 @@ def verify_restored_database(ctx: DrillContext, path: Path, expected_digest: str
             raise DrillFailure("outbox or webhook delivery failure state was not restored")
         checks.append({"name": "outbox-and-webhook-state", "status": "passed"})
 
-        audit_count = db.execute("SELECT COUNT(*) FROM audit_events").fetchone()[0]
-        if audit_count != 2:
+        audit_rows = list(
+            db.execute(
+                """
+                SELECT id, sequence, hash_algorithm, previous_event_hash, event_hash,
+                       actor, action, resource_type, resource_id, metadata_json, created_at
+                FROM audit_events ORDER BY sequence
+                """
+            )
+        )
+        if len(audit_rows) != 2:
             raise DrillFailure("audit event state was not restored")
         checks.append({"name": "audit-state", "status": "passed"})
+        previous_hash = ""
+        for row in audit_rows:
+            expected_hash = audit_event_hash(
+                previous_hash,
+                sequence=int(row[1]),
+                event_id=str(row[0]),
+                actor=str(row[5]),
+                action=str(row[6]),
+                resource_type=str(row[7]),
+                resource_id=str(row[8]),
+                metadata_json=str(row[9]),
+                created_at=str(row[10]),
+            )
+            if row[2] != "sha256-v1" or row[3] != previous_hash or row[4] != expected_hash:
+                raise DrillFailure("audit hash chain was not restored intact")
+            previous_hash = str(row[4])
+        chain_state = db.execute(
+            """
+            SELECT hash_algorithm, latest_sequence, latest_event_hash,
+                   checkpoint_sequence, checkpoint_event_hash
+            FROM audit_chain_state WHERE singleton_id = 1
+            """
+        ).fetchone()
+        if chain_state != ("sha256-v1", 2, previous_hash, 0, ""):
+            raise DrillFailure("audit chain checkpoint state was not restored")
+        checks.append({"name": "audit-chain-state", "status": "passed"})
 
         artifact_hashes = {
             "certificate_pem": "sha256:" + sha256_text(
@@ -463,10 +594,18 @@ def run_drill(root: Path, out_dir: Path, commit: str) -> dict[str, Any]:
     started_at = utc_now()
     migration_bytes = (root / MIGRATION).read_bytes()
     migration_checksum = sha256_bytes(migration_bytes)
+    audit_migration_bytes = (root / AUDIT_MIGRATION).read_bytes()
+    audit_migration_checksum = sha256_bytes(audit_migration_bytes)
     out_dir.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix="anopki-recovery-") as tmp:
         work_dir = Path(tmp)
-        ctx = DrillContext(root=root, work_dir=work_dir, migration_checksum=migration_checksum, commit=commit)
+        ctx = DrillContext(
+            root=root,
+            work_dir=work_dir,
+            migration_checksum=migration_checksum,
+            audit_migration_checksum=audit_migration_checksum,
+            commit=commit,
+        )
         live = work_dir / "live.db"
         backup = work_dir / "backup.db"
         restored = work_dir / "restored.db"
@@ -486,8 +625,8 @@ def run_drill(root: Path, out_dir: Path, commit: str) -> dict[str, Any]:
             "product_profile": "community-openssl",
             "commit": commit,
             "database_driver": "sqlite",
-            "migration_version": 1,
-            "migration_checksum": migration_checksum,
+            "migration_version": 2,
+            "migration_checksum": audit_migration_checksum,
             "started_at": started_at,
             "completed_at": utc_now(),
             "result": "passed",

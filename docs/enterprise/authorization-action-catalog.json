@@ -2,7 +2,7 @@
   "schema_version": 1,
   "source": {
     "path": "service/internal/httpapi/server.go",
-    "sha256": "ece1c85d270e53c4fa1a677c647e19295fb54cb05f274c108508299bee963390"
+    "sha256": "46475503224e06724edb3a2951781eb404cbd16a3c9948edcc98d9836fcfdb77"
   },
   "authentication_implementations": [
     "dev",
@@ -495,6 +495,16 @@
       "resource_type": "audit_event",
       "operation_class": "operator",
       "current_route_or_operation": "GET /audit-events",
+      "legacy_required_scope": "operator",
+      "approval_capable": false,
+      "ownership": "community",
+      "status": "implemented"
+    },
+    {
+      "id": "audit_event.integrity.read",
+      "resource_type": "audit_event",
+      "operation_class": "operator",
+      "current_route_or_operation": "GET /audit-events/integrity",
       "legacy_required_scope": "operator",
       "approval_capable": false,
       "ownership": "community",

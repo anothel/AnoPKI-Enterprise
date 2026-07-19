@@ -18,8 +18,9 @@
 | Key exposure | Certificate issuance, CRL generation, and OCSP response signing use adapter-private providers, keep private key bytes inside the OpenSSL adapter, redact provider errors, and reject the exportable file provider in production. | No real non-exportable provider. |
 | Provider confusion or fallback | One selected provider is acquired once; resolver checks readiness, production exportability, provider/operation evidence, and `fallback_used=false`. Test-only software-token coverage exercises failure and mismatch paths. | Provider-result audit correlation is implemented for the shared file-provider path; an Enterprise production non-exportable provider remains pending. |
 | Privilege abuse | API key scopes, access model, break-glass rules, and audit metadata. | First-class role/ABAC enforcement waits for an operator directory. |
-| Replay/duplicate issuance | Issuance attempts and ACME nonce handling. | More multi-node smoke coverage. |
-| Status outage | CRL/OCSP backed by service state plus fail-closed signer-outage and recovery regressions that prevent phantom publication and success audit. | Multi-node HA and traffic-shift drills. |
+| Audit tampering | Monotonic `sha256-v1` chain, latest/checkpoint state, fail-closed append and prune, integrity API, migration backfill, and recovery verification. | Independent external anchoring and SIEM custody remain deployment-specific. |
+| Replay/duplicate issuance | Issuance attempts, active signing claims, ACME nonce handling, and focused multi-node single-writer evidence. | Real PostgreSQL multi-node failover and partition smoke coverage. |
+| Status outage | CRL/OCSP backed by service state, fail-closed signer-outage recovery, and leased multi-node CRL publication that prevents duplicate signing. | Real multi-node HA and traffic-shift drills. |
 | Supply chain compromise | CI builds/tests, secret baseline scan, govulncheck, SBOM, and release signing workflow. | Full SAST/SCA plus container/IaC scans after tool choices. |
 
 ## Review Triggers

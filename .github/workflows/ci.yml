@@ -158,6 +158,92 @@ jobs:
           path: .tmp/audit-replay-evidence/ci/
           if-no-files-found: error
 
+  audit-integrity-drill:
+    name: Audit hash-chain integrity drill
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: anopki_test
+          POSTGRES_USER: anopki
+          POSTGRES_PASSWORD: anopki
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U anopki -d anopki_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.25.12"
+          cache-dependency-path: |
+            service/go.mod
+            service/go.sum
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+      - run: python scripts/test_verify_audit_integrity_drill.py
+      - run: >-
+          python scripts/verify-audit-integrity-drill.py
+          --require-postgres
+          --out-dir .tmp/audit-integrity-evidence/ci
+          --commit "${GITHUB_SHA}"
+        env:
+          ANOPKI_POSTGRES_TEST_DSN: postgres://anopki:anopki@localhost:5432/anopki_test?sslmode=disable
+      - uses: actions/upload-artifact@v4
+        with:
+          name: anopki-audit-integrity-verification
+          path: .tmp/audit-integrity-evidence/ci/
+          if-no-files-found: error
+
+  issuer-rollover-drill:
+    name: Intermediate issuer rollover drill
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.25.12"
+          cache-dependency-path: |
+            service/go.mod
+            service/go.sum
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+      - run: python scripts/test_verify_issuer_rollover_drill.py
+      - run: python scripts/verify-issuer-rollover-drill.py --out-dir .tmp/issuer-rollover-evidence/ci --commit "${GITHUB_SHA}"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: anopki-issuer-rollover-verification
+          path: .tmp/issuer-rollover-evidence/ci/
+          if-no-files-found: error
+
+  multi-node-reliability-drill:
+    name: Multi-node reliability drill
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.25.12"
+          cache-dependency-path: |
+            service/go.mod
+            service/go.sum
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+      - run: python scripts/test_verify_multi_node_reliability.py
+      - run: python scripts/verify-multi-node-reliability.py --out-dir .tmp/multi-node-evidence/ci --commit "${GITHUB_SHA}"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: anopki-multi-node-verification
+          path: .tmp/multi-node-evidence/ci/
+          if-no-files-found: error
+
   secret-baseline:
     name: Secret baseline scan
     runs-on: ubuntu-latest
@@ -270,6 +356,49 @@ jobs:
       - run: go test -p 1 ./internal/store ./internal/httpapi -run PostgresIntegration -v
         env:
           ANOPKI_POSTGRES_TEST_DSN: postgres://anopki:anopki@localhost:5432/anopki_test?sslmode=disable
+
+  postgres-recovery-drill:
+    name: PostgreSQL 16 backup and restore drill
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: anopki_recovery_control
+          POSTGRES_USER: anopki
+          POSTGRES_PASSWORD: anopki
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U anopki -d anopki_recovery_control"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.25.12"
+          cache-dependency-path: |
+            service/go.mod
+            service/go.sum
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+      - run: sudo apt-get update && sudo apt-get install -y postgresql-client
+      - run: python scripts/test_verify_postgres_recovery_drill.py
+      - name: Run PostgreSQL recovery drill
+        run: >-
+          python scripts/verify-postgres-recovery-drill.py
+          --out-dir .tmp/postgres-recovery-evidence/ci
+          --commit "${GITHUB_SHA}"
+        env:
+          ANOPKI_POSTGRES_RECOVERY_DSN: postgres://anopki:anopki@localhost:5432/anopki_recovery_control?sslmode=disable
+      - uses: actions/upload-artifact@v4
+        with:
+          name: anopki-postgres-recovery-verification
+          path: .tmp/postgres-recovery-evidence/ci/
+          if-no-files-found: error
 
   cpp-core:
     name: C++ core

@@ -10,12 +10,15 @@ import (
 	"errors"
 	"fmt"
 	"time"
+
+	"github.com/anothel/anopki/service/internal/domain"
 )
 
-//go:embed migrations/0001_init.sql migrations/0001_init_sqlite.sql
+//go:embed migrations/0001_init.sql migrations/0001_init_sqlite.sql migrations/0002_audit_hash_chain.sql migrations/0002_audit_hash_chain_sqlite.sql
 var migrationFiles embed.FS
 
 const initialMigrationVersion = 1
+const auditHashChainMigrationVersion = 2
 const sqliteMigrationBusyTimeoutMS = 5000
 const postgresMigrationAdvisoryLockID int64 = 5847545710944921361
 
@@ -60,6 +63,9 @@ func ApplyInitialMigration(ctx context.Context, db *sql.DB, driver string) error
 			return err
 		}
 	}
+	if err := applyAuditHashChainMigration(ctx, tx, driver); err != nil {
+		return err
+	}
 	return tx.Commit()
 }
 
@@ -78,6 +84,21 @@ func CheckInitialMigration(ctx context.Context, db *sql.DB, driver string) error
 	}
 	if !applied {
 		return fmt.Errorf("schema migration version %d is not applied", initialMigrationVersion)
+	}
+	auditPath, err := auditHashChainMigrationPath(driver)
+	if err != nil {
+		return err
+	}
+	auditSQL, err := migrationFiles.ReadFile(auditPath)
+	if err != nil {
+		return fmt.Errorf("read audit hash-chain migration: %w", err)
+	}
+	applied, err = checkSchemaMigration(ctx, db, auditHashChainMigrationVersion, migrationChecksum(auditSQL))
+	if err != nil {
+		return err
+	}
+	if !applied {
+		return fmt.Errorf("schema migration version %d is not applied", auditHashChainMigrationVersion)
 	}
 	return nil
 }
@@ -167,6 +188,17 @@ func initialMigrationPath(driver string) (string, error) {
 		return "migrations/0001_init_sqlite.sql", nil
 	case "pgx":
 		return "migrations/0001_init.sql", nil
+	default:
+		return "", fmt.Errorf("unsupported database driver %q", driver)
+	}
+}
+
+func auditHashChainMigrationPath(driver string) (string, error) {
+	switch driver {
+	case "sqlite":
+		return "migrations/0002_audit_hash_chain_sqlite.sql", nil
+	case "pgx":
+		return "migrations/0002_audit_hash_chain.sql", nil
 	default:
 		return "", fmt.Errorf("unsupported database driver %q", driver)
 	}
@@ -412,6 +444,17 @@ func applySQLiteCompatibilityMigrations(ctx context.Context, db sqlExecutor) err
 			ON certificate_issuance_attempts(status, lease_expires_at, updated_at, enrollment_id)`,
 		`CREATE UNIQUE INDEX IF NOT EXISTS idx_crl_publications_issuer_distribution_number
 			ON crl_publications(issuer_id, distribution_point, crl_number)`,
+		`CREATE TABLE IF NOT EXISTS crl_generation_claims (
+			issuer_id TEXT NOT NULL REFERENCES issuers(id),
+			distribution_point TEXT NOT NULL,
+			crl_number INTEGER NOT NULL,
+			lease_expires_at TEXT NOT NULL,
+			created_at TEXT NOT NULL,
+			updated_at TEXT NOT NULL,
+			PRIMARY KEY (issuer_id, distribution_point)
+		)`,
+		`CREATE INDEX IF NOT EXISTS idx_crl_generation_claims_lease
+			ON crl_generation_claims(lease_expires_at, issuer_id, distribution_point)`,
 		`CREATE TABLE IF NOT EXISTS api_keys (
 			id TEXT PRIMARY KEY,
 			name TEXT NOT NULL,
@@ -748,6 +791,17 @@ func applyPostgresCompatibilityMigrations(ctx context.Context, db sqlExecutor) e
 			ON certificate_issuance_attempts(status, lease_expires_at, updated_at, enrollment_id)`,
 		`CREATE UNIQUE INDEX IF NOT EXISTS idx_crl_publications_issuer_distribution_number
 			ON crl_publications(issuer_id, distribution_point, crl_number)`,
+		`CREATE TABLE IF NOT EXISTS crl_generation_claims (
+			issuer_id TEXT NOT NULL REFERENCES issuers(id),
+			distribution_point TEXT NOT NULL,
+			crl_number BIGINT NOT NULL,
+			lease_expires_at TIMESTAMPTZ NOT NULL,
+			created_at TIMESTAMPTZ NOT NULL,
+			updated_at TIMESTAMPTZ NOT NULL,
+			PRIMARY KEY (issuer_id, distribution_point)
+		)`,
+		`CREATE INDEX IF NOT EXISTS idx_crl_generation_claims_lease
+			ON crl_generation_claims(lease_expires_at, issuer_id, distribution_point)`,
 		`CREATE TABLE IF NOT EXISTS api_keys (
 			id TEXT PRIMARY KEY,
 			name TEXT NOT NULL,
@@ -842,6 +896,135 @@ func applyPostgresCompatibilityMigrations(ctx context.Context, db sqlExecutor) e
 	for _, statement := range statements {
 		if _, err := db.ExecContext(ctx, statement); err != nil {
 			return fmt.Errorf("execute postgres compatibility migration: %w", err)
+		}
+	}
+	return nil
+}
+
+func applyAuditHashChainMigration(ctx context.Context, db sqlExecutor, driver string) error {
+	path, err := auditHashChainMigrationPath(driver)
+	if err != nil {
+		return err
+	}
+	sqlBytes, err := migrationFiles.ReadFile(path)
+	if err != nil {
+		return fmt.Errorf("read audit hash-chain migration: %w", err)
+	}
+	checksum := migrationChecksum(sqlBytes)
+	applied, err := checkSchemaMigration(ctx, db, auditHashChainMigrationVersion, checksum)
+	if err != nil {
+		return err
+	}
+	if applied {
+		return nil
+	}
+	if err := insertSchemaMigration(ctx, db, driver, auditHashChainMigrationVersion, checksum, true); err != nil {
+		return err
+	}
+	if _, err := db.ExecContext(ctx, string(sqlBytes)); err != nil {
+		return fmt.Errorf("execute audit hash-chain migration: %w", err)
+	}
+	if err := backfillAuditHashChain(ctx, db); err != nil {
+		return err
+	}
+	if err := finalizeAuditHashChainSchema(ctx, db, driver); err != nil {
+		return err
+	}
+	if err := markSchemaMigrationClean(ctx, db, driver, auditHashChainMigrationVersion, checksum); err != nil {
+		return err
+	}
+	return nil
+}
+
+func backfillAuditHashChain(ctx context.Context, db sqlExecutor) error {
+	rows, err := db.QueryContext(ctx, `
+SELECT id, actor, action, resource_type, resource_id, metadata_json, created_at
+FROM audit_events
+ORDER BY created_at, id`)
+	if err != nil {
+		return fmt.Errorf("read legacy audit events: %w", err)
+	}
+	events := make([]domain.AuditEvent, 0)
+	for rows.Next() {
+		var event domain.AuditEvent
+		var createdAt any
+		if err := rows.Scan(
+			&event.ID,
+			&event.Actor,
+			&event.Action,
+			&event.ResourceType,
+			&event.ResourceID,
+			&event.MetadataJSON,
+			&createdAt,
+		); err != nil {
+			rows.Close()
+			return fmt.Errorf("scan legacy audit event: %w", err)
+		}
+		parsedCreatedAt, err := parseSQLTime(createdAt)
+		if err != nil {
+			rows.Close()
+			return fmt.Errorf("parse legacy audit event time: %w", err)
+		}
+		event.CreatedAt = parsedCreatedAt
+		events = append(events, event)
+	}
+	if err := rows.Err(); err != nil {
+		rows.Close()
+		return fmt.Errorf("read legacy audit events: %w", err)
+	}
+	if err := rows.Close(); err != nil {
+		return fmt.Errorf("close legacy audit events: %w", err)
+	}
+
+	previousHash := ""
+	for index, event := range events {
+		prepared, err := withAuditEventHash(int64(index+1), previousHash, event)
+		if err != nil {
+			return fmt.Errorf("backfill audit event %q: %w", event.ID, err)
+		}
+		if _, err := db.ExecContext(ctx, `
+UPDATE audit_events
+SET sequence = $1, hash_algorithm = $2, previous_event_hash = $3, event_hash = $4
+WHERE id = $5`,
+			prepared.Sequence,
+			prepared.HashAlgorithm,
+			prepared.PreviousEventHash,
+			prepared.EventHash,
+			prepared.ID,
+		); err != nil {
+			return fmt.Errorf("backfill audit event %q: %w", event.ID, err)
+		}
+		previousHash = prepared.EventHash
+	}
+
+	latestSequence := int64(len(events))
+	if _, err := db.ExecContext(ctx, `
+INSERT INTO audit_chain_state (
+	singleton_id, hash_algorithm, latest_sequence, latest_event_hash,
+	checkpoint_sequence, checkpoint_event_hash, updated_at
+) VALUES (1, $1, $2, $3, 0, '', $4)`,
+		AuditHashAlgorithmSHA256V1,
+		latestSequence,
+		previousHash,
+		formatSQLTime(time.Now()),
+	); err != nil {
+		return fmt.Errorf("initialize audit chain state: %w", err)
+	}
+	return nil
+}
+
+func finalizeAuditHashChainSchema(ctx context.Context, db sqlExecutor, driver string) error {
+	statements := []string{
+		`CREATE UNIQUE INDEX idx_audit_events_sequence ON audit_events(sequence)`,
+	}
+	if driver == "pgx" {
+		statements = append([]string{
+			`ALTER TABLE audit_events ALTER COLUMN sequence SET NOT NULL`,
+		}, statements...)
+	}
+	for _, statement := range statements {
+		if _, err := db.ExecContext(ctx, statement); err != nil {
+			return fmt.Errorf("finalize audit hash-chain schema: %w", err)
 		}
 	}
 	return nil

@@ -3,7 +3,7 @@
   "product": "AnoPKI Enterprise",
   "edition": "enterprise",
   "generated_from_commit": "68b379e7684c9d8b44c53728949774088352a9d9",
-  "community_baseline_commit": "ae3ddee72dd05f274b9bbae1b514cdc4c4de03f5",
+  "community_baseline_commit": "96297b14d2f681b75861032d9871a41d6e689c78",
   "commercial_license_status": "incomplete",
   "customer_distribution_authorized": false,
   "components": [

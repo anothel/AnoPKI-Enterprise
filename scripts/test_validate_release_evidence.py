@@ -35,6 +35,16 @@ def require_release_workflow() -> None:
         "anopki-recovery-verification.tar.gz",
         "anopki-status-outage-verification.tar.gz",
         "anopki-audit-replay-verification.tar.gz",
+        "anopki-audit-integrity-verification.tar.gz",
+        "anopki-issuer-rollover-verification.tar.gz",
+        "anopki-postgres-recovery-verification.tar.gz",
+        "anopki-multi-node-verification.tar.gz",
+        "python scripts/verify-audit-integrity-drill.py",
+        "python scripts/verify-issuer-rollover-drill.py",
+        "python scripts/verify-postgres-recovery-drill.py",
+        "python scripts/verify-multi-node-reliability.py",
+        "postgres:16",
+        "postgresql-client",
         "cmake --build build-release --config Release",
         'VERSION="$(cat VERSION)"',
         "go build -ldflags",
@@ -79,6 +89,10 @@ def copy_release_evidence_inputs(dst: Path) -> None:
         "scripts/verify-recovery-drill.py",
         "scripts/verify-status-outage-drill.py",
         "scripts/verify-audit-replay-drill.py",
+        "scripts/verify-audit-integrity-drill.py",
+        "scripts/verify-issuer-rollover-drill.py",
+        "scripts/verify-postgres-recovery-drill.py",
+        "scripts/verify-multi-node-reliability.py",
         ".github/workflows/ci.yml",
         ".github/workflows/release.yml",
     ]
@@ -393,6 +407,82 @@ def test_missing_release_audit_replay_evidence_fails(tmp_path: Path) -> None:
 
 
 
+def test_missing_audit_integrity_runner_fails(tmp_path: Path) -> None:
+    copy_release_evidence_inputs(tmp_path)
+    mutate(tmp_path / "scripts/verify-audit-integrity-drill.py", "community_audit_integrity_drill")
+    result = run_validator(tmp_path)
+    assert result.returncode == 1
+    assert "community_audit_integrity_drill" in result.stderr
+
+
+def test_missing_release_audit_integrity_evidence_fails(tmp_path: Path) -> None:
+    copy_release_evidence_inputs(tmp_path)
+    mutate(tmp_path / ".github/workflows/release.yml", "anopki-audit-integrity-verification.tar.gz")
+    result = run_validator(tmp_path)
+    assert result.returncode == 1
+    assert "anopki-audit-integrity-verification.tar.gz" in result.stderr
+
+
+def test_missing_issuer_rollover_runner_fails(tmp_path: Path) -> None:
+    copy_release_evidence_inputs(tmp_path)
+    mutate(tmp_path / "scripts/verify-issuer-rollover-drill.py", "same-parent-chain-required")
+    result = run_validator(tmp_path)
+    assert result.returncode == 1
+    assert "same-parent-chain-required" in result.stderr
+
+
+def test_missing_release_issuer_rollover_evidence_fails(tmp_path: Path) -> None:
+    copy_release_evidence_inputs(tmp_path)
+    mutate(tmp_path / ".github/workflows/release.yml", "anopki-issuer-rollover-verification.tar.gz")
+    result = run_validator(tmp_path)
+    assert result.returncode == 1
+    assert "anopki-issuer-rollover-verification.tar.gz" in result.stderr
+
+
+def test_postgres_client_major_enforcement_drift_fails(tmp_path: Path) -> None:
+    copy_release_evidence_inputs(tmp_path)
+    mutate(
+        tmp_path / "scripts/verify-postgres-recovery-drill.py",
+        "parse_postgres_major(client_version) != REQUIRED_POSTGRES_MAJOR",
+        "False",
+    )
+    result = run_validator(tmp_path)
+    assert result.returncode == 1
+    assert "parse_postgres_major(client_version) != REQUIRED_POSTGRES_MAJOR" in result.stderr
+
+
+def test_missing_postgres_recovery_runner_fails(tmp_path: Path) -> None:
+    copy_release_evidence_inputs(tmp_path)
+    mutate(tmp_path / "scripts/verify-postgres-recovery-drill.py", "custom-format-backup-created")
+    result = run_validator(tmp_path)
+    assert result.returncode == 1
+    assert "custom-format-backup-created" in result.stderr
+
+
+def test_missing_release_postgres_recovery_evidence_fails(tmp_path: Path) -> None:
+    copy_release_evidence_inputs(tmp_path)
+    mutate(tmp_path / ".github/workflows/release.yml", "anopki-postgres-recovery-verification.tar.gz")
+    result = run_validator(tmp_path)
+    assert result.returncode == 1
+    assert "anopki-postgres-recovery-verification.tar.gz" in result.stderr
+
+
+
+def test_missing_multi_node_reliability_runner_fails(tmp_path: Path) -> None:
+    copy_release_evidence_inputs(tmp_path)
+    mutate(tmp_path / "scripts/verify-multi-node-reliability.py", "stale-claim-cas-rejected")
+    result = run_validator(tmp_path)
+    assert result.returncode == 1
+    assert "stale-claim-cas-rejected" in result.stderr
+
+
+def test_missing_release_multi_node_evidence_fails(tmp_path: Path) -> None:
+    copy_release_evidence_inputs(tmp_path)
+    mutate(tmp_path / ".github/workflows/release.yml", "anopki-multi-node-verification.tar.gz")
+    result = run_validator(tmp_path)
+    assert result.returncode == 1
+    assert "anopki-multi-node-verification.tar.gz" in result.stderr
+
 def main() -> None:
     result = run_validator(ROOT)
     if result.returncode != 0:
@@ -443,6 +533,24 @@ def main() -> None:
         test_missing_audit_replay_runner_fails(Path(dirname))
     with tempfile.TemporaryDirectory() as dirname:
         test_missing_release_audit_replay_evidence_fails(Path(dirname))
+    with tempfile.TemporaryDirectory() as dirname:
+        test_missing_audit_integrity_runner_fails(Path(dirname))
+    with tempfile.TemporaryDirectory() as dirname:
+        test_missing_release_audit_integrity_evidence_fails(Path(dirname))
+    with tempfile.TemporaryDirectory() as dirname:
+        test_missing_issuer_rollover_runner_fails(Path(dirname))
+    with tempfile.TemporaryDirectory() as dirname:
+        test_missing_release_issuer_rollover_evidence_fails(Path(dirname))
+    with tempfile.TemporaryDirectory() as dirname:
+        test_postgres_client_major_enforcement_drift_fails(Path(dirname))
+    with tempfile.TemporaryDirectory() as dirname:
+        test_missing_postgres_recovery_runner_fails(Path(dirname))
+    with tempfile.TemporaryDirectory() as dirname:
+        test_missing_release_postgres_recovery_evidence_fails(Path(dirname))
+    with tempfile.TemporaryDirectory() as dirname:
+        test_missing_multi_node_reliability_runner_fails(Path(dirname))
+    with tempfile.TemporaryDirectory() as dirname:
+        test_missing_release_multi_node_evidence_fails(Path(dirname))
     with tempfile.TemporaryDirectory() as dirname:
         test_hosted_execution_contradictions_fail(Path(dirname))
     require_release_workflow()

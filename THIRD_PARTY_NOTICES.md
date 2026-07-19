@@ -6,7 +6,7 @@ It is evidence metadata, not legal advice or a replacement for the included lice
 - Product: AnoPKI Enterprise
 - Edition: enterprise
 - Enterprise commit: `68b379e7684c9d8b44c53728949774088352a9d9`
-- Community baseline: `ae3ddee72dd05f274b9bbae1b514cdc4c4de03f5`
+- Community baseline: `96297b14d2f681b75861032d9871a41d6e689c78`
 - Unresolved dependencies: 0
 - Customer distribution ready: false
 
@@ -122,20 +122,6 @@ It is evidence metadata, not legal advice or a replacement for the included lice
   - None
 - Redistribution review status: required; customer package blocked
 
-## github.com/kr/pretty
-
-- Component: `github.com/kr/pretty` (`go-module`)
-- Version: `v0.3.0`
-- Direct/Indirect: Indirect
-- License expression: `MIT`
-- Evidence status: `verified`
-- Source/provenance: `go-module-zip:github.com/kr/pretty@v0.3.0`; `{"go_mod":"service/go.mod","go_mod_sum":"h1:640gp4NfQd8pI5XOwp5fnNeVWj67G7CFk/SaSQn7NBk=","go_sum":"service/go.sum","go_sum_present":true,"module":"github.com/kr/pretty","module_directory":"github.com/kr/pretty@v0.3.0","module_sum":"h1:WgNl7dwNpEZ6jJ9k1snq4pZsg7DOEN8hP9Xw0Tsjwk0=","replacement":null,"version":"v0.3.0"}`
-- Included license files:
-  - [LICENSES/third-party/go/github.com_kr_pretty/v0.3.0/License](LICENSES/third-party/go/github.com_kr_pretty/v0.3.0/License) - SHA-256 `283c28b781bc7487bd7bcaf453cbd811f5ee8d7ce625cfcf8dcacae6ba1f4bb5`
-- Included notices:
-  - None
-- Redistribution review status: required; customer package blocked
-
 ## github.com/mattn/go-isatty
 
 - Component: `github.com/mattn/go-isatty` (`go-module`)
@@ -188,20 +174,6 @@ It is evidence metadata, not legal advice or a replacement for the included lice
 - Source/provenance: `go-module-zip:github.com/remyoudompheng/bigfft@v0.0.0-20230129092748-24d4a6f8daec`; `{"go_mod":"service/go.mod","go_mod_sum":"h1:qqbHyh8v60DhA7CoWK5oRCqLrMHRGoxYCSS9EjAz6Eo=","go_sum":"service/go.sum","go_sum_present":true,"module":"github.com/remyoudompheng/bigfft","module_directory":"github.com/remyoudompheng/bigfft@v0.0.0-20230129092748-24d4a6f8daec","module_sum":"h1:W09IVJc94icq4NjY3clb7Lk8O1qJ8BdBEF8z0ibU0rE=","replacement":null,"version":"v0.0.0-20230129092748-24d4a6f8daec"}`
 - Included license files:
   - [LICENSES/third-party/go/github.com_remyoudompheng_bigfft/v0.0.0-20230129092748-24d4a6f8daec/LICENSE](LICENSES/third-party/go/github.com_remyoudompheng_bigfft/v0.0.0-20230129092748-24d4a6f8daec/LICENSE) - SHA-256 `dd26a7abddd02e2d0aba97805b31f248ef7835d9e10da289b22e3b8ab78b324d`
-- Included notices:
-  - None
-- Redistribution review status: required; customer package blocked
-
-## github.com/stretchr/objx
-
-- Component: `github.com/stretchr/objx` (`go-module`)
-- Version: `v0.1.0`
-- Direct/Indirect: Indirect
-- License expression: `MIT`
-- Evidence status: `verified`
-- Source/provenance: `go-module-zip:github.com/stretchr/objx@v0.1.0`; `{"go_mod":"service/go.mod","go_mod_sum":"h1:HFkY916IF+rwdDfMAkV7OtwuqBVzrE8GR6GFx+wExME=","go_sum":"service/go.sum","go_sum_present":true,"module":"github.com/stretchr/objx","module_directory":"github.com/stretchr/objx@v0.1.0","module_sum":"h1:4G4v2dO3VZwixGIRoQ5Lfboy6nUhCyYzaqnIAPPhYs4=","replacement":null,"version":"v0.1.0"}`
-- Included license files:
-  - [LICENSES/third-party/go/github.com_stretchr_objx/v0.1.0/LICENSE](LICENSES/third-party/go/github.com_stretchr_objx/v0.1.0/LICENSE) - SHA-256 `b2663894033a05fd80261176cd8da1d72546e25842d5c1abcc852ca23b6b61b0`
 - Included notices:
   - None
 - Redistribution review status: required; customer package blocked
@@ -288,20 +260,6 @@ It is evidence metadata, not legal advice or a replacement for the included lice
   - [LICENSES/third-party/go/golang.org_x_tools/v0.36.0/LICENSE](LICENSES/third-party/go/golang.org_x_tools/v0.36.0/LICENSE) - SHA-256 `911f8f5782931320f5b8d1160a76365b83aea6447ee6c04fa6d5591467db9dad`
 - Included notices:
   - [LICENSES/third-party/go/golang.org_x_tools/v0.36.0/PATENTS](LICENSES/third-party/go/golang.org_x_tools/v0.36.0/PATENTS) - SHA-256 `96f408bfae65bf137fc2525d3ecb030271c50c1e90799f87abf8846d8dd505cc`
-- Redistribution review status: required; customer package blocked
-
-## gopkg.in/check.v1
-
-- Component: `gopkg.in/check.v1` (`go-module`)
-- Version: `v1.0.0-20201130134442-10cb98267c6c`
-- Direct/Indirect: Indirect
-- License expression: `BSD-2-Clause`
-- Evidence status: `verified`
-- Source/provenance: `go-module-zip:gopkg.in/check.v1@v1.0.0-20201130134442-10cb98267c6c`; `{"go_mod":"service/go.mod","go_mod_sum":"h1:JHkPIbrfpd72SG/EVd6muEfDQjcINNoR0C8j2r3qZ4Q=","go_sum":"service/go.sum","go_sum_present":true,"module":"gopkg.in/check.v1","module_directory":"gopkg.in/check.v1@v1.0.0-20201130134442-10cb98267c6c","module_sum":"h1:Hei/4ADfdWqJk1ZMxUNpqntNwaWcugrBjAiHlqqRiVk=","replacement":null,"version":"v1.0.0-20201130134442-10cb98267c6c"}`
-- Included license files:
-  - [LICENSES/third-party/go/gopkg.in_check.v1/v1.0.0-20201130134442-10cb98267c6c/LICENSE](LICENSES/third-party/go/gopkg.in_check.v1/v1.0.0-20201130134442-10cb98267c6c/LICENSE) - SHA-256 `69ce77f2b1c9c608d27f2d749b0e7d0c13960ed3b0dc07b973ac940e362e5d9c`
-- Included notices:
-  - None
 - Redistribution review status: required; customer package blocked
 
 ## gopkg.in/yaml.v3

@@ -39,6 +39,7 @@ type CertificateProfileRepository interface {
 	CreateCertificateProfile(ctx context.Context, profile domain.CertificateProfile) error
 	GetCertificateProfile(ctx context.Context, id string) (domain.CertificateProfile, error)
 	ListCertificateProfiles(ctx context.Context) ([]domain.CertificateProfile, error)
+	UpdateCertificateProfileIssuerIfCurrent(ctx context.Context, profile domain.CertificateProfile, currentIssuerID string, currentUpdatedAt time.Time) error
 }
 
 type EnrollmentRepository interface {
@@ -133,12 +134,17 @@ type CRLPublicationRepository interface {
 	GetCRLPublication(ctx context.Context, id string) (domain.CRLPublication, error)
 	GetLatestCRLPublicationByIssuer(ctx context.Context, issuerID string) (domain.CRLPublication, error)
 	ListCRLPublicationsByIssuer(ctx context.Context, issuerID string) ([]domain.CRLPublication, error)
+	CreateCRLGenerationClaim(ctx context.Context, claim domain.CRLGenerationClaim) error
+	GetCRLGenerationClaim(ctx context.Context, issuerID string, distributionPoint string) (domain.CRLGenerationClaim, error)
+	UpdateCRLGenerationClaimIfCurrent(ctx context.Context, claim domain.CRLGenerationClaim, current domain.CRLGenerationClaim) error
+	DeleteCRLGenerationClaimIfCurrent(ctx context.Context, current domain.CRLGenerationClaim) error
 }
 
 type AuditRepository interface {
 	CreateAuditEvent(ctx context.Context, event domain.AuditEvent) error
 	ListAuditEvents(ctx context.Context) ([]domain.AuditEvent, error)
 	ListAuditEventsQuery(ctx context.Context, query AuditEventQuery) ([]domain.AuditEvent, error)
+	VerifyAuditChain(ctx context.Context) (domain.AuditIntegrity, error)
 	DeleteAuditEventsBefore(ctx context.Context, before time.Time) (int, error)
 }
 

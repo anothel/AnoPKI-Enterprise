@@ -13,7 +13,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 SERVER_PATH = "service/internal/httpapi/server.go"
-SERVER_SHA256 = "ece1c85d270e53c4fa1a677c647e19295fb54cb05f274c108508299bee963390"
+SERVER_SHA256 = "46475503224e06724edb3a2951781eb404cbd16a3c9948edcc98d9836fcfdb77"
+CATALOG_ACTIONS_SHA256 = "e34ec8f04f945f052ceaeba31b6779dc9a18852ef028ba518a425a94408d2061"
 CATALOG_PATH = "docs/enterprise/authorization-action-catalog.json"
 TOP_FIELDS = {
     "schema_version",
@@ -106,6 +107,7 @@ PROTECTED_ROUTES = {
     "POST /certificates/{id}/reissue",
     "POST /crls",
     "GET /audit-events",
+    "GET /audit-events/integrity",
     "POST /audit-events/retention/prune",
     "POST /audit-events/repair/issuance",
     "GET /trust/anchors",
@@ -256,8 +258,17 @@ def validate(root: Path = ROOT) -> None:
     if missing or extra:
         details = [*(f"missing: {route}" for route in missing), *(f"unexpected: {route}" for route in extra)]
         fail("protected route coverage mismatch:\n" + "\n".join(details))
-    if len(PUBLIC_ROUTES | PROTECTED_ROUTES) != 71 or PUBLIC_ROUTES & PROTECTED_ROUTES:
+    if len(PUBLIC_ROUTES | PROTECTED_ROUTES) != 72 or PUBLIC_ROUTES & PROTECTED_ROUTES:
         fail("internal authorization route fixture is inconsistent")
+    actual_actions_sha256 = hashlib.sha256(
+        json.dumps(actions, sort_keys=True, separators=(",", ":")).encode()
+    ).hexdigest()
+    if actual_actions_sha256 != CATALOG_ACTIONS_SHA256:
+        fail("authorization action mapping fixture changed")
+    if sum(action["status"] == "implemented" for action in actions) != 53:
+        fail("current protected action count is invalid")
+    if sum(action["status"] == "future" for action in actions) != 2:
+        fail("future Enterprise action count is invalid")
 
 
 def main() -> None:

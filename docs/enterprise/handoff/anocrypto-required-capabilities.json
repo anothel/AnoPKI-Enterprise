@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "enterprise_commit": "152a657c8cc49775e8fa3bf33a3819b62c9d8e36",
-  "community_baseline_commit": "ae3ddee72dd05f274b9bbae1b514cdc4c4de03f5",
+  "community_baseline_commit": "96297b14d2f681b75861032d9871a41d6e689c78",
   "observed_anocrypto_capabilities": [],
   "capabilities": [
     {

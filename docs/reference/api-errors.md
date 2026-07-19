@@ -42,6 +42,7 @@ problem types, status, and detail. ACME errors also include a fresh
 | `ErrOCSPDecodeFailed` | `ocsp decode failed` | 400 |
 | `ErrOCSPResponderValidationFailed` | `ocsp responder validation failed` | 422 |
 | `ErrOCSPResponseFailed` | `ocsp response failed` | 502 |
+| `ErrAuditIntegrity` | `audit integrity check failed` | 500 |
 | `ErrStorageFailure` | `storage failure` | 500 |
 | unknown error | `internal server error` | 500 |
 
@@ -92,5 +93,6 @@ Failed API request audit events use these stable `error_code` values:
 | `ocsp_decode_failed` | core CLI failed OCSP request decode |
 | `ocsp_responder_validation_failed` | core CLI rejected OCSP responder certificate |
 | `ocsp_response_failed` | core CLI failed OCSP response signing |
+| `audit_integrity_failed` | audit append or retention prune rejected a damaged hash chain or checkpoint |
 | `storage_failure` | persistence failure |
 | `internal` | unmapped internal failure |

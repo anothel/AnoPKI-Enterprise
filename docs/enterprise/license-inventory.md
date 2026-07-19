@@ -6,7 +6,7 @@ commercial license. Legal review and owner approval remain separate gates.
 The authoritative machine-readable record is
 `packaging/license-inventory.json`. It is tied to Enterprise source commit
 `68b379e7684c9d8b44c53728949774088352a9d9` and synchronized Community baseline
-`ae3ddee72dd05f274b9bbae1b514cdc4c4de03f5`.
+`96297b14d2f681b75861032d9871a41d6e689c78`.
 
 ## Recorded Components
 

@@ -23,13 +23,14 @@ import (
 )
 
 type Server struct {
-	service *lifecycle.Service
-	mux     *http.ServeMux
-	auth    AuthConfig
-	acme    ACMEConfig
-	nonces  ACMENonceStore
-	rateMu  sync.Mutex
-	rates   map[string]acmeRateBucket
+	service    *lifecycle.Service
+	mux        *http.ServeMux
+	auth       AuthConfig
+	acme       ACMEConfig
+	authorizer RequestAuthorizer
+	nonces     ACMENonceStore
+	rateMu     sync.Mutex
+	rates      map[string]acmeRateBucket
 }
 
 var errACMEBadNonce = errors.New("acme bad nonce")
@@ -55,6 +56,34 @@ const (
 type AuthConfig struct {
 	Mode           AuthMode
 	TrustedProxies []netip.Prefix
+}
+
+type RequestAuthorizer interface {
+	Authorize(context.Context, AuthorizationInput) (AuthorizationResult, error)
+}
+
+type AuthorizationInput struct {
+	ActorID              string
+	AuthenticationMethod string
+	RequiredScope        string
+	HTTPMethod           string
+	RoutePattern         string
+	RequestID            string
+	Traceparent          string
+	ClientIP             string
+	UserAgent            string
+}
+
+type AuthorizationOutcome string
+
+const (
+	AuthorizationOutcomeAllow            AuthorizationOutcome = "allow"
+	AuthorizationOutcomeDeny             AuthorizationOutcome = "deny"
+	AuthorizationOutcomeApprovalRequired AuthorizationOutcome = "approval_required"
+)
+
+type AuthorizationResult struct {
+	Outcome AuthorizationOutcome
 }
 
 type ACMEConfig struct {
@@ -107,6 +136,10 @@ func NewWithAuth(service *lifecycle.Service, auth AuthConfig) *Server {
 }
 
 func NewWithAuthAndACME(service *lifecycle.Service, auth AuthConfig, acme ACMEConfig) *Server {
+	return NewWithAuthorizer(service, auth, acme, nil)
+}
+
+func NewWithAuthorizer(service *lifecycle.Service, auth AuthConfig, acme ACMEConfig, authorizer RequestAuthorizer) *Server {
 	if auth.Mode == "" {
 		auth.Mode = AuthModeDev
 	}
@@ -121,12 +154,13 @@ func NewWithAuthAndACME(service *lifecycle.Service, auth AuthConfig, acme ACMECo
 		acme.RateLimitWindow = defaultACMERateWindow
 	}
 	s := &Server{
-		service: service,
-		mux:     http.NewServeMux(),
-		auth:    auth,
-		acme:    acme,
-		nonces:  nonceStore,
-		rates:   make(map[string]acmeRateBucket),
+		service:    service,
+		mux:        http.NewServeMux(),
+		auth:       auth,
+		acme:       acme,
+		authorizer: authorizer,
+		nonces:     nonceStore,
+		rates:      make(map[string]acmeRateBucket),
 	}
 	s.registerRoutes()
 	return s
@@ -140,14 +174,15 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}()
 	requestID := requestIDForRequest(r)
 	rw.Header().Set("X-Request-ID", requestID)
-	ctx := lifecycle.WithAuditRequestMetadata(r.Context(), lifecycle.AuditRequestMetadata{
+	auditMetadata := lifecycle.AuditRequestMetadata{
 		RequestID:   requestID,
 		Traceparent: strings.TrimSpace(r.Header.Get("Traceparent")),
 		ClientIP:    requestClientIP(r, s.auth.TrustedProxies),
 		UserAgent:   strings.TrimSpace(r.UserAgent()),
 		AuthMethod:  string(s.auth.Mode),
 		StartedAt:   time.Now(),
-	})
+	}
+	ctx := lifecycle.WithAuditRequestMetadata(r.Context(), auditMetadata)
 	r = r.WithContext(ctx)
 	r.Body = http.MaxBytesReader(rw, r.Body, requestBodyLimit(r))
 	authenticated, err := s.authenticateRequest(r)
@@ -159,6 +194,29 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	r = r.WithContext(authenticated)
+	if s.authorizer != nil && !isPublicEndpoint(r.Method, r.URL.Path) {
+		_, routePattern := s.mux.Handler(r)
+		if _, pathPattern, ok := strings.Cut(routePattern, " "); ok {
+			routePattern = pathPattern
+		}
+		if routePattern != "" {
+			result, err := s.authorizer.Authorize(r.Context(), AuthorizationInput{
+				ActorID:              requestActor(r),
+				AuthenticationMethod: string(s.auth.Mode),
+				RequiredScope:        string(requiredScopeForRequest(r.Method, r.URL.Path)),
+				HTTPMethod:           r.Method,
+				RoutePattern:         routePattern,
+				RequestID:            auditMetadata.RequestID,
+				Traceparent:          auditMetadata.Traceparent,
+				ClientIP:             auditMetadata.ClientIP,
+				UserAgent:            auditMetadata.UserAgent,
+			})
+			if err != nil || result.Outcome != AuthorizationOutcomeAllow {
+				s.writeError(rw, r, domain.ErrForbidden)
+				return
+			}
+		}
+	}
 	if err := s.checkACMERateLimit(r); err != nil {
 		metricBoundary = "rate_limit"
 		s.writeError(rw, r, err)
@@ -269,6 +327,7 @@ func (s *Server) registerRoutes() {
 	s.mux.HandleFunc("POST /ocsp", s.respondOCSP)
 
 	s.mux.HandleFunc("GET /audit-events", s.listAuditEvents)
+	s.mux.HandleFunc("GET /audit-events/integrity", s.getAuditIntegrity)
 	s.mux.HandleFunc("POST /audit-events/retention/prune", s.pruneAuditEvents)
 	s.mux.HandleFunc("POST /audit-events/repair/issuance", s.repairIssuanceAuditEvents)
 	s.mux.HandleFunc("GET /trust/anchors", s.listTrustAnchors)
@@ -1054,6 +1113,15 @@ func (s *Server) listAuditEvents(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, toAuditEventResponses(events))
 }
 
+func (s *Server) getAuditIntegrity(w http.ResponseWriter, r *http.Request) {
+	report, err := s.service.GetAuditIntegrity(r.Context())
+	if err != nil {
+		s.writeError(w, r, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, toAuditIntegrityResponse(report))
+}
+
 func auditEventQueryFromRequest(r *http.Request) (lifecycle.AuditEventQuery, error) {
 	values := r.URL.Query()
 	sort, limit, offset, err := paginationAndSortFromQuery(r)
@@ -1486,6 +1554,8 @@ func publicErrorMessage(err error) string {
 		return domain.ErrOCSPResponderValidationFailed.Error()
 	case errors.Is(err, domain.ErrOCSPResponseFailed):
 		return domain.ErrOCSPResponseFailed.Error()
+	case errors.Is(err, domain.ErrAuditIntegrity):
+		return domain.ErrAuditIntegrity.Error()
 	case errors.Is(err, domain.ErrStorageFailure):
 		return domain.ErrStorageFailure.Error()
 	default:
@@ -1538,6 +1608,8 @@ func statusForError(err error) int {
 		return http.StatusUnprocessableEntity
 	case errors.Is(err, domain.ErrOCSPResponseFailed):
 		return http.StatusBadGateway
+	case errors.Is(err, domain.ErrAuditIntegrity):
+		return http.StatusInternalServerError
 	case errors.Is(err, domain.ErrStorageFailure):
 		return http.StatusInternalServerError
 	default:
@@ -1950,13 +2022,29 @@ type crlPublicationResponse struct {
 }
 
 type auditEventResponse struct {
-	ID           string    `json:"id"`
-	Actor        string    `json:"actor"`
-	Action       string    `json:"action"`
-	ResourceType string    `json:"resource_type"`
-	ResourceID   string    `json:"resource_id"`
-	MetadataJSON string    `json:"metadata_json"`
-	CreatedAt    time.Time `json:"created_at"`
+	ID                string    `json:"id"`
+	Sequence          int64     `json:"sequence"`
+	Actor             string    `json:"actor"`
+	Action            string    `json:"action"`
+	ResourceType      string    `json:"resource_type"`
+	ResourceID        string    `json:"resource_id"`
+	MetadataJSON      string    `json:"metadata_json"`
+	HashAlgorithm     string    `json:"hash_algorithm"`
+	PreviousEventHash string    `json:"previous_event_hash"`
+	EventHash         string    `json:"event_hash"`
+	CreatedAt         time.Time `json:"created_at"`
+}
+
+type auditIntegrityResponse struct {
+	Valid               bool   `json:"valid"`
+	HashAlgorithm       string `json:"hash_algorithm"`
+	EventCount          int    `json:"event_count"`
+	FirstSequence       int64  `json:"first_sequence"`
+	LastSequence        int64  `json:"last_sequence"`
+	LastEventHash       string `json:"last_event_hash"`
+	CheckpointSequence  int64  `json:"checkpoint_sequence"`
+	CheckpointEventHash string `json:"checkpoint_event_hash"`
+	FailureReason       string `json:"failure_reason,omitempty"`
 }
 
 type repairIssuanceAuditEventsResponse struct {
@@ -2275,13 +2363,31 @@ func toCRLPublicationResponse(publication domain.CRLPublication) crlPublicationR
 
 func toAuditEventResponse(event domain.AuditEvent) auditEventResponse {
 	return auditEventResponse{
-		ID:           event.ID,
-		Actor:        event.Actor,
-		Action:       event.Action,
-		ResourceType: event.ResourceType,
-		ResourceID:   event.ResourceID,
-		MetadataJSON: event.MetadataJSON,
-		CreatedAt:    event.CreatedAt,
+		ID:                event.ID,
+		Sequence:          event.Sequence,
+		Actor:             event.Actor,
+		Action:            event.Action,
+		ResourceType:      event.ResourceType,
+		ResourceID:        event.ResourceID,
+		MetadataJSON:      event.MetadataJSON,
+		HashAlgorithm:     event.HashAlgorithm,
+		PreviousEventHash: event.PreviousEventHash,
+		EventHash:         event.EventHash,
+		CreatedAt:         event.CreatedAt,
+	}
+}
+
+func toAuditIntegrityResponse(report domain.AuditIntegrity) auditIntegrityResponse {
+	return auditIntegrityResponse{
+		Valid:               report.Valid,
+		HashAlgorithm:       report.HashAlgorithm,
+		EventCount:          report.EventCount,
+		FirstSequence:       report.FirstSequence,
+		LastSequence:        report.LastSequence,
+		LastEventHash:       report.LastEventHash,
+		CheckpointSequence:  report.CheckpointSequence,
+		CheckpointEventHash: report.CheckpointEventHash,
+		FailureReason:       report.FailureReason,
 	}
 }
 

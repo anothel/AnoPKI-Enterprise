@@ -349,16 +349,46 @@ type CRLPublication struct {
 	UpdatedAt         time.Time
 }
 
+type CRLGenerationClaim struct {
+	IssuerID          string
+	DistributionPoint string
+	CRLNumber         int64
+	LeaseExpiresAt    time.Time
+	CreatedAt         time.Time
+	UpdatedAt         time.Time
+}
+
 type AuditEvent struct {
 	ID                string
+	Sequence          int64
 	Actor             string
 	Action            string
 	ResourceType      string
 	ResourceID        string
 	MetadataJSON      string
+	HashAlgorithm     string
 	PreviousEventHash string
 	EventHash         string
 	CreatedAt         time.Time
+}
+
+type AuditChainCheckpoint struct {
+	Sequence      int64
+	HashAlgorithm string
+	EventHash     string
+	CreatedAt     time.Time
+}
+
+type AuditIntegrity struct {
+	Valid               bool
+	HashAlgorithm       string
+	EventCount          int
+	FirstSequence       int64
+	LastSequence        int64
+	LastEventHash       string
+	CheckpointSequence  int64
+	CheckpointEventHash string
+	FailureReason       string
 }
 
 type OutboxMessage struct {

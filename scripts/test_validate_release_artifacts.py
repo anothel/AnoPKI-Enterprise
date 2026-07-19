@@ -63,7 +63,7 @@ def write_go_evidence_archive(
         "product_profile": "enterprise-openssl",
         "profile": "full",
         "enterprise_commit": "0123456789abcdef0123456789abcdef01234567",
-        "community_baseline_commit": "ae3ddee72dd05f274b9bbae1b514cdc4c4de03f5",
+        "community_baseline_commit": "96297b14d2f681b75861032d9871a41d6e689c78",
         "fallback_enabled": False,
         "fallback_used": False,
         "commercial_release_authorized": False,
@@ -142,6 +142,7 @@ def write_recovery_evidence_archive(
         "issuance-attempt",
         "outbox-and-webhook-state",
         "audit-state",
+        "audit-chain-state",
         "private-key-exclusion",
     ]
     evidence = {
@@ -151,7 +152,7 @@ def write_recovery_evidence_archive(
         "product_profile": "community-openssl",
         "commit": commit,
         "database_driver": "sqlite",
-        "migration_version": 1,
+        "migration_version": 2,
         "migration_checksum": "1" * 64,
         "started_at": "2026-07-17T01:00:00Z",
         "completed_at": "2026-07-17T01:00:01Z",
@@ -159,14 +160,16 @@ def write_recovery_evidence_archive(
         "backup_sha256": "2" * 64,
         "restored_state_sha256": "3" * 64,
         "state_counts": {
-            "schema_migrations": 1,
+            "schema_migrations": 2,
             "issuers": 1,
             "ocsp_responders": 1,
             "certificates": 1,
             "certificate_issuance_attempts": 1,
             "revocations": 1,
             "crl_publications": 1,
+            "crl_generation_claims": 0,
             "audit_events": 2,
+            "audit_chain_state": 1,
             "outbox_messages": 1,
             "job_attempts": 1,
             "notification_endpoints": 1,
@@ -399,7 +402,7 @@ def package_manifest() -> dict[str, object]:
         "edition": "enterprise",
         "product_profile": "enterprise-openssl",
         "enterprise_commit": "0123456789abcdef0123456789abcdef01234567",
-        "community_baseline_commit": "ae3ddee72dd05f274b9bbae1b514cdc4c4de03f5",
+        "community_baseline_commit": "96297b14d2f681b75861032d9871a41d6e689c78",
         "source_date_epoch": 1784332483,
         "archive_format": "zip",
         "dependency_inventory_sha256": "0" * 64,
@@ -446,6 +449,356 @@ def rewrite_checksums(dist: Path) -> None:
     (dist / "SHA256SUMS").write_text("\n".join(sums) + "\n", encoding="utf-8")
 
 
+def write_audit_integrity_evidence_archive(
+    path: Path,
+    *,
+    result: str = "passed",
+    commit: str = "0123456789abcdef0123456789abcdef01234567",
+    extra_field: bool = False,
+    extra_member: bool = False,
+    postgres_required: bool = True,
+    sensitive_log: bool = False,
+) -> None:
+    root = path.parent / "audit-integrity-evidence"
+    if root.exists():
+        shutil.rmtree(root)
+    root.mkdir(parents=True, exist_ok=True)
+    baseline_tests = [
+        ("memory-sqlite-http", "github.com/anothel/anopki/service/internal/store", "TestAuditEventHashIsStable"),
+        ("memory-sqlite-http", "github.com/anothel/anopki/service/internal/store", "TestVerifyAuditEventsDetectsCheckpointAndEventTampering"),
+        ("memory-sqlite-http", "github.com/anothel/anopki/service/internal/store", "TestAuditIntegrityAppendCheckpointAndPruneParity"),
+        ("memory-sqlite-http", "github.com/anothel/anopki/service/internal/store", "TestMemoryAuditTamperFailsClosed"),
+        ("memory-sqlite-http", "github.com/anothel/anopki/service/internal/store", "TestMemoryAuditCheckpointTamperDetected"),
+        ("memory-sqlite-http", "github.com/anothel/anopki/service/internal/store", "TestMemoryAuditCheckpointTamperDetectedAfterFullPrune"),
+        ("memory-sqlite-http", "github.com/anothel/anopki/service/internal/store", "TestSQLiteAuditTamperAndCheckpointTamperFailClosed"),
+        ("memory-sqlite-http", "github.com/anothel/anopki/service/internal/store", "TestAuditHashChainMigrationBackfillsLegacySQLiteRowsBeforeUniqueIndex"),
+        ("memory-sqlite-http", "github.com/anothel/anopki/service/internal/httpapi", "TestGetAuditIntegrity"),
+        ("memory-sqlite-http", "github.com/anothel/anopki/service/internal/httpapi", "TestPruneAuditEventsByRetentionCutoff"),
+    ]
+    postgres_test = (
+        "postgresql",
+        "github.com/anothel/anopki/service/internal/store",
+        "TestPostgresIntegrationRepositoryParity/audit_integrity_chain",
+    )
+    checks = [
+        "canonical-hash-stability",
+        "event-and-checkpoint-tamper-detection",
+        "memory-sqlite-append-prune-parity",
+        "memory-tamper-fail-closed",
+        "checkpoint-tamper-detection",
+        "full-prune-checkpoint-tamper-detection",
+        "sqlite-tamper-fail-closed",
+        "legacy-backfill-before-unique-index",
+        "integrity-api-reporting",
+        "retention-prune-checkpoint",
+        "postgres-append-prune-parity",
+        "sensitive-evidence-exclusion",
+    ]
+    baseline_regex = "^(" + "|".join(name for _, _, name in baseline_tests) + ")$"
+    evidence = {
+        "schema_version": 1,
+        "evidence_type": "community_audit_integrity_drill",
+        "product": "AnoPKI",
+        "edition": "community",
+        "product_profile": "community-openssl",
+        "commit": commit,
+        "minimum_go_version": "1.25.11",
+        "started_at": "2026-07-19T01:00:00Z",
+        "completed_at": "2026-07-19T01:00:01Z",
+        "result": result,
+        "go_version": "go version go1.25.12 linux/amd64",
+        "postgres_required": postgres_required,
+        "test_commands": {
+            "baseline": ["go", "test", "-json", "-count=1", "-run", baseline_regex, "./internal/store", "./internal/httpapi"],
+            "postgres": ["go", "test", "-json", "-count=1", "-run", "^TestPostgresIntegrationRepositoryParity$/^audit_integrity_chain$", "./internal/store"],
+        },
+        "tests": [
+            {"backend": backend, "package": package, "name": name, "status": "pass"}
+            for backend, package, name in [*baseline_tests, postgres_test]
+        ],
+        "checks": [{"name": name, "status": "passed"} for name in checks],
+        "redaction": {
+            "private_key_markers_found": False,
+            "raw_key_references_in_evidence": False,
+            "database_credentials_in_evidence": False,
+            "sensitive_values_in_evidence": False,
+        },
+        "blocker": "" if result == "passed" else "test failure",
+    }
+    if result != "passed":
+        evidence["checks"] = [{"name": name, "status": "failed"} for name in checks]
+    if extra_field:
+        evidence["unexpected"] = "drift"
+    (root / "audit-integrity-verification.json").write_text(json.dumps(evidence), encoding="utf-8")
+    (root / "audit-integrity-verification.md").write_text("# Audit integrity evidence\n", encoding="utf-8")
+    (root / "audit-integrity-baseline-test.log").write_text("pass\n", encoding="utf-8")
+    (root / "audit-integrity-postgres-test.log").write_text("postgres://user:secret@localhost/db\n" if sensitive_log else "pass\n", encoding="utf-8")
+    if extra_member:
+        (root / "unexpected.txt").write_text("unexpected\n", encoding="utf-8")
+    with tarfile.open(path, "w:gz") as archive:
+        archive.add(root / "audit-integrity-verification.json", arcname="audit-integrity-verification.json")
+        archive.add(root / "audit-integrity-verification.md", arcname="audit-integrity-verification.md")
+        archive.add(root / "audit-integrity-baseline-test.log", arcname="audit-integrity-baseline-test.log")
+        archive.add(root / "audit-integrity-postgres-test.log", arcname="audit-integrity-postgres-test.log")
+        if extra_member:
+            archive.add(root / "unexpected.txt", arcname="unexpected.txt")
+
+
+def write_issuer_rollover_evidence_archive(
+    path: Path,
+    *,
+    result: str = "passed",
+    commit: str = "0123456789abcdef0123456789abcdef01234567",
+    extra_field: bool = False,
+    extra_member: bool = False,
+) -> None:
+    root = path.parent / "issuer-rollover-evidence"
+    if root.exists():
+        shutil.rmtree(root)
+    root.mkdir(parents=True, exist_ok=True)
+    tests = [
+        ("github.com/anothel/anopki/service/internal/lifecycle", "TestCertificateProfileIssuerRolloverAndRollbackPreservesOverlap"),
+        ("github.com/anothel/anopki/service/internal/lifecycle", "TestCertificateProfileIssuerRolloverRejectsDifferentParentAndStaleRetry"),
+        ("github.com/anothel/anopki/service/internal/lifecycle", "TestCertificateProfileIssuerRolloverRollsBackWhenAuditFails"),
+        ("github.com/anothel/anopki/service/internal/store", "TestCertificateProfileIssuerConditionalUpdate"),
+    ]
+    checks = [
+        "same-parent-chain-required",
+        "profile-switch-atomic",
+        "stale-retry-rejected",
+        "old-issuer-overlap-maintained",
+        "new-issuance-uses-new-issuer",
+        "rollback-restores-old-issuer",
+        "old-issuer-crl-remains-available",
+        "audit-and-outbox-exactly-once",
+        "transaction-rolls-back-on-evidence-failure",
+        "sensitive-evidence-exclusion",
+    ]
+    regex = "^(" + "|".join(name for _, name in tests) + ")$"
+    evidence = {
+        "schema_version": 1,
+        "evidence_type": "community_issuer_rollover_drill",
+        "product": "AnoPKI",
+        "edition": "community",
+        "product_profile": "community-openssl",
+        "commit": commit,
+        "minimum_go_version": "1.25.11",
+        "started_at": "2026-07-17T01:00:00Z",
+        "completed_at": "2026-07-17T01:00:01Z",
+        "result": result,
+        "go_version": "go version go1.25.12 linux/amd64",
+        "test_command": ["go", "test", "-json", "-count=1", "-run", regex, "./internal/lifecycle", "./internal/store"],
+        "tests": [{"package": package, "name": name, "status": "pass"} for package, name in tests],
+        "checks": [{"name": name, "status": "passed"} for name in checks],
+        "redaction": {
+            "private_key_markers_found": False,
+            "raw_key_references_in_evidence": False,
+            "sensitive_values_in_evidence": False,
+        },
+        "blocker": "" if result == "passed" else "test failure",
+    }
+    if extra_field:
+        evidence["unexpected"] = "drift"
+    (root / "issuer-rollover-verification.json").write_text(json.dumps(evidence), encoding="utf-8")
+    (root / "issuer-rollover-verification.md").write_text("# Issuer rollover evidence\n", encoding="utf-8")
+    (root / "issuer-rollover-test.log").write_text("pass\n", encoding="utf-8")
+    if extra_member:
+        (root / "unexpected.txt").write_text("unexpected\n", encoding="utf-8")
+    with tarfile.open(path, "w:gz") as archive:
+        archive.add(root / "issuer-rollover-verification.json", arcname="issuer-rollover-verification.json")
+        archive.add(root / "issuer-rollover-verification.md", arcname="issuer-rollover-verification.md")
+        archive.add(root / "issuer-rollover-test.log", arcname="issuer-rollover-test.log")
+        if extra_member:
+            archive.add(root / "unexpected.txt", arcname="unexpected.txt")
+
+
+def write_multi_node_evidence_archive(
+    path: Path,
+    *,
+    result: str = "passed",
+    commit: str = "0123456789abcdef0123456789abcdef01234567",
+    extra_field: bool = False,
+    extra_member: bool = False,
+) -> None:
+    root = path.parent / "multi-node-evidence"
+    if root.exists():
+        shutil.rmtree(root)
+    root.mkdir(parents=True, exist_ok=True)
+    tests = [
+        ("github.com/anothel/anopki/service/internal/lifecycle", "TestIssueCertificateActiveClaimPreventsSecondServiceSigning"),
+        ("github.com/anothel/anopki/service/internal/lifecycle", "TestPublishCRLActiveClaimPreventsSecondServiceSigning"),
+        ("github.com/anothel/anopki/service/internal/lifecycle", "TestOutboxDispatcherActiveLeasePreventsSecondNodeHandling"),
+        ("github.com/anothel/anopki/service/internal/store", "TestMemoryStoreCRLGenerationClaims"),
+    ]
+    checks = [
+        "certificate-signing-single-writer",
+        "certificate-finalization-idempotent",
+        "crl-generation-single-writer",
+        "crl-sequence-contiguous",
+        "crl-claim-released-after-completion",
+        "outbox-active-lease-not-stolen",
+        "outbox-handler-exactly-once",
+        "stale-claim-cas-rejected",
+        "automatic-fallback-disabled",
+        "sensitive-evidence-exclusion",
+    ]
+    regex = "^(" + "|".join(name for _, name in tests) + ")$"
+    evidence = {
+        "schema_version": 1,
+        "evidence_type": "community_multi_node_reliability_drill",
+        "product": "AnoPKI",
+        "edition": "community",
+        "product_profile": "community-openssl",
+        "commit": commit,
+        "minimum_go_version": "1.25.11",
+        "started_at": "2026-07-17T01:00:00Z",
+        "completed_at": "2026-07-17T01:00:01Z",
+        "result": result,
+        "go_version": "go version go1.25.12 linux/amd64",
+        "test_command": ["go", "test", "-json", "-count=1", "-run", regex, "./internal/lifecycle", "./internal/store"],
+        "tests": [{"package": package, "name": name, "status": "pass"} for package, name in tests],
+        "checks": [{"name": name, "status": "passed"} for name in checks],
+        "redaction": {
+            "private_key_markers_found": False,
+            "raw_key_references_in_evidence": False,
+            "sensitive_values_in_evidence": False,
+        },
+        "blocker": "" if result == "passed" else "test failure",
+    }
+    if extra_field:
+        evidence["unexpected"] = "drift"
+    (root / "multi-node-verification.json").write_text(json.dumps(evidence), encoding="utf-8")
+    (root / "multi-node-verification.md").write_text("# Multi-node reliability evidence\n", encoding="utf-8")
+    (root / "multi-node-test.log").write_text("pass\n", encoding="utf-8")
+    if extra_member:
+        (root / "unexpected.txt").write_text("unexpected\n", encoding="utf-8")
+    with tarfile.open(path, "w:gz") as archive:
+        archive.add(root / "multi-node-verification.json", arcname="multi-node-verification.json")
+        archive.add(root / "multi-node-verification.md", arcname="multi-node-verification.md")
+        archive.add(root / "multi-node-test.log", arcname="multi-node-test.log")
+        if extra_member:
+            archive.add(root / "unexpected.txt", arcname="unexpected.txt")
+
+
+def write_postgres_recovery_evidence_archive(
+    path: Path,
+    *,
+    result: str = "passed",
+    commit: str = "0123456789abcdef0123456789abcdef01234567",
+    extra_field: bool = False,
+    extra_member: bool = False,
+    client_major: int = 16,
+) -> None:
+    root = path.parent / "postgres-recovery-evidence"
+    if root.exists():
+        shutil.rmtree(root)
+    root.mkdir(parents=True, exist_ok=True)
+    tests = [
+        ("github.com/anothel/anopki/service/internal/store", "TestPostgresRecoveryDrillMigrationRollbackIntegration"),
+        ("github.com/anothel/anopki/service/internal/store", "TestPostgresRecoveryDrillDirtyMigrationRejectedIntegration"),
+    ]
+    checks = [
+        "postgres-client-tools-available",
+        "postgres-16-server-verified",
+        "current-migration-clean",
+        "failed-migration-transaction-rolled-back",
+        "dirty-migration-rejected",
+        "custom-format-backup-created",
+        "source-damage-detected",
+        "restore-state-digest-matched",
+        "key-reference-hashes-preserved",
+        "signing-and-crl-artifacts-preserved",
+        "audit-outbox-webhook-state-preserved",
+        "sensitive-evidence-exclusion",
+    ]
+    counts = {
+        "schema_migrations": 2,
+        "identities": 1,
+        "issuers": 1,
+        "ocsp_responders": 1,
+        "notification_endpoints": 1,
+        "certificate_profiles": 1,
+        "enrollments": 1,
+        "certificates": 1,
+        "certificate_issuance_attempts": 1,
+        "revocations": 1,
+        "crl_publications": 1,
+        "audit_events": 2,
+        "audit_chain_state": 1,
+        "outbox_messages": 1,
+        "job_attempts": 1,
+        "webhook_deliveries": 1,
+        "api_keys": 1,
+    }
+    regex = "^(" + "|".join(name for _, name in tests) + ")$"
+    evidence = {
+        "schema_version": 1,
+        "evidence_type": "community_postgres_recovery_drill",
+        "product": "AnoPKI",
+        "edition": "community",
+        "product_profile": "community-openssl",
+        "commit": commit,
+        "minimum_go_version": "1.25.11",
+        "required_postgres_major": 16,
+        "started_at": "2026-07-18T01:00:00Z",
+        "completed_at": "2026-07-18T01:00:01Z",
+        "result": result,
+        "go_version": "go version go1.25.12 linux/amd64",
+        "postgres_client_versions": {
+            "psql": f"psql (PostgreSQL) {client_major}.9",
+            "pg_dump": f"pg_dump (PostgreSQL) {client_major}.9",
+            "pg_restore": f"pg_restore (PostgreSQL) {client_major}.9",
+        },
+        "postgres_server_version": "16.9",
+        "test_command": ["go", "test", "-json", "-count=1", "-run", regex, "./internal/store"],
+        "tests": [{"package": package, "name": name, "status": "pass"} for package, name in tests],
+        "checks": [{"name": name, "status": "passed"} for name in checks],
+        "state_counts": counts,
+        "migration_checksum": "1" * 64,
+        "backup_sha256": "2" * 64,
+        "state_digest_before": "3" * 64,
+        "state_digest_after": "3" * 64,
+        "key_reference_hashes": {"issuer": "4" * 64, "responder": "5" * 64},
+        "artifact_hashes": {
+            "certificate_pem": "6" * 64,
+            "signing_evidence_json": "7" * 64,
+            "crl_pem": "8" * 64,
+            "audit_metadata_json": "9" * 64,
+            "outbox_payload_json": "a" * 64,
+            "notification_secret_digest": "b" * 64,
+            "api_token_hash": "c" * 64,
+        },
+        "audit_chain": {
+            "hash_algorithm": "sha256-v1",
+            "latest_sequence": 2,
+            "latest_event_hash": "d" * 64,
+            "checkpoint_sequence": 0,
+            "checkpoint_event_hash": "",
+        },
+        "redaction": {
+            "private_key_markers_found": False,
+            "raw_key_references_in_evidence": False,
+            "sensitive_values_in_evidence": False,
+            "database_dsn_in_evidence": False,
+        },
+        "blocker": "" if result == "passed" else "test failure",
+    }
+    if result != "passed":
+        evidence["checks"] = [{"name": name, "status": "failed"} for name in checks]
+    if extra_field:
+        evidence["unexpected"] = "drift"
+    (root / "postgres-recovery-verification.json").write_text(json.dumps(evidence), encoding="utf-8")
+    (root / "postgres-recovery-verification.md").write_text("# PostgreSQL recovery evidence\n", encoding="utf-8")
+    (root / "postgres-recovery-test.log").write_text("pass\n", encoding="utf-8")
+    if extra_member:
+        (root / "unexpected.txt").write_text("unexpected\n", encoding="utf-8")
+    with tarfile.open(path, "w:gz") as archive:
+        archive.add(root / "postgres-recovery-verification.json", arcname="postgres-recovery-verification.json")
+        archive.add(root / "postgres-recovery-verification.md", arcname="postgres-recovery-verification.md")
+        archive.add(root / "postgres-recovery-test.log", arcname="postgres-recovery-test.log")
+        if extra_member:
+            archive.add(root / "unexpected.txt", arcname="unexpected.txt")
+
 def write_valid_dist(dist: Path) -> tuple[Path, Path]:
     service = dist / f"anopki-service-v{VERSION}-linux-amd64.tar.gz"
     core = dist / f"anopki-core-v{VERSION}-linux-amd64.tar.gz"
@@ -455,6 +808,10 @@ def write_valid_dist(dist: Path) -> tuple[Path, Path]:
     write_recovery_evidence_archive(dist / "anopki-recovery-verification.tar.gz")
     write_status_outage_evidence_archive(dist / "anopki-status-outage-verification.tar.gz")
     write_audit_replay_evidence_archive(dist / "anopki-audit-replay-verification.tar.gz")
+    write_audit_integrity_evidence_archive(dist / "anopki-audit-integrity-verification.tar.gz")
+    write_issuer_rollover_evidence_archive(dist / "anopki-issuer-rollover-verification.tar.gz")
+    write_postgres_recovery_evidence_archive(dist / "anopki-postgres-recovery-verification.tar.gz")
+    write_multi_node_evidence_archive(dist / "anopki-multi-node-verification.tar.gz")
     backend = backend_info()
     (dist / "anopki-backend-info.json").write_text(json.dumps(backend), encoding="utf-8")
     (dist / "anopki-release-metadata.json").write_text(json.dumps(release_metadata(backend)), encoding="utf-8")
@@ -958,6 +1315,280 @@ def test_unexpected_audit_replay_member_fails() -> None:
 
 
 
+def test_missing_audit_integrity_evidence_fails() -> None:
+    with tempfile.TemporaryDirectory() as tmp:
+        dist = Path(tmp)
+        write_valid_dist(dist)
+        (dist / "anopki-audit-integrity-verification.tar.gz").unlink()
+        rewrite_checksums(dist)
+        result = run_validator(dist)
+    assert result.returncode == 1
+    assert "missing Audit integrity verification evidence archive" in result.stderr
+
+
+def test_failed_audit_integrity_evidence_fails() -> None:
+    with tempfile.TemporaryDirectory() as tmp:
+        dist = Path(tmp)
+        write_valid_dist(dist)
+        write_audit_integrity_evidence_archive(
+            dist / "anopki-audit-integrity-verification.tar.gz", result="failed"
+        )
+        rewrite_checksums(dist)
+        result = run_validator(dist)
+    assert result.returncode == 1
+    assert "Audit integrity verification drill did not pass" in result.stderr
+
+
+def test_audit_integrity_commit_mismatch_fails() -> None:
+    with tempfile.TemporaryDirectory() as tmp:
+        dist = Path(tmp)
+        write_valid_dist(dist)
+        write_audit_integrity_evidence_archive(
+            dist / "anopki-audit-integrity-verification.tar.gz", commit="f" * 40
+        )
+        rewrite_checksums(dist)
+        result = run_validator(dist)
+    assert result.returncode == 1
+    assert "Audit integrity verification commit does not match" in result.stderr
+
+
+def test_unknown_audit_integrity_field_fails() -> None:
+    with tempfile.TemporaryDirectory() as tmp:
+        dist = Path(tmp)
+        write_valid_dist(dist)
+        write_audit_integrity_evidence_archive(
+            dist / "anopki-audit-integrity-verification.tar.gz", extra_field=True
+        )
+        rewrite_checksums(dist)
+        result = run_validator(dist)
+    assert result.returncode == 1
+    assert "Audit integrity verification evidence has unknown fields" in result.stderr
+
+
+def test_unexpected_audit_integrity_member_fails() -> None:
+    with tempfile.TemporaryDirectory() as tmp:
+        dist = Path(tmp)
+        write_valid_dist(dist)
+        write_audit_integrity_evidence_archive(
+            dist / "anopki-audit-integrity-verification.tar.gz", extra_member=True
+        )
+        rewrite_checksums(dist)
+        result = run_validator(dist)
+    assert result.returncode == 1
+    assert "unexpected Audit integrity evidence members" in result.stderr
+
+
+def test_audit_integrity_sensitive_log_fails() -> None:
+    with tempfile.TemporaryDirectory() as tmp:
+        dist = Path(tmp)
+        write_valid_dist(dist)
+        write_audit_integrity_evidence_archive(
+            dist / "anopki-audit-integrity-verification.tar.gz", sensitive_log=True
+        )
+        rewrite_checksums(dist)
+        result = run_validator(dist)
+    assert result.returncode == 1
+    assert "forbidden sensitive content" in result.stderr
+
+
+def test_audit_integrity_postgres_must_be_required() -> None:
+    with tempfile.TemporaryDirectory() as tmp:
+        dist = Path(tmp)
+        write_valid_dist(dist)
+        write_audit_integrity_evidence_archive(
+            dist / "anopki-audit-integrity-verification.tar.gz", postgres_required=False
+        )
+        rewrite_checksums(dist)
+        result = run_validator(dist)
+    assert result.returncode == 1
+    assert "must require PostgreSQL" in result.stderr
+
+
+def test_missing_issuer_rollover_evidence_fails() -> None:
+    with tempfile.TemporaryDirectory() as tmp:
+        dist = Path(tmp)
+        write_valid_dist(dist)
+        (dist / "anopki-issuer-rollover-verification.tar.gz").unlink()
+        rewrite_checksums(dist)
+        result = run_validator(dist)
+    assert result.returncode == 1
+    assert "missing issuer rollover verification evidence" in result.stderr
+
+
+def test_failed_issuer_rollover_evidence_fails() -> None:
+    with tempfile.TemporaryDirectory() as tmp:
+        dist = Path(tmp)
+        write_valid_dist(dist)
+        write_issuer_rollover_evidence_archive(dist / "anopki-issuer-rollover-verification.tar.gz", result="failed")
+        rewrite_checksums(dist)
+        result = run_validator(dist)
+    assert result.returncode == 1
+    assert "issuer rollover verification drill did not pass" in result.stderr
+
+
+def test_issuer_rollover_commit_mismatch_fails() -> None:
+    with tempfile.TemporaryDirectory() as tmp:
+        dist = Path(tmp)
+        write_valid_dist(dist)
+        write_issuer_rollover_evidence_archive(dist / "anopki-issuer-rollover-verification.tar.gz", commit="f" * 40)
+        rewrite_checksums(dist)
+        result = run_validator(dist)
+    assert result.returncode == 1
+    assert "issuer rollover verification commit does not match" in result.stderr
+
+
+def test_unknown_issuer_rollover_field_fails() -> None:
+    with tempfile.TemporaryDirectory() as tmp:
+        dist = Path(tmp)
+        write_valid_dist(dist)
+        write_issuer_rollover_evidence_archive(dist / "anopki-issuer-rollover-verification.tar.gz", extra_field=True)
+        rewrite_checksums(dist)
+        result = run_validator(dist)
+    assert result.returncode == 1
+    assert "issuer rollover verification evidence has unknown fields" in result.stderr
+
+
+def test_unexpected_issuer_rollover_member_fails() -> None:
+    with tempfile.TemporaryDirectory() as tmp:
+        dist = Path(tmp)
+        write_valid_dist(dist)
+        write_issuer_rollover_evidence_archive(dist / "anopki-issuer-rollover-verification.tar.gz", extra_member=True)
+        rewrite_checksums(dist)
+        result = run_validator(dist)
+    assert result.returncode == 1
+    assert "unexpected issuer rollover evidence members" in result.stderr
+
+
+def test_missing_multi_node_evidence_fails() -> None:
+    with tempfile.TemporaryDirectory() as tmp:
+        dist = Path(tmp)
+        write_valid_dist(dist)
+        (dist / "anopki-multi-node-verification.tar.gz").unlink()
+        rewrite_checksums(dist)
+        result = run_validator(dist)
+    assert result.returncode == 1
+    assert "missing multi-node verification evidence" in result.stderr
+
+
+def test_failed_multi_node_evidence_fails() -> None:
+    with tempfile.TemporaryDirectory() as tmp:
+        dist = Path(tmp)
+        write_valid_dist(dist)
+        write_multi_node_evidence_archive(dist / "anopki-multi-node-verification.tar.gz", result="failed")
+        rewrite_checksums(dist)
+        result = run_validator(dist)
+    assert result.returncode == 1
+    assert "multi-node verification drill did not pass" in result.stderr
+
+
+def test_multi_node_commit_mismatch_fails() -> None:
+    with tempfile.TemporaryDirectory() as tmp:
+        dist = Path(tmp)
+        write_valid_dist(dist)
+        write_multi_node_evidence_archive(dist / "anopki-multi-node-verification.tar.gz", commit="f" * 40)
+        rewrite_checksums(dist)
+        result = run_validator(dist)
+    assert result.returncode == 1
+    assert "multi-node verification commit does not match" in result.stderr
+
+
+def test_unknown_multi_node_field_fails() -> None:
+    with tempfile.TemporaryDirectory() as tmp:
+        dist = Path(tmp)
+        write_valid_dist(dist)
+        write_multi_node_evidence_archive(dist / "anopki-multi-node-verification.tar.gz", extra_field=True)
+        rewrite_checksums(dist)
+        result = run_validator(dist)
+    assert result.returncode == 1
+    assert "multi-node verification evidence has unknown fields" in result.stderr
+
+
+def test_unexpected_multi_node_member_fails() -> None:
+    with tempfile.TemporaryDirectory() as tmp:
+        dist = Path(tmp)
+        write_valid_dist(dist)
+        write_multi_node_evidence_archive(dist / "anopki-multi-node-verification.tar.gz", extra_member=True)
+        rewrite_checksums(dist)
+        result = run_validator(dist)
+    assert result.returncode == 1
+    assert "unexpected multi-node evidence members" in result.stderr
+
+
+def test_missing_postgres_recovery_evidence_fails() -> None:
+    with tempfile.TemporaryDirectory() as tmp:
+        dist = Path(tmp)
+        write_valid_dist(dist)
+        (dist / "anopki-postgres-recovery-verification.tar.gz").unlink()
+        rewrite_checksums(dist)
+        result = run_validator(dist)
+    assert result.returncode == 1
+    assert "missing PostgreSQL recovery verification evidence" in result.stderr
+
+
+def test_failed_postgres_recovery_evidence_fails() -> None:
+    with tempfile.TemporaryDirectory() as tmp:
+        dist = Path(tmp)
+        write_valid_dist(dist)
+        write_postgres_recovery_evidence_archive(
+            dist / "anopki-postgres-recovery-verification.tar.gz", result="failed"
+        )
+        rewrite_checksums(dist)
+        result = run_validator(dist)
+    assert result.returncode == 1
+    assert "PostgreSQL recovery verification drill did not pass" in result.stderr
+
+
+def test_postgres_recovery_commit_mismatch_fails() -> None:
+    with tempfile.TemporaryDirectory() as tmp:
+        dist = Path(tmp)
+        write_valid_dist(dist)
+        write_postgres_recovery_evidence_archive(
+            dist / "anopki-postgres-recovery-verification.tar.gz", commit="f" * 40
+        )
+        rewrite_checksums(dist)
+        result = run_validator(dist)
+    assert result.returncode == 1
+    assert "PostgreSQL recovery verification commit does not match" in result.stderr
+
+
+def test_unknown_postgres_recovery_field_fails() -> None:
+    with tempfile.TemporaryDirectory() as tmp:
+        dist = Path(tmp)
+        write_valid_dist(dist)
+        write_postgres_recovery_evidence_archive(
+            dist / "anopki-postgres-recovery-verification.tar.gz", extra_field=True
+        )
+        rewrite_checksums(dist)
+        result = run_validator(dist)
+    assert result.returncode == 1
+    assert "PostgreSQL recovery verification evidence has unknown fields" in result.stderr
+
+
+def test_unexpected_postgres_recovery_member_fails() -> None:
+    with tempfile.TemporaryDirectory() as tmp:
+        dist = Path(tmp)
+        write_valid_dist(dist)
+        write_postgres_recovery_evidence_archive(
+            dist / "anopki-postgres-recovery-verification.tar.gz", extra_member=True
+        )
+        rewrite_checksums(dist)
+        result = run_validator(dist)
+    assert result.returncode == 1
+    assert "unexpected PostgreSQL recovery evidence members" in result.stderr
+
+
+def test_postgres_recovery_client_major_mismatch_fails() -> None:
+    with tempfile.TemporaryDirectory() as tmp:
+        dist = Path(tmp)
+        write_valid_dist(dist)
+        write_postgres_recovery_evidence_archive(
+            dist / "anopki-postgres-recovery-verification.tar.gz", client_major=17
+        )
+        rewrite_checksums(dist)
+        result = run_validator(dist)
+    assert result.returncode == 1
+    assert "did not use PostgreSQL 16" in result.stderr
+
 def main() -> None:
     test_valid_release_artifacts_pass()
     test_missing_release_archive_fails()
@@ -998,6 +1629,29 @@ def main() -> None:
     test_audit_replay_commit_mismatch_fails()
     test_unknown_audit_replay_field_fails()
     test_unexpected_audit_replay_member_fails()
+    test_missing_audit_integrity_evidence_fails()
+    test_failed_audit_integrity_evidence_fails()
+    test_audit_integrity_commit_mismatch_fails()
+    test_unknown_audit_integrity_field_fails()
+    test_unexpected_audit_integrity_member_fails()
+    test_audit_integrity_sensitive_log_fails()
+    test_audit_integrity_postgres_must_be_required()
+    test_missing_issuer_rollover_evidence_fails()
+    test_failed_issuer_rollover_evidence_fails()
+    test_issuer_rollover_commit_mismatch_fails()
+    test_unknown_issuer_rollover_field_fails()
+    test_unexpected_issuer_rollover_member_fails()
+    test_missing_multi_node_evidence_fails()
+    test_failed_multi_node_evidence_fails()
+    test_multi_node_commit_mismatch_fails()
+    test_unknown_multi_node_field_fails()
+    test_unexpected_multi_node_member_fails()
+    test_missing_postgres_recovery_evidence_fails()
+    test_failed_postgres_recovery_evidence_fails()
+    test_postgres_recovery_commit_mismatch_fails()
+    test_unknown_postgres_recovery_field_fails()
+    test_unexpected_postgres_recovery_member_fails()
+    test_postgres_recovery_client_major_mismatch_fails()
     print("release artifact tests ok")
 
 

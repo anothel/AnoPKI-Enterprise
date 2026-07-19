@@ -142,6 +142,48 @@ $steps = @(
         Command = @("python", "scripts\verify-audit-replay-drill.py", "--out-dir", ".tmp\audit-replay-evidence\verify-local")
     },
     @{
+        Name = "Audit integrity drill tests"
+        Dir = $RepoRoot
+        Display = "python scripts\test_verify_audit_integrity_drill.py"
+        Command = @("python", "scripts\test_verify_audit_integrity_drill.py")
+    },
+    @{
+        Name = "Audit hash-chain integrity drill"
+        Dir = $RepoRoot
+        Display = "python scripts\verify-audit-integrity-drill.py --out-dir .tmp\audit-integrity-evidence\verify-local"
+        Command = @("python", "scripts\verify-audit-integrity-drill.py", "--out-dir", ".tmp\audit-integrity-evidence\verify-local")
+    },
+    @{
+        Name = "issuer rollover drill tests"
+        Dir = $RepoRoot
+        Display = "python scripts\test_verify_issuer_rollover_drill.py"
+        Command = @("python", "scripts\test_verify_issuer_rollover_drill.py")
+    },
+    @{
+        Name = "intermediate issuer rollover drill"
+        Dir = $RepoRoot
+        Display = "python scripts\verify-issuer-rollover-drill.py --out-dir .tmp\issuer-rollover-evidence\verify-local"
+        Command = @("python", "scripts\verify-issuer-rollover-drill.py", "--out-dir", ".tmp\issuer-rollover-evidence\verify-local")
+    },
+    @{
+        Name = "multi-node reliability drill tests"
+        Dir = $RepoRoot
+        Display = "python scripts\test_verify_multi_node_reliability.py"
+        Command = @("python", "scripts\test_verify_multi_node_reliability.py")
+    },
+    @{
+        Name = "multi-node reliability drill"
+        Dir = $RepoRoot
+        Display = "python scripts\verify-multi-node-reliability.py --out-dir .tmp\multi-node-evidence\verify-local"
+        Command = @("python", "scripts\verify-multi-node-reliability.py", "--out-dir", ".tmp\multi-node-evidence\verify-local")
+    },
+    @{
+        Name = "PostgreSQL recovery drill tests"
+        Dir = $RepoRoot
+        Display = "python scripts\test_verify_postgres_recovery_drill.py"
+        Command = @("python", "scripts\test_verify_postgres_recovery_drill.py")
+    },
+    @{
         Name = "release artifact validator tests"
         Dir = $RepoRoot
         Display = "python scripts\test_validate_release_artifacts.py"

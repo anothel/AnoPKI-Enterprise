@@ -20,7 +20,7 @@ def write_fixture(root: Path) -> None:
     (root / "LICENSES").mkdir()
     (root / "docs/enterprise").mkdir(parents=True)
     edition = {
-        "community_baseline_commit": "ae3ddee72dd05f274b9bbae1b514cdc4c4de03f5",
+        "community_baseline_commit": "96297b14d2f681b75861032d9871a41d6e689c78",
         "enterprise_overlay_version": "0.1.0-private-alpha.1",
         "commercial_license_status": "complete",
         "distribution_status": "allowed",

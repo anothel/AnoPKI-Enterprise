@@ -9,6 +9,12 @@ commands and known gaps before tagging.
 
 ### Added
 
+- A tamper-evident `sha256-v1` audit chain with monotonic sequence, migration
+  backfill, Memory/SQLite/PostgreSQL verification, fail-closed append and
+  retention, prune checkpoints, integrity API, and recovery evidence.
+- Exact-commit audit-integrity, intermediate-issuer rollover, multi-node
+  single-writer, and PostgreSQL backup/restore verification runners plus CI and
+  release artifacts.
 - A fail-closed audit-repair and dead-letter replay drill proving current
   signing/policy evidence reconstruction, idempotent repair, scoped replay,
   preserved attempt history, recovered delivery, redaction, and exact-commit
@@ -99,5 +105,5 @@ commands and known gaps before tagging.
 - Git working-tree status, GitHub Actions CI URLs, tagged release artifacts,
   SBOM output, cosign signatures, and Go lint/security scanner evidence must be
   recorded from the real repository before tagging a release candidate.
-- Full compatibility evidence, HSM/KMS provider boundary, tamper-evident audit
-  storage, EAB, and DNS-01 remain future work.
+- Full compatibility evidence, HSM/KMS provider boundary, external audit
+  anchoring/SIEM integration, EAB, and DNS-01 remain future work.

@@ -14,7 +14,8 @@ Current draft: [v0.1.0-alpha.0 candidate evidence](release-candidate-v0.1.0-alph
 | Go security scan | `gosec` v2.25.0 | Enterprise `verify-go-release.py --profile analysis` in CI. |
 | Go race detector | `go test -race ./...` | Enterprise `verify-go-release.py --profile analysis` in CI. |
 | Go dependency vulnerability scan | `govulncheck` v1.1.4 | Enterprise `verify-go-release.py --profile analysis` in CI. |
-| PostgreSQL | PostgreSQL 16 service integration | CI `postgres-integration` job records client/server versions. |
+| PostgreSQL | PostgreSQL 16 integration and recovery | CI `postgres-integration` records versions; `postgres-recovery-drill` proves migration rollback and `pg_dump`/`pg_restore` recovery. |
+| Audit integrity | Memory, SQLite, PostgreSQL, migration, and HTTP regressions | CI `audit-integrity-drill` and release artifact `anopki-audit-integrity-verification.tar.gz`. |
 | C++ parser fuzz/sanitizer smoke | Clang/libFuzzer with AddressSanitizer | CI `cpp-fuzz-smoke` job builds CSR, OCSP, and CRL parser targets and runs each for at most 20 seconds. |
 | Community boundary | `scripts/validate-community-boundary.py` | CI `community-boundary` job. |
 | Secret baseline | `scripts/security-baseline-scan.py` | CI `secret-baseline` job and README smoke checklist. |
@@ -30,6 +31,14 @@ Pre-1.0 releases distribute archives, not installers or container images:
 - `anopki-core` CLI binary archive,
 - `anopki-enterprise-go-verification.tar.gz` containing full-profile JSON,
   Markdown, and redacted logs,
+- `anopki-audit-integrity-verification.tar.gz` containing exact hash-chain,
+  migration, API, tamper, checkpoint, retention, and store-parity evidence,
+- `anopki-postgres-recovery-verification.tar.gz` containing PostgreSQL 16
+  backup/restore and migration-rollback evidence,
+- `anopki-issuer-rollover-verification.tar.gz` containing atomic rollover and
+  rollback evidence,
+- `anopki-multi-node-verification.tar.gz` containing issuance, CRL, and Outbox
+  single-writer evidence,
 - `anopki-backend-info.json` from the built Enterprise/OpenSSL Core artifact,
 - `anopki-release-metadata.json` binding version/commit, Enterprise profile,
   backend evidence, provider policy, and fail-closed claim fields,
@@ -75,7 +84,7 @@ Each release candidate records this matrix in release notes:
 | Go | `go version` from CI and release host; The maintained floor is Go 1.25.11; CI pins Go 1.25.12 and Go 1.26.5 and uploads Enterprise runner evidence. |
 | OpenSSL | CMake configure output or package version used by C++ build. |
 | SQLite | Go test result for memory/SQLite stores. |
-| PostgreSQL | PostgreSQL integration job result and DSN major version. |
+| PostgreSQL | PostgreSQL integration and recovery-drill result plus DSN major version. |
 | lego | ACME smoke result when ACME behavior changed. |
 | certbot | Linux or elevated Windows smoke result when environment exists; WSL certbot evidence is recorded in the ACME client compatibility matrix. |
 
@@ -90,7 +99,7 @@ Copy this table into release notes for each release candidate and replace
 | Go | `go version` from CI and release host | pending | pending |
 | OpenSSL | CMake configure output or package version | pending | pending |
 | SQLite | Local or CI Go test result covering SQLite store | pending | pending |
-| PostgreSQL | PostgreSQL integration job and DSN major version | pending | pending |
+| PostgreSQL | PostgreSQL integration, recovery drill and DSN major version | pending | pending |
 | lego | ACME smoke command/output when ACME behavior changed | pending | pending |
 | certbot | WSL/Linux/elevated Windows smoke command/output when ACME behavior changed | pending | pending |
 
@@ -126,11 +135,22 @@ the independent commercial release gate remains authoritative.
 ## SQLite Recovery Evidence Runner
 
 `scripts/verify-recovery-drill.py` creates a deterministic current-schema SQLite
-database, backs it up, damages the live copy, restores it, and verifies
-migrations, foreign keys, active key references, CRL artifacts, issuance
-evidence, audit events, and delivery state. Strict redacted JSON and Markdown
+database, backs it up, damages the live copy, restores it, and verifies both
+migration versions, foreign keys, active key references, CRL artifacts,
+issuance evidence, the `sha256-v1` audit latest/checkpoint state, and delivery
+state. Strict redacted JSON and Markdown
 are packaged as `anopki-recovery-verification.tar.gz`; DB files and raw
 sensitive values are excluded.
+
+## PostgreSQL Recovery Evidence Runner
+
+`scripts/verify-postgres-recovery-drill.py` requires Go 1.25.11+, PostgreSQL 16,
+`psql`, `pg_dump`, and `pg_restore`. It proves migration rollback, rejects dirty
+migration state, backs up representative PKI/audit/outbox state, detects source
+damage, and restores the same state digest into an isolated database. Strict
+JSON, Markdown, and one redacted test log are packaged as
+`anopki-postgres-recovery-verification.tar.gz`; DSNs, credentials, dumps, raw
+key references, and private-key material are forbidden.
 
 ## CRL And OCSP Outage Evidence Runner
 
@@ -146,7 +166,30 @@ reconstruction, idempotent repair, scoped replay, preserved attempt history,
 recovered delivery, redaction, and exact-commit binding. Its JSON, Markdown,
 and test log are packaged as `anopki-audit-replay-verification.tar.gz`.
 
-All three archives must report `result=passed` and bind to the same Enterprise
+## Audit Hash-Chain Integrity Evidence Runner
+
+`scripts/verify-audit-integrity-drill.py` covers canonical hashing,
+Memory/SQLite append and prune parity, migration backfill, row/checkpoint tamper
+detection, full-prune protection, integrity API reporting, and retention
+checkpoints. CI/release runs also require PostgreSQL parity. Evidence is
+packaged as `anopki-audit-integrity-verification.tar.gz`.
+
+## Intermediate Issuer Rollover Evidence Runner
+
+`scripts/verify-issuer-rollover-drill.py` proves active same-root intermediate
+validation, atomic conditional rollover/rollback, stale retry rejection,
+overlap preservation, and audit/outbox evidence. Evidence is packaged as
+`anopki-issuer-rollover-verification.tar.gz`.
+
+## Multi-Node Reliability Evidence Runner
+
+`scripts/verify-multi-node-reliability.py` proves single-writer certificate
+issuance, leased CRL publication with contiguous numbering, and active Outbox
+delivery lease protection. Evidence is packaged as
+`anopki-multi-node-verification.tar.gz`; real PostgreSQL failover and
+traffic-shift drills remain separate pending evidence.
+
+All evidence archives must report `result=passed` and bind to the same Enterprise
 commit as release metadata. Raw key references, payloads, credentials, secrets,
 private-key material, and DB files are prohibited.
 
@@ -266,6 +309,14 @@ evidence still needs release workflow artifacts containing archives,
 - `python scripts/verify-status-outage-drill.py --out-dir .tmp\status-outage-evidence\verify-local`
 - `python scripts/test_verify_audit_replay_drill.py`
 - `python scripts/verify-audit-replay-drill.py --out-dir .tmp\audit-replay-evidence\verify-local`
+- `python scripts/test_verify_audit_integrity_drill.py`
+- `python scripts/verify-audit-integrity-drill.py --out-dir .tmp\audit-integrity-evidence\verify-local`
+- `python scripts/test_verify_issuer_rollover_drill.py`
+- `python scripts/verify-issuer-rollover-drill.py --out-dir .tmp\issuer-rollover-evidence\verify-local`
+- `python scripts/test_verify_multi_node_reliability.py`
+- `python scripts/verify-multi-node-reliability.py --out-dir .tmp\multi-node-evidence\verify-local`
+- `python scripts/test_verify_postgres_recovery_drill.py`
+- `python scripts/verify-postgres-recovery-drill.py --out-dir .tmp\postgres-recovery-evidence\verify-local`
 - `python scripts/test_validate_release_artifacts.py`
 - `python scripts/test_validate_service_contracts.py`
 - `python scripts/validate-service-contracts.py`
@@ -290,6 +341,8 @@ evidence still needs release workflow artifacts containing archives,
 - `./build-fuzz/anopki_core_crl_fuzz -runs=1`
 - release workflow artifact `anopki-enterprise-go-verification.tar.gz` with
   passing Enterprise full-profile evidence
+- release workflow artifact `anopki-audit-integrity-verification.tar.gz` with
+  passing Memory, SQLite, PostgreSQL, migration, and API integrity evidence
 - release workflow artifact containing SBOM output from `syft`
 - release workflow artifact containing signature output from `cosign`
 - compatibility matrix row evidence

@@ -1404,11 +1404,15 @@ func scanAuditEvent(scanner sqlScanner) (domain.AuditEvent, error) {
 
 	if err := scanner.Scan(
 		&event.ID,
+		&event.Sequence,
 		&event.Actor,
 		&event.Action,
 		&event.ResourceType,
 		&event.ResourceID,
 		&event.MetadataJSON,
+		&event.HashAlgorithm,
+		&event.PreviousEventHash,
+		&event.EventHash,
 		&createdAt,
 	); err != nil {
 		return domain.AuditEvent{}, err
@@ -1615,6 +1619,39 @@ func scanCRLPublication(scanner sqlScanner) (domain.CRLPublication, error) {
 	publication.CreatedAt = parsedCreatedAt
 	publication.UpdatedAt = parsedUpdatedAt
 	return publication, nil
+}
+
+func scanCRLGenerationClaim(scanner sqlScanner) (domain.CRLGenerationClaim, error) {
+	var claim domain.CRLGenerationClaim
+	var leaseExpiresAt any
+	var createdAt any
+	var updatedAt any
+	if err := scanner.Scan(
+		&claim.IssuerID,
+		&claim.DistributionPoint,
+		&claim.CRLNumber,
+		&leaseExpiresAt,
+		&createdAt,
+		&updatedAt,
+	); err != nil {
+		return domain.CRLGenerationClaim{}, err
+	}
+	parsedLeaseExpiresAt, err := parseSQLTime(leaseExpiresAt)
+	if err != nil {
+		return domain.CRLGenerationClaim{}, err
+	}
+	parsedCreatedAt, err := parseSQLTime(createdAt)
+	if err != nil {
+		return domain.CRLGenerationClaim{}, err
+	}
+	parsedUpdatedAt, err := parseSQLTime(updatedAt)
+	if err != nil {
+		return domain.CRLGenerationClaim{}, err
+	}
+	claim.LeaseExpiresAt = parsedLeaseExpiresAt
+	claim.CreatedAt = parsedCreatedAt
+	claim.UpdatedAt = parsedUpdatedAt
+	return claim, nil
 }
 
 func marshalStringSlice(values []string) (string, error) {

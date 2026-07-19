@@ -1,41 +1,72 @@
-# Audit Tamper-Evidence Plan
+# Audit Tamper Evidence
 
-This plan adds tamper evidence without changing the current pre-1.0 storage
-contract yet.
+AnoPKI Community stores Audit events in a deterministic `sha256-v1` hash chain.
+The Memory, SQLite, and PostgreSQL repositories share the same append, verify,
+checkpoint, and retention contract.
 
-## Selected Model
+## Chain Model
 
-- Keep `audit_events` append-only at the application boundary.
-- Add a deterministic hash chain when audit storage becomes release-gating:
-  `event_hash = SHA-256(previous_event_hash || canonical_event_json)`.
-- Store `previous_event_hash` and `event_hash` with each audit row.
-- Anchor the latest hash in each release candidate evidence pack or operator
-  export before pruning old rows.
-- Verify the chain during backup/restore drills and SIEM export jobs.
+Each row stores:
 
-## Canonical Event JSON
+- `sequence`: a monotonic integer beginning at 1,
+- `hash_algorithm`: `sha256-v1`,
+- `previous_event_hash`: the previous row hash, or empty for the genesis row,
+- `event_hash`: the current row hash.
 
-The canonical payload includes:
+The hash is:
 
-- audit event ID,
-- actor,
-- action,
-- resource type,
-- resource ID,
-- metadata JSON,
-- created timestamp.
+```text
+event_hash = SHA-256(previous_event_hash || canonical_event_json)
+```
 
-It excludes database-local row IDs and mutable export envelope fields.
+The canonical JSON commits the algorithm, sequence, event ID, actor, action,
+resource type, resource ID, parsed-and-remarshaled metadata JSON, and UTC
+RFC3339Nano timestamp. Database-local fields and export envelopes are excluded.
 
-## Failure Handling
+## Migration
 
-- Reject writes when the previous event hash cannot be read.
-- Treat chain verification failure as an incident.
-- Do not repair hashes in place. Create an incident record and preserve the
-  broken rows for investigation.
+Schema migration v2 adds the chain columns and `audit_chain_state`. Existing
+Audit rows are read in deterministic `created_at, id` order and backfilled
+before the unique sequence index is created. A dirty, malformed, or
+non-canonical legacy row fails migration closed.
 
-## Implementation Trigger
+`audit_chain_state` stores the latest sequence/hash and the retention checkpoint.
+PostgreSQL append and prune operations lock this singleton state row in the same
+transaction; SQLite serializes the same update through its transaction.
 
-Implement the hash columns, migration, and verifier when audit retention or SIEM
-export becomes release-gating. Until then, keep this as the selected storage
-plan and rely on existing append-only service behavior plus backup controls.
+## Verification And Query
+
+`GET /audit-events/integrity` recomputes the retained chain and verifies it
+against the latest state and checkpoint. The response reports the algorithm,
+event count, first/last sequence, latest hash, checkpoint, and a stable failure
+reason when invalid.
+
+Append and retention prune verify the chain before changing state. A damaged
+row, sequence, latest state, or checkpoint returns `audit_integrity_failed` and
+no append or prune is committed.
+
+## Retention Checkpoint
+
+Retention deletes only a contiguous oldest prefix. Before deletion, the last
+removed row becomes the checkpoint. The first retained row must reference that
+checkpoint hash. The separate latest sequence/hash also detects checkpoint
+mutation when no retained rows remain.
+
+The checkpoint preserves chain continuity across pruning; it is not an external
+notary. Operators that require independent proof should export or anchor the
+latest sequence/hash in controlled release or SIEM evidence.
+
+## Release Evidence
+
+`scripts/verify-audit-integrity-drill.py` binds the focused chain regressions to
+one exact Community commit. Local runs cover Memory, SQLite, migration and HTTP
+contracts. CI and release runs additionally require PostgreSQL parity and package
+strict redacted evidence as `anopki-audit-integrity-verification.tar.gz`.
+
+## Incident Handling
+
+- Treat any invalid integrity report as an incident.
+- Do not rewrite hashes or silently repair the chain.
+- Preserve the database and relevant backup evidence.
+- Stop append and retention operations until the cause is understood.
+- Recover only from a reviewed, integrity-verified source.

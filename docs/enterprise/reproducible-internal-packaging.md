@@ -2,7 +2,7 @@
 
 ## Scope
 
-The deterministic package is a private `internal-validation` source and license-evidence bundle for the `enterprise-openssl` profile. The implementation baseline is Enterprise commit `6785d18c28f08f027682898faee21319263295ef`, synchronized from Community commit `ae3ddee72dd05f274b9bbae1b514cdc4c4de03f5`.
+The deterministic package is a private `internal-validation` source and license-evidence bundle for the `enterprise-openssl` profile. The implementation baseline is Enterprise commit `6785d18c28f08f027682898faee21319263295ef`, synchronized from Community commit `96297b14d2f681b75861032d9871a41d6e689c78`.
 
 This package is not customer-release authorization. It does not complete the commercial license, hosted qualification, production readiness, or KCMVP validation gates. Customer packages and the `enterprise-anocrypto-c` customer profile remain blocked before archive creation.
 

@@ -3,6 +3,7 @@ package store
 
 import (
 	"context"
+	"fmt"
 	"sort"
 	"sync"
 	"time"
@@ -23,7 +24,9 @@ type MemoryStore struct {
 	issuanceAttempts  map[string]domain.IssuanceAttempt
 	revocations       map[string]domain.Revocation
 	crls              map[string]domain.CRLPublication
+	crlClaims         map[string]domain.CRLGenerationClaim
 	auditEvents       []domain.AuditEvent
+	auditState        auditChainState
 	outbox            map[string]domain.OutboxMessage
 	jobAttempts       map[string]domain.JobAttempt
 	webhookDeliveries map[string]domain.WebhookDelivery
@@ -46,7 +49,9 @@ func NewMemoryStore() *MemoryStore {
 		issuanceAttempts:  make(map[string]domain.IssuanceAttempt),
 		revocations:       make(map[string]domain.Revocation),
 		crls:              make(map[string]domain.CRLPublication),
+		crlClaims:         make(map[string]domain.CRLGenerationClaim),
 		auditEvents:       make([]domain.AuditEvent, 0),
+		auditState:        emptyAuditChainState(),
 		outbox:            make(map[string]domain.OutboxMessage),
 		jobAttempts:       make(map[string]domain.JobAttempt),
 		webhookDeliveries: make(map[string]domain.WebhookDelivery),
@@ -73,7 +78,9 @@ func (s *MemoryStore) WithinTx(ctx context.Context, fn func(Repository) error) e
 		issuanceAttempts:  cloneIssuanceAttempts(s.issuanceAttempts),
 		revocations:       cloneRevocations(s.revocations),
 		crls:              cloneCRLPublications(s.crls),
+		crlClaims:         cloneCRLGenerationClaims(s.crlClaims),
 		auditEvents:       cloneAuditEvents(s.auditEvents),
+		auditState:        s.auditState,
 		outbox:            cloneOutboxMessages(s.outbox),
 		jobAttempts:       cloneJobAttempts(s.jobAttempts),
 		webhookDeliveries: cloneWebhookDeliveries(s.webhookDeliveries),
@@ -97,7 +104,9 @@ func (s *MemoryStore) WithinTx(ctx context.Context, fn func(Repository) error) e
 	s.issuanceAttempts = tx.issuanceAttempts
 	s.revocations = tx.revocations
 	s.crls = tx.crls
+	s.crlClaims = tx.crlClaims
 	s.auditEvents = tx.auditEvents
+	s.auditState = tx.auditState
 	s.outbox = tx.outbox
 	s.jobAttempts = tx.jobAttempts
 	s.webhookDeliveries = tx.webhookDeliveries
@@ -275,6 +284,13 @@ func (s *MemoryStore) ListCertificateProfiles(ctx context.Context) ([]domain.Cer
 		profiles = append(profiles, copyCertificateProfile(profile))
 	}
 	return profiles, nil
+}
+
+func (s *MemoryStore) UpdateCertificateProfileIssuerIfCurrent(ctx context.Context, profile domain.CertificateProfile, currentIssuerID string, currentUpdatedAt time.Time) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	return updateCertificateProfileIssuerIfCurrent(s.profiles, profile, currentIssuerID, currentUpdatedAt)
 }
 
 func (s *MemoryStore) CreateEnrollment(ctx context.Context, enrollment domain.Enrollment) error {
@@ -476,17 +492,39 @@ func (s *MemoryStore) ListCRLPublicationsByIssuer(ctx context.Context, issuerID 
 	return listCRLPublicationsByIssuer(s.crls, issuerID), nil
 }
 
+func (s *MemoryStore) CreateCRLGenerationClaim(ctx context.Context, claim domain.CRLGenerationClaim) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	return createCRLGenerationClaim(s.crlClaims, claim)
+}
+
+func (s *MemoryStore) GetCRLGenerationClaim(ctx context.Context, issuerID string, distributionPoint string) (domain.CRLGenerationClaim, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	return getCRLGenerationClaim(s.crlClaims, issuerID, distributionPoint)
+}
+
+func (s *MemoryStore) UpdateCRLGenerationClaimIfCurrent(ctx context.Context, claim domain.CRLGenerationClaim, current domain.CRLGenerationClaim) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	return updateCRLGenerationClaimIfCurrent(s.crlClaims, claim, current)
+}
+
+func (s *MemoryStore) DeleteCRLGenerationClaimIfCurrent(ctx context.Context, current domain.CRLGenerationClaim) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	return deleteCRLGenerationClaimIfCurrent(s.crlClaims, current)
+}
+
 func (s *MemoryStore) CreateAuditEvent(ctx context.Context, event domain.AuditEvent) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	previousHash := ""
-	if len(s.auditEvents) > 0 {
-		previousHash = s.auditEvents[len(s.auditEvents)-1].EventHash
-	}
-	event = withAuditEventHash(previousHash, event)
-	s.auditEvents = append(s.auditEvents, event)
-	return nil
+	return appendMemoryAuditEvent(&s.auditEvents, &s.auditState, event)
 }
 
 func (s *MemoryStore) ListAuditEvents(ctx context.Context) ([]domain.AuditEvent, error) {
@@ -505,21 +543,18 @@ func (s *MemoryStore) ListAuditEventsQuery(ctx context.Context, query AuditEvent
 	return listAuditEventsQuery(s.auditEvents, query), nil
 }
 
+func (s *MemoryStore) VerifyAuditChain(ctx context.Context) (domain.AuditIntegrity, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	return verifyAuditState(s.auditEvents, s.auditState), nil
+}
+
 func (s *MemoryStore) DeleteAuditEventsBefore(ctx context.Context, before time.Time) (int, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	kept := s.auditEvents[:0]
-	deleted := 0
-	for _, event := range s.auditEvents {
-		if event.CreatedAt.Before(before) {
-			deleted++
-			continue
-		}
-		kept = append(kept, event)
-	}
-	s.auditEvents = kept
-	return deleted, nil
+	return pruneMemoryAuditEvents(&s.auditEvents, &s.auditState, before)
 }
 
 func (s *MemoryStore) CreateOutboxMessage(ctx context.Context, message domain.OutboxMessage) error {
@@ -848,6 +883,65 @@ func getIssuanceAttempt(attempts map[string]domain.IssuanceAttempt, enrollmentID
 	return copyIssuanceAttempt(attempt), nil
 }
 
+func crlGenerationClaimKey(issuerID string, distributionPoint string) string {
+	return issuerID + "\x00" + distributionPoint
+}
+
+func createCRLGenerationClaim(claims map[string]domain.CRLGenerationClaim, claim domain.CRLGenerationClaim) error {
+	key := crlGenerationClaimKey(claim.IssuerID, claim.DistributionPoint)
+	if _, ok := claims[key]; ok {
+		return domain.ErrInvalidTransition
+	}
+	claims[key] = claim
+	return nil
+}
+
+func getCRLGenerationClaim(claims map[string]domain.CRLGenerationClaim, issuerID string, distributionPoint string) (domain.CRLGenerationClaim, error) {
+	claim, ok := claims[crlGenerationClaimKey(issuerID, distributionPoint)]
+	if !ok {
+		return domain.CRLGenerationClaim{}, domain.ErrCRLGenerationClaimNotFound
+	}
+	return claim, nil
+}
+
+func updateCRLGenerationClaimIfCurrent(claims map[string]domain.CRLGenerationClaim, claim domain.CRLGenerationClaim, current domain.CRLGenerationClaim) error {
+	key := crlGenerationClaimKey(claim.IssuerID, claim.DistributionPoint)
+	stored, ok := claims[key]
+	if !ok {
+		return domain.ErrCRLGenerationClaimNotFound
+	}
+	if stored.CRLNumber != current.CRLNumber ||
+		!stored.LeaseExpiresAt.Equal(current.LeaseExpiresAt) ||
+		!stored.UpdatedAt.Equal(current.UpdatedAt) {
+		return domain.ErrInvalidTransition
+	}
+	claims[key] = claim
+	return nil
+}
+
+func deleteCRLGenerationClaimIfCurrent(claims map[string]domain.CRLGenerationClaim, current domain.CRLGenerationClaim) error {
+	key := crlGenerationClaimKey(current.IssuerID, current.DistributionPoint)
+	stored, ok := claims[key]
+	if !ok {
+		return domain.ErrCRLGenerationClaimNotFound
+	}
+	if stored.CRLNumber != current.CRLNumber ||
+		!stored.LeaseExpiresAt.Equal(current.LeaseExpiresAt) ||
+		!stored.UpdatedAt.Equal(current.UpdatedAt) {
+		return domain.ErrInvalidTransition
+	}
+	delete(claims, key)
+	return nil
+}
+
+func cloneCRLGenerationClaims(values map[string]domain.CRLGenerationClaim) map[string]domain.CRLGenerationClaim {
+	cloned := make(map[string]domain.CRLGenerationClaim, len(values))
+	for key, value := range values {
+		cloned[key] = value
+	}
+	return cloned
+}
+
 func copyNotificationEndpoint(endpoint domain.NotificationEndpoint) domain.NotificationEndpoint {
 	endpoint.EventTypes = append([]string(nil), endpoint.EventTypes...)
 	return endpoint
@@ -977,6 +1071,18 @@ func listDueOutboxMessages(messages map[string]domain.OutboxMessage, now time.Ti
 		due = due[:limit]
 	}
 	return due
+}
+
+func updateCertificateProfileIssuerIfCurrent(profiles map[string]domain.CertificateProfile, profile domain.CertificateProfile, currentIssuerID string, currentUpdatedAt time.Time) error {
+	stored, ok := profiles[profile.ID]
+	if !ok {
+		return domain.ErrCertificateProfileNotFound
+	}
+	if stored.IssuerID != currentIssuerID || !stored.UpdatedAt.Equal(currentUpdatedAt) {
+		return domain.ErrInvalidTransition
+	}
+	profiles[profile.ID] = copyCertificateProfile(profile)
+	return nil
 }
 
 func outboxMessageDue(message domain.OutboxMessage, now time.Time) bool {
@@ -1206,7 +1312,9 @@ type memoryTx struct {
 	issuanceAttempts  map[string]domain.IssuanceAttempt
 	revocations       map[string]domain.Revocation
 	crls              map[string]domain.CRLPublication
+	crlClaims         map[string]domain.CRLGenerationClaim
 	auditEvents       []domain.AuditEvent
+	auditState        auditChainState
 	outbox            map[string]domain.OutboxMessage
 	jobAttempts       map[string]domain.JobAttempt
 	webhookDeliveries map[string]domain.WebhookDelivery
@@ -1333,6 +1441,10 @@ func (tx *memoryTx) ListCertificateProfiles(ctx context.Context) ([]domain.Certi
 		profiles = append(profiles, copyCertificateProfile(profile))
 	}
 	return profiles, nil
+}
+
+func (tx *memoryTx) UpdateCertificateProfileIssuerIfCurrent(ctx context.Context, profile domain.CertificateProfile, currentIssuerID string, currentUpdatedAt time.Time) error {
+	return updateCertificateProfileIssuerIfCurrent(tx.profiles, profile, currentIssuerID, currentUpdatedAt)
 }
 
 func (tx *memoryTx) CreateEnrollment(ctx context.Context, enrollment domain.Enrollment) error {
@@ -1465,14 +1577,24 @@ func (tx *memoryTx) ListCRLPublicationsByIssuer(ctx context.Context, issuerID st
 	return listCRLPublicationsByIssuer(tx.crls, issuerID), nil
 }
 
+func (tx *memoryTx) CreateCRLGenerationClaim(ctx context.Context, claim domain.CRLGenerationClaim) error {
+	return createCRLGenerationClaim(tx.crlClaims, claim)
+}
+
+func (tx *memoryTx) GetCRLGenerationClaim(ctx context.Context, issuerID string, distributionPoint string) (domain.CRLGenerationClaim, error) {
+	return getCRLGenerationClaim(tx.crlClaims, issuerID, distributionPoint)
+}
+
+func (tx *memoryTx) UpdateCRLGenerationClaimIfCurrent(ctx context.Context, claim domain.CRLGenerationClaim, current domain.CRLGenerationClaim) error {
+	return updateCRLGenerationClaimIfCurrent(tx.crlClaims, claim, current)
+}
+
+func (tx *memoryTx) DeleteCRLGenerationClaimIfCurrent(ctx context.Context, current domain.CRLGenerationClaim) error {
+	return deleteCRLGenerationClaimIfCurrent(tx.crlClaims, current)
+}
+
 func (tx *memoryTx) CreateAuditEvent(ctx context.Context, event domain.AuditEvent) error {
-	previousHash := ""
-	if len(tx.auditEvents) > 0 {
-		previousHash = tx.auditEvents[len(tx.auditEvents)-1].EventHash
-	}
-	event = withAuditEventHash(previousHash, event)
-	tx.auditEvents = append(tx.auditEvents, event)
-	return nil
+	return appendMemoryAuditEvent(&tx.auditEvents, &tx.auditState, event)
 }
 
 func (tx *memoryTx) ListAuditEvents(ctx context.Context) ([]domain.AuditEvent, error) {
@@ -1485,18 +1607,12 @@ func (tx *memoryTx) ListAuditEventsQuery(ctx context.Context, query AuditEventQu
 	return listAuditEventsQuery(tx.auditEvents, query), nil
 }
 
+func (tx *memoryTx) VerifyAuditChain(ctx context.Context) (domain.AuditIntegrity, error) {
+	return verifyAuditState(tx.auditEvents, tx.auditState), nil
+}
+
 func (tx *memoryTx) DeleteAuditEventsBefore(ctx context.Context, before time.Time) (int, error) {
-	kept := tx.auditEvents[:0]
-	deleted := 0
-	for _, event := range tx.auditEvents {
-		if event.CreatedAt.Before(before) {
-			deleted++
-			continue
-		}
-		kept = append(kept, event)
-	}
-	tx.auditEvents = kept
-	return deleted, nil
+	return pruneMemoryAuditEvents(&tx.auditEvents, &tx.auditState, before)
 }
 
 func (tx *memoryTx) CreateOutboxMessage(ctx context.Context, message domain.OutboxMessage) error {
@@ -2102,4 +2218,66 @@ func apiKeyByTokenHash(keys map[string]domain.APIKey, tokenHash string) (domain.
 		}
 	}
 	return domain.APIKey{}, domain.ErrAPIKeyNotFound
+}
+
+func appendMemoryAuditEvent(events *[]domain.AuditEvent, state *auditChainState, event domain.AuditEvent) error {
+	report := verifyAuditState(*events, *state)
+	if err := auditIntegrityError(report); err != nil {
+		return err
+	}
+	prepared, err := withAuditEventHash(report.LastSequence+1, report.LastEventHash, event)
+	if err != nil {
+		return err
+	}
+	*events = append(*events, prepared)
+	state.HashAlgorithm = AuditHashAlgorithmSHA256V1
+	state.LatestSequence = prepared.Sequence
+	state.LatestEventHash = prepared.EventHash
+	state.UpdatedAt = prepared.CreatedAt
+	if after := verifyAuditState(*events, *state); !after.Valid {
+		return auditIntegrityError(after)
+	}
+	return nil
+}
+
+func pruneMemoryAuditEvents(events *[]domain.AuditEvent, state *auditChainState, before time.Time) (int, error) {
+	report := verifyAuditState(*events, *state)
+	if err := auditIntegrityError(report); err != nil {
+		return 0, err
+	}
+	deleteCount := auditRetentionPrefixLength(*events, before)
+	if deleteCount < 0 {
+		return 0, fmt.Errorf("%w: retention_cutoff_non_prefix", domain.ErrAuditIntegrity)
+	}
+	if deleteCount == 0 {
+		return 0, nil
+	}
+	lastDeleted := (*events)[deleteCount-1]
+	state.HashAlgorithm = AuditHashAlgorithmSHA256V1
+	state.CheckpointSequence = lastDeleted.Sequence
+	state.CheckpointEventHash = lastDeleted.EventHash
+	state.UpdatedAt = lastDeleted.CreatedAt
+	kept := make([]domain.AuditEvent, len(*events)-deleteCount)
+	copy(kept, (*events)[deleteCount:])
+	*events = kept
+	if after := verifyAuditState(*events, *state); !after.Valid {
+		return 0, auditIntegrityError(after)
+	}
+	return deleteCount, nil
+}
+
+func auditRetentionPrefixLength(events []domain.AuditEvent, before time.Time) int {
+	deleteCount := 0
+	seenRetained := false
+	for _, event := range events {
+		if event.CreatedAt.Before(before) {
+			if seenRetained {
+				return -1
+			}
+			deleteCount++
+			continue
+		}
+		seenRetained = true
+	}
+	return deleteCount
 }

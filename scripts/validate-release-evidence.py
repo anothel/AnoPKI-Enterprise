@@ -22,10 +22,21 @@ REQUIRED_DOC_TEXT = [
     "## SQLite Recovery Evidence Runner",
     "## CRL And OCSP Outage Evidence Runner",
     "## Audit Repair And Dead-Letter Replay Evidence Runner",
+    "## Audit Hash-Chain Integrity Evidence Runner",
+    "## Intermediate Issuer Rollover Evidence Runner",
+    "## PostgreSQL Recovery Evidence Runner",
+    "## Multi-Node Reliability Evidence Runner",
     "## Supported-Go Evidence Runner",
     "## Required Evidence Per Release Candidate",
     "verify-go-release.py",
     "anopki-enterprise-go-verification.tar.gz",
+    "python scripts/verify-audit-integrity-drill.py",
+    "anopki-audit-integrity-verification.tar.gz",
+    "anopki-issuer-rollover-verification.tar.gz",
+    "python scripts/verify-postgres-recovery-drill.py",
+    "anopki-postgres-recovery-verification.tar.gz",
+    "python scripts/verify-multi-node-reliability.py",
+    "anopki-multi-node-verification.tar.gz",
     "syft",
     "cosign",
     "govulncheck",
@@ -66,7 +77,7 @@ REQUIRED_COMPATIBILITY_TEMPLATE_TEXT = [
     "| Go | `go version` from CI and release host |",
     "| OpenSSL | CMake configure output or package version |",
     "| SQLite | Local or CI Go test result covering SQLite store |",
-    "| PostgreSQL | PostgreSQL integration job and DSN major version |",
+    "| PostgreSQL | PostgreSQL integration, recovery drill and DSN major version |",
     "| lego | ACME smoke command/output when ACME behavior changed |",
     "| certbot | WSL/Linux/elevated Windows smoke command/output when ACME behavior changed |",
 ]
@@ -85,6 +96,24 @@ REQUIRED_CI_TEXT = [
     "python scripts/test_verify_audit_replay_drill.py",
     "python scripts/verify-audit-replay-drill.py",
     "anopki-audit-replay-verification",
+    "python scripts/test_verify_audit_integrity_drill.py",
+    "python scripts/verify-audit-integrity-drill.py",
+    "--require-postgres",
+    "anopki-audit-integrity-verification",
+    "audit-integrity-drill:",
+    "python scripts/test_verify_issuer_rollover_drill.py",
+    "python scripts/verify-issuer-rollover-drill.py",
+    "anopki-issuer-rollover-verification",
+    "python scripts/test_verify_postgres_recovery_drill.py",
+    "python scripts/verify-postgres-recovery-drill.py",
+    "anopki-postgres-recovery-verification",
+    "postgres-recovery-drill:",
+    "python scripts/test_verify_multi_node_reliability.py",
+    "python scripts/verify-multi-node-reliability.py",
+    "anopki-multi-node-verification",
+    "multi-node-reliability-drill:",
+    "image: postgres:16",
+    "postgresql-client",
     "python scripts/test_validate_release_artifacts.py",
     "python scripts/test_generate_package_manifest.py",
     "python scripts/test_validate_package_boundary.py",
@@ -147,6 +176,7 @@ REQUIRED_RECOVERY_RUNNER_TEXT = [
     "schema_migrations",
     "certificate_issuance_attempts",
     "crl_publications",
+    "crl_generation_claims",
     "webhook_deliveries",
     "private-key-exclusion",
     "recovery-verification.json",
@@ -181,6 +211,83 @@ REQUIRED_AUDIT_REPLAY_RUNNER_TEXT = [
     "sensitive-evidence-exclusion",
 ]
 
+
+REQUIRED_AUDIT_INTEGRITY_RUNNER_TEXT = [
+    "MINIMUM_GO_VERSION = (1, 25, 11)",
+    "community_audit_integrity_drill",
+    'POSTGRES_DSN_ENV = "ANOPKI_POSTGRES_TEST_DSN"',
+    "require_postgres",
+    "TestAuditEventHashIsStable",
+    "TestVerifyAuditEventsDetectsCheckpointAndEventTampering",
+    "TestAuditIntegrityAppendCheckpointAndPruneParity",
+    "TestMemoryAuditTamperFailsClosed",
+    "TestMemoryAuditCheckpointTamperDetectedAfterFullPrune",
+    "TestSQLiteAuditTamperAndCheckpointTamperFailClosed",
+    "TestAuditHashChainMigrationBackfillsLegacySQLiteRowsBeforeUniqueIndex",
+    "TestGetAuditIntegrity",
+    "TestPruneAuditEventsByRetentionCutoff",
+    "TestPostgresIntegrationRepositoryParity/audit_integrity_chain",
+    "audit-integrity-verification.json",
+    "audit-integrity-verification.md",
+    "audit-integrity-baseline-test.log",
+    "audit-integrity-postgres-test.log",
+    "postgres-append-prune-parity",
+    "sensitive-evidence-exclusion",
+]
+
+
+REQUIRED_ISSUER_ROLLOVER_RUNNER_TEXT = [
+    "MINIMUM_GO_VERSION = (1, 25, 11)",
+    "community_issuer_rollover_drill",
+    "TestCertificateProfileIssuerRolloverAndRollbackPreservesOverlap",
+    "TestCertificateProfileIssuerRolloverRejectsDifferentParentAndStaleRetry",
+    "TestCertificateProfileIssuerRolloverRollsBackWhenAuditFails",
+    "TestCertificateProfileIssuerConditionalUpdate",
+    "issuer-rollover-verification.json",
+    "issuer-rollover-verification.md",
+    "issuer-rollover-test.log",
+    "same-parent-chain-required",
+    "sensitive-evidence-exclusion",
+]
+
+
+REQUIRED_POSTGRES_RECOVERY_RUNNER_TEXT = [
+    "MINIMUM_GO_VERSION = (1, 25, 11)",
+    "REQUIRED_POSTGRES_MAJOR = 16",
+    "client_version = result.stdout.strip()",
+    "parse_postgres_major(client_version) != REQUIRED_POSTGRES_MAJOR",
+    "community_postgres_recovery_drill",
+    "TestPostgresRecoveryDrillMigrationRollbackIntegration",
+    "TestPostgresRecoveryDrillDirtyMigrationRejectedIntegration",
+    "pg_dump",
+    "pg_restore",
+    "crl_generation_claims",
+    "custom-format-backup-created",
+    "restore-state-digest-matched",
+    "postgres-recovery-verification.json",
+    "postgres-recovery-verification.md",
+    "postgres-recovery-test.log",
+    "sensitive-evidence-exclusion",
+]
+
+
+REQUIRED_MULTI_NODE_RUNNER_TEXT = [
+    "MINIMUM_GO_VERSION = (1, 25, 11)",
+    "community_multi_node_reliability_drill",
+    "TestIssueCertificateActiveClaimPreventsSecondServiceSigning",
+    "TestPublishCRLActiveClaimPreventsSecondServiceSigning",
+    "TestOutboxDispatcherActiveLeasePreventsSecondNodeHandling",
+    "TestMemoryStoreCRLGenerationClaims",
+    "certificate-signing-single-writer",
+    "crl-generation-single-writer",
+    "outbox-active-lease-not-stolen",
+    "stale-claim-cas-rejected",
+    "multi-node-verification.json",
+    "multi-node-verification.md",
+    "multi-node-test.log",
+    "sensitive-evidence-exclusion",
+]
+
 REQUIRED_RELEASE_TEXT = [
     "workflow_dispatch:",
     "tags:",
@@ -197,6 +304,15 @@ REQUIRED_RELEASE_TEXT = [
     "anopki-status-outage-verification.tar.gz",
     "python scripts/verify-audit-replay-drill.py",
     "anopki-audit-replay-verification.tar.gz",
+    "python scripts/verify-audit-integrity-drill.py",
+    "--require-postgres",
+    "anopki-audit-integrity-verification.tar.gz",
+    "python scripts/verify-issuer-rollover-drill.py",
+    "anopki-issuer-rollover-verification.tar.gz",
+    "python scripts/verify-postgres-recovery-drill.py",
+    "anopki-postgres-recovery-verification.tar.gz",
+    "python scripts/verify-multi-node-reliability.py",
+    "anopki-multi-node-verification.tar.gz",
     '--commit "${GITHUB_SHA}"',
     'VERSION="$(cat VERSION)"',
     "go build -ldflags",
@@ -222,6 +338,8 @@ REQUIRED_RELEASE_TEXT = [
     "anopki-release-metadata.json",
     "sha256sum dist/*.tar.gz dist/anopki-backend-info.json dist/anopki-release-metadata.json dist/package-manifest.json",
     "python scripts/validate-release-artifacts.py dist",
+    "postgres:16",
+    "postgresql-client",
     "syft scan dir:dist",
     "cosign sign-blob",
     "actions/upload-artifact",
@@ -411,6 +529,10 @@ def main() -> None:
     require_text(root / "scripts/verify-recovery-drill.py", REQUIRED_RECOVERY_RUNNER_TEXT)
     require_text(root / "scripts/verify-status-outage-drill.py", REQUIRED_STATUS_OUTAGE_RUNNER_TEXT)
     require_text(root / "scripts/verify-audit-replay-drill.py", REQUIRED_AUDIT_REPLAY_RUNNER_TEXT)
+    require_text(root / "scripts/verify-audit-integrity-drill.py", REQUIRED_AUDIT_INTEGRITY_RUNNER_TEXT)
+    require_text(root / "scripts/verify-issuer-rollover-drill.py", REQUIRED_ISSUER_ROLLOVER_RUNNER_TEXT)
+    require_text(root / "scripts/verify-postgres-recovery-drill.py", REQUIRED_POSTGRES_RECOVERY_RUNNER_TEXT)
+    require_text(root / "scripts/verify-multi-node-reliability.py", REQUIRED_MULTI_NODE_RUNNER_TEXT)
     require_text(root / ".github/workflows/ci.yml", REQUIRED_CI_TEXT)
     require_text(root / ".github/workflows/release.yml", REQUIRED_RELEASE_TEXT)
     print("release evidence ok")

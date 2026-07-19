@@ -11,8 +11,8 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
-BASELINE_COMMIT = "ae3ddee72dd05f274b9bbae1b514cdc4c4de03f5"
-PREVIOUS_BASELINE_COMMIT = "71f0e898c32a7d6e00d0725eeab6ca150ccaa0af"
+BASELINE_COMMIT = "96297b14d2f681b75861032d9871a41d6e689c78"
+PREVIOUS_BASELINE_COMMIT = "ae3ddee72dd05f274b9bbae1b514cdc4c4de03f5"
 
 COMMUNITY_ONLY_FILES = {
     "docs-pack/README.md",
@@ -46,6 +46,14 @@ MIXED_REQUIRED_TEXT = {
         "anopki-status-outage-verification",
         "python scripts/verify-audit-replay-drill.py",
         "anopki-audit-replay-verification",
+        "python scripts/verify-audit-integrity-drill.py",
+        "anopki-audit-integrity-verification",
+        "python scripts/verify-issuer-rollover-drill.py",
+        "anopki-issuer-rollover-verification",
+        "python scripts/verify-multi-node-reliability.py",
+        "anopki-multi-node-verification",
+        "python scripts/verify-postgres-recovery-drill.py",
+        "anopki-postgres-recovery-verification",
     ),
     ".github/workflows/release.yml": (
         "validate-enterprise-release.py",
@@ -58,6 +66,10 @@ MIXED_REQUIRED_TEXT = {
         "anopki-recovery-verification.tar.gz",
         "anopki-status-outage-verification.tar.gz",
         "anopki-audit-replay-verification.tar.gz",
+        "anopki-audit-integrity-verification.tar.gz",
+        "anopki-issuer-rollover-verification.tar.gz",
+        "anopki-multi-node-verification.tar.gz",
+        "anopki-postgres-recovery-verification.tar.gz",
     ),
     "CHANGELOG.md": (
         "FileKeyProvider",
@@ -68,6 +80,8 @@ MIXED_REQUIRED_TEXT = {
         "SQLite backup/restore",
         "policy-decision",
         "Enterprise Go release verification runner",
+        "tamper-evident `sha256-v1` audit chain",
+        "PostgreSQL backup/restore verification",
     ),
     "CMakeLists.txt": (
         'set(ANOPKI_PRODUCT_PROFILE "enterprise-openssl"',
@@ -91,13 +105,17 @@ MIXED_REQUIRED_TEXT = {
         "verify-recovery-drill.py",
         "verify-status-outage-drill.py",
         "verify-audit-replay-drill.py",
+        "verify-audit-integrity-drill.py",
+        "verify-issuer-rollover-drill.py",
+        "verify-multi-node-reliability.py",
+        "verify-postgres-recovery-drill.py",
     ),
-    "docs/INDEX.md": ("Enterprise/OpenSSL", "Enterprise/AnoCrypto-C"),
+    "docs/INDEX.md": ("Enterprise/OpenSSL", "Enterprise/AnoCrypto-C", "Implemented hash-chain"),
     "docs/ROADMAP.md": (
         "real local PKCS#11/HSM target",
         "AnoCrypto-C",
         "verify-go-release.py --profile full",
-        "Keep SQLite backup/restore, CRL/OCSP outage-and-recovery, audit-repair",
+        "Keep SQLite/PostgreSQL backup/restore, CRL/OCSP outage-and-recovery",
     ),
     "docs/adr/0006-crypto-backend-direction-anocrypto.md": (
         "Community owns the backend-neutral core contract and OpenSSL adapter",
@@ -133,6 +151,10 @@ MIXED_REQUIRED_TEXT = {
         "anopki-recovery-verification.tar.gz",
         "anopki-status-outage-verification.tar.gz",
         "anopki-audit-replay-verification.tar.gz",
+        "anopki-audit-integrity-verification.tar.gz",
+        "anopki-issuer-rollover-verification.tar.gz",
+        "anopki-multi-node-verification.tar.gz",
+        "anopki-postgres-recovery-verification.tar.gz",
     ),
     "docs/reference/target-architecture.md": (
         "reuses it without a fork",
@@ -148,8 +170,15 @@ MIXED_REQUIRED_TEXT = {
         "verify-recovery-drill.py",
         "verify-status-outage-drill.py",
         "verify-audit-replay-drill.py",
+        "verify-audit-integrity-drill.py",
+        "verify-issuer-rollover-drill.py",
+        "verify-multi-node-reliability.py",
+        "verify-postgres-recovery-drill.py",
     ),
-    "docs/security/threat-model.md": ("Enterprise production non-exportable provider remains pending",),
+    "docs/security/threat-model.md": (
+        "Enterprise production non-exportable provider remains pending",
+        "Monotonic `sha256-v1` chain",
+    ),
     "scripts/test_validate_docs.py": (
         "test_generated_build_tree_headers_are_ignored",
         "test_completed_key_provider_work_in_roadmap_fails",
@@ -166,6 +195,10 @@ MIXED_REQUIRED_TEXT = {
         "test_missing_recovery_evidence_fails",
         "test_missing_status_outage_evidence_fails",
         "test_missing_audit_replay_evidence_fails",
+        "test_missing_audit_integrity_evidence_fails",
+        "test_missing_issuer_rollover_evidence_fails",
+        "test_missing_multi_node_evidence_fails",
+        "test_missing_postgres_recovery_evidence_fails",
     ),
     "scripts/validate-release-artifacts.py": (
         "Enterprise/OpenSSL",
@@ -176,6 +209,10 @@ MIXED_REQUIRED_TEXT = {
         "require_recovery_evidence_archive",
         "require_status_outage_evidence_archive",
         "require_audit_replay_evidence_archive",
+        "require_audit_integrity_evidence_archive",
+        "require_issuer_rollover_evidence_archive",
+        "require_multi_node_evidence_archive",
+        "require_postgres_recovery_evidence_archive",
     ),
     "scripts/test_validate_release_evidence.py": (
         "release evidence validator tests ok",
@@ -183,6 +220,10 @@ MIXED_REQUIRED_TEXT = {
         "test_missing_release_recovery_evidence_fails",
         "test_missing_release_status_outage_evidence_fails",
         "test_missing_release_audit_replay_evidence_fails",
+        "test_missing_release_audit_integrity_evidence_fails",
+        "test_missing_release_issuer_rollover_evidence_fails",
+        "test_missing_release_multi_node_evidence_fails",
+        "test_missing_release_postgres_recovery_evidence_fails",
     ),
     "scripts/validate-release-evidence.py": (
         "test_generate_enterprise_release_metadata.py",
@@ -192,6 +233,10 @@ MIXED_REQUIRED_TEXT = {
         "REQUIRED_RECOVERY_RUNNER_TEXT",
         "REQUIRED_STATUS_OUTAGE_RUNNER_TEXT",
         "REQUIRED_AUDIT_REPLAY_RUNNER_TEXT",
+        "REQUIRED_AUDIT_INTEGRITY_RUNNER_TEXT",
+        "REQUIRED_ISSUER_ROLLOVER_RUNNER_TEXT",
+        "REQUIRED_MULTI_NODE_RUNNER_TEXT",
+        "REQUIRED_POSTGRES_RECOVERY_RUNNER_TEXT",
     ),
     "scripts/test_validate_version_metadata.py": ("Enterprise edition metadata drift",),
     "scripts/validate-version-metadata.py": (BASELINE_COMMIT, "Enterprise edition metadata drift"),
@@ -219,6 +264,10 @@ MIXED_REQUIRED_TEXT = {
         "verify-recovery-drill.py",
         "verify-status-outage-drill.py",
         "verify-audit-replay-drill.py",
+        "verify-audit-integrity-drill.py",
+        "verify-issuer-rollover-drill.py",
+        "verify-multi-node-reliability.py",
+        "test_verify_postgres_recovery_drill.py",
     ),
     "scripts/verify-local.ps1": (
         "test_generate_enterprise_release_metadata.py",
@@ -227,6 +276,10 @@ MIXED_REQUIRED_TEXT = {
         "verify-recovery-drill.py",
         "verify-status-outage-drill.py",
         "verify-audit-replay-drill.py",
+        "verify-audit-integrity-drill.py",
+        "verify-issuer-rollover-drill.py",
+        "verify-multi-node-reliability.py",
+        "test_verify_postgres_recovery_drill.py",
     ),
 }
 

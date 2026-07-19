@@ -92,6 +92,7 @@ Issuance uses a DB-backed enrollment claim to prevent duplicate signing across s
 
 - `POST /audit-events/repair/issuance`
 - `GET /audit-events?actor=operator&resource_type=certificate&sort=desc&limit=50&offset=0`
+- `GET /audit-events/integrity`
 - `POST /audit-events/retention/prune`
 
 Normal revocation accepts only `valid` certificates. Forced revocation accepts `valid` and `suspended` certificates by posting `{"force": true}` with the revocation reason.
@@ -101,6 +102,8 @@ Expiration scans mark `valid` and `suspended` certificates as `expired` when `no
 The expiration scan worker is disabled by default. Set `ANOPKI_EXPIRATION_SCAN_ENABLED=true` to run scans automatically on startup and then at the configured interval.
 The operator expiry SLO reports zero success only when no valid or suspended certificates inside the 14-day window are still missing a renewal notification.
 The inventory view joins certificate, identity, issuer, and profile references. It exposes owner, team, service, environment, deployment target, issuer, profile, issuer key reference, revocation state, last seen timestamp, and ownership completeness warnings. It supports exact filters for owner, team, service, environment, issuer_id, profile_id, and revocation_state, plus ascending/descending sort and limit/offset pagination.
+
+Certificate profile issuer transitions emit `certificate_profile.issuer_rolled_over` or `certificate_profile.issuer_rolled_back` outbox events. The transition is allowed only between active intermediates sharing the same active root trust anchor; stale expected-issuer retries fail closed.
 
 Notification endpoints deliver lifecycle outbox events to operator webhooks:
 
@@ -129,10 +132,12 @@ When a matched issuer has an active responder, `POST /ocsp` signs with that resp
 
 Responder certificates are validated by the core CLI before storage and must be issued by the issuer, be non-CA certificates, and carry the OCSP Signing EKU.
 
-Audit events include structured `metadata_json` for lifecycle resource IDs and successful result codes. Enrollment and issuance policy events record an allow/reject/unknown decision, a stable reason, and redacted validation-evidence references bound to identity/issuer/profile IDs plus SHA-256 CSR and policy-input references; raw CSR, SAN, key, and credential values are not copied into the references. HTTP requests can attach `X-Request-ID`; the service records it with the client IP for mutating operations. `GET /audit-events` supports exact filters for actor, action, resource type, resource ID, RFC3339 created time range, ascending/descending sort, and limit/offset pagination. Retention pruning deletes audit events before a supplied RFC3339 `before` cutoff and records an `audit.retention_pruned` audit event.
+Audit events include structured `metadata_json` for lifecycle resource IDs and successful result codes. Enrollment and issuance policy events record an allow/reject/unknown decision, a stable reason, and redacted validation-evidence references bound to identity/issuer/profile IDs plus SHA-256 CSR and policy-input references; raw CSR, SAN, key, and credential values are not copied into the references. HTTP requests can attach `X-Request-ID`; the service records it with the client IP for mutating operations. Every row receives a monotonic sequence and `sha256-v1` previous/current hash link. `GET /audit-events` returns those fields and supports exact filters for actor, action, resource type, resource ID, RFC3339 created time range, ascending/descending sort, and limit/offset pagination. `GET /audit-events/integrity` verifies the retained chain and prune checkpoint. Retention pruning verifies the chain first, advances the checkpoint to the last deleted prefix row, deletes only a contiguous prefix before the supplied RFC3339 cutoff, and records an `audit.retention_pruned` event. Append and prune operations fail closed when a row or checkpoint is damaged.
 `X-Forwarded-For` is trusted only when the direct peer IP matches `ANOPKI_TRUSTED_PROXIES`; otherwise audit metadata uses the direct peer address.
 
 API authentication defaults to `dev` mode for local compatibility. In `dev` mode, the service uses `X-Actor` as the audit actor and allows requests without credentials. Set `ANOPKI_AUTH_MODE=api_key` to require `Authorization: Bearer <token>` for lifecycle and operator APIs. `POST /ocsp`, `GET /crls/{id}`, and `GET /issuers/{id}/crl` remain public distribution endpoints. Bootstrap an initial operator key by setting `ANOPKI_BOOTSTRAP_API_KEY`. Set `ANOPKI_API_KEY_PEPPER` to store new API key token hashes as HMAC-SHA256 values. Existing SHA-256 token hashes remain accepted so operators can enable a pepper before rotating legacy keys.
+
+Community authorization remains based on the existing API key `read`, `write`, and `operator` scopes. `httpapi.RequestAuthorizer` is an optional internal extension seam: when injected, it runs only after authentication and legacy scope checks on protected routes, and the default Community HTTP behavior is unchanged when it is absent. Community does not implement RBAC/ABAC, OIDC/SAML, or an approval workflow, and does not include Enterprise commercial policy or role catalogs.
 
 Set `ANOPKI_ENV=production` for production startup checks. Production mode rejects `dev` auth mode, requires a strong `ANOPKI_API_KEY_PEPPER`, rejects configured bootstrap API keys shorter than 32 characters or matching common defaults such as `change-me`, and enforces HTTPS plus strong secrets for new webhook notification endpoints.
 

@@ -90,7 +90,8 @@ Community/OpenSSL baseline and keeping key providers separate.
   requirements are known; the test-only software-token path is contract
   evidence, not production non-exportability.
 - Prototype and separately approve remote KMS signing semantics before adding a vendor SDK.
-- Add executable key ceremony evidence and intermediate rollover drills.
+- Keep intermediate issuer rollover and rollback evidence current; add broader
+  key-ceremony evidence when deployment requirements are known.
 - Add an offline-root operating model if this project owns CA hierarchy operations.
 
 ## P2: Audit, Access, And Operations
@@ -99,14 +100,14 @@ Goal: raise operator accountability and recovery confidence.
 
 - Keep policy-decision reasons and redacted validation-evidence references
   stable across enrollment, issuance, retry, and audit repair.
-- Keep SQLite backup/restore, CRL/OCSP outage-and-recovery, audit-repair, and
-  dead-letter replay drills plus their release evidence contracts current.
+- Keep SQLite/PostgreSQL backup/restore, CRL/OCSP outage-and-recovery,
+  audit-repair, hash-chain integrity, issuer rollover, multi-node single-writer,
+  and dead-letter replay evidence contracts current.
 - Add synthetic checks for CRL, OCSP, ACME order/finalize, and post-deployment
   certificate health after a deployment target is selected.
-- Add issuer key rotation, intermediate rollover, PostgreSQL, multi-node
-  recovery, and migration rollback evidence as implementations change.
-- Add executable migration rollback tests when SQL migration
-  compatibility becomes release-gating.
+- Expand real multi-node PostgreSQL failover and traffic-shift evidence.
+- Add independently anchored audit-chain export evidence when a concrete SIEM
+  or release-custody integration is selected.
 
 ## P2: Inventory And Discovery
 

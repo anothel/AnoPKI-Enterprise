@@ -56,6 +56,21 @@ def expect_failure(change, expected: str) -> None:
             raise AssertionError("authorization catalog validator unexpectedly passed")
 
 
+def expect_server_failure(expected: str) -> None:
+    validator = load_validator()
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        copy_inputs(root)
+        server = root / "service/internal/httpapi/server.go"
+        server.write_text(server.read_text(encoding="utf-8") + "\n", encoding="utf-8")
+        try:
+            validator.validate(root)
+        except SystemExit as exc:
+            assert expected in str(exc), str(exc)
+        else:
+            raise AssertionError("authorization catalog validator unexpectedly passed")
+
+
 def test_current_catalog_passes() -> None:
     load_validator().validate(ROOT)
 
@@ -66,6 +81,40 @@ def test_missing_route_fails() -> None:
 
 def test_duplicate_action_fails() -> None:
     expect_failure(lambda value: value["actions"].append(dict(value["actions"][0])), "duplicate authorization action ID")
+
+
+def test_conflicting_route_fails() -> None:
+    expect_failure(
+        lambda value: value["actions"][1].__setitem__(
+            "current_route_or_operation", value["actions"][0]["current_route_or_operation"]
+        ),
+        "duplicate protected route",
+    )
+
+
+def test_unknown_route_fails() -> None:
+    expect_failure(
+        lambda value: value["actions"][0].__setitem__("current_route_or_operation", "GET /unknown"),
+        "protected route coverage mismatch",
+    )
+
+
+def test_unknown_action_fails() -> None:
+    expect_failure(
+        lambda value: value["actions"][0].__setitem__("id", "unknown.action"),
+        "authorization action mapping fixture changed",
+    )
+
+
+def test_unknown_resource_fails() -> None:
+    expect_failure(
+        lambda value: value["actions"][0].__setitem__("resource_type", "unknown"),
+        "unknown resource type",
+    )
+
+
+def test_route_fixture_hash_fails() -> None:
+    expect_server_failure("server.go changed")
 
 
 def test_duplicate_resource_fails() -> None:
@@ -112,6 +161,11 @@ def main() -> None:
     test_current_catalog_passes()
     test_missing_route_fails()
     test_duplicate_action_fails()
+    test_conflicting_route_fails()
+    test_unknown_route_fails()
+    test_unknown_action_fails()
+    test_unknown_resource_fails()
+    test_route_fixture_hash_fails()
     test_duplicate_resource_fails()
     test_public_route_as_protected_fails()
     test_current_route_as_future_fails()

@@ -244,6 +244,21 @@ type CreateCertificateProfileRequest struct {
 	AuthorityKeyIdentifier     bool
 }
 
+type CertificateProfileIssuerTransition string
+
+const (
+	CertificateProfileIssuerRollover CertificateProfileIssuerTransition = "rollover"
+	CertificateProfileIssuerRollback CertificateProfileIssuerTransition = "rollback"
+)
+
+type TransitionCertificateProfileIssuerRequest struct {
+	ProfileID       string
+	CurrentIssuerID string
+	NextIssuerID    string
+	Transition      CertificateProfileIssuerTransition
+	Reason          string
+}
+
 type CreateEnrollmentRequest struct {
 	IdentityID           string
 	IssuerID             string
@@ -296,6 +311,7 @@ type FinalizeACMEOrderRequest struct {
 const (
 	defaultACMEAuthorizationLifetime = 24 * time.Hour
 	defaultIssuanceSigningLease      = 5 * time.Minute
+	defaultCRLGenerationLease        = 5 * time.Minute
 	maxCSRSANs                       = 100
 )
 
@@ -1977,6 +1993,88 @@ func (s *Service) CreateCertificateProfile(ctx context.Context, actor string, re
 	return profile, nil
 }
 
+func (s *Service) TransitionCertificateProfileIssuer(ctx context.Context, actor string, req TransitionCertificateProfileIssuerRequest) (domain.CertificateProfile, error) {
+	if err := validateCertificateProfileIssuerTransitionRequest(req); err != nil {
+		return domain.CertificateProfile{}, err
+	}
+
+	now := s.clock.Now()
+	var updated domain.CertificateProfile
+	if err := s.repo.WithinTx(ctx, func(repo store.Repository) error {
+		profile, err := repo.GetCertificateProfile(ctx, req.ProfileID)
+		if err != nil {
+			return err
+		}
+		if profile.IssuerID != req.CurrentIssuerID {
+			return domain.ErrInvalidTransition
+		}
+
+		currentIssuer, err := repo.GetIssuer(ctx, req.CurrentIssuerID)
+		if err != nil {
+			return err
+		}
+		nextIssuer, err := repo.GetIssuer(ctx, req.NextIssuerID)
+		if err != nil {
+			return err
+		}
+		parentID, err := validateIntermediateIssuerTransition(repo, ctx, currentIssuer, nextIssuer)
+		if err != nil {
+			return err
+		}
+
+		currentUpdatedAt := profile.UpdatedAt
+		profile.IssuerID = nextIssuer.ID
+		profile.UpdatedAt = now
+		if err := repo.UpdateCertificateProfileIssuerIfCurrent(ctx, profile, currentIssuer.ID, currentUpdatedAt); err != nil {
+			return err
+		}
+
+		action := "certificate_profile.issuer_rolled_over"
+		if req.Transition == CertificateProfileIssuerRollback {
+			action = "certificate_profile.issuer_rolled_back"
+		}
+		fields := auditFields(
+			"profile_id", profile.ID,
+			"previous_issuer_id", currentIssuer.ID,
+			"next_issuer_id", nextIssuer.ID,
+			"parent_issuer_id", parentID,
+			"transition", string(req.Transition),
+			"reason", strings.TrimSpace(req.Reason),
+		)
+		if err := s.createAuditEvent(ctx, repo, actor, action, "certificate_profile", profile.ID, now, fields); err != nil {
+			return err
+		}
+		if err := s.createOutboxMessage(ctx, repo, action, now, fields); err != nil {
+			return err
+		}
+		updated = profile
+		return nil
+	}); err != nil {
+		return domain.CertificateProfile{}, err
+	}
+	return updated, nil
+}
+
+func validateIntermediateIssuerTransition(repo store.Repository, ctx context.Context, currentIssuer domain.Issuer, nextIssuer domain.Issuer) (string, error) {
+	if currentIssuer.ID == nextIssuer.ID ||
+		currentIssuer.Status != domain.IssuerActive ||
+		nextIssuer.Status != domain.IssuerActive ||
+		currentIssuer.Kind != domain.IssuerIntermediateCA ||
+		nextIssuer.Kind != domain.IssuerIntermediateCA ||
+		isBlank(currentIssuer.ParentIssuerID) ||
+		currentIssuer.ParentIssuerID != nextIssuer.ParentIssuerID {
+		return "", domain.ErrInvalidRequest
+	}
+	parent, err := repo.GetIssuer(ctx, currentIssuer.ParentIssuerID)
+	if err != nil {
+		return "", err
+	}
+	if parent.Status != domain.IssuerActive || parent.Kind != domain.IssuerRootCA || !parent.TrustAnchor {
+		return "", domain.ErrInvalidRequest
+	}
+	return parent.ID, nil
+}
+
 func (s *Service) CreateEnrollment(ctx context.Context, actor string, req CreateEnrollmentRequest) (domain.Enrollment, error) {
 	now := s.clock.Now()
 	if err := validateCreateEnrollmentRequest(req, now); err != nil {
@@ -2953,16 +3051,28 @@ func (s *Service) PublishCRL(ctx context.Context, actor string, req PublishCRLRe
 	if err != nil {
 		return domain.CRLPublication{}, err
 	}
+	claim, err := s.claimCRLGeneration(ctx, req.IssuerID, req.DistributionPoint, now)
+	if err != nil {
+		return domain.CRLPublication{}, err
+	}
+	claimCompleted := false
+	defer func() {
+		if claimCompleted {
+			return
+		}
+		_ = s.repo.WithinTx(ctx, func(repo store.Repository) error {
+			err := repo.DeleteCRLGenerationClaimIfCurrent(ctx, claim)
+			if errors.Is(err, domain.ErrCRLGenerationClaimNotFound) || errors.Is(err, domain.ErrInvalidTransition) {
+				return nil
+			}
+			return err
+		})
+	}()
+
 	revokedEntries, err := s.repo.ListRevocationsByIssuer(ctx, req.IssuerID)
 	if err != nil {
 		return domain.CRLPublication{}, err
 	}
-	existing, err := s.repo.ListCRLPublicationsByIssuer(ctx, req.IssuerID)
-	if err != nil {
-		return domain.CRLPublication{}, err
-	}
-	crlNumber := nextCRLNumber(existing, req.DistributionPoint)
-
 	revokedCertificates := make([]corecli.RevokedCertificate, 0, len(revokedEntries))
 	for _, entry := range revokedEntries {
 		revokedCertificates = append(revokedCertificates, corecli.RevokedCertificate{
@@ -2978,7 +3088,7 @@ func (s *Service) PublishCRL(ctx context.Context, actor string, req PublishCRLRe
 		return s.issuer.GenerateCRL(ctx, corecli.GenerateCRLRequest{
 			IssuerCertificatePEM: issuer.CertificatePEM,
 			IssuerKeyRef:         issuer.KeyRef,
-			CRLNumber:            crlNumber,
+			CRLNumber:            claim.CRLNumber,
 			ThisUpdate:           now,
 			NextUpdate:           req.NextUpdate,
 			RevokedCertificates:  revokedCertificates,
@@ -2995,7 +3105,7 @@ func (s *Service) PublishCRL(ctx context.Context, actor string, req PublishCRLRe
 		ID:                s.idgen.NewID(),
 		IssuerID:          req.IssuerID,
 		DistributionPoint: req.DistributionPoint,
-		CRLNumber:         crlNumber,
+		CRLNumber:         claim.CRLNumber,
 		ThisUpdate:        now,
 		NextUpdate:        req.NextUpdate,
 		Status:            domain.CRLPublicationPublished,
@@ -3016,12 +3126,54 @@ func (s *Service) PublishCRL(ctx context.Context, actor string, req PublishCRLRe
 			"crl_publication_id": publication.ID,
 			"distribution_point": publication.DistributionPoint,
 			"crl_number":         publication.CRLNumber,
+			"claim_mode":         "leased_single_writer",
 		})
-		return s.createAuditEvent(ctx, repo, actor, "crl.published", "crl_publication", publication.ID, now, fields)
+		if err := s.createAuditEvent(ctx, repo, actor, "crl.published", "crl_publication", publication.ID, now, fields); err != nil {
+			return err
+		}
+		return repo.DeleteCRLGenerationClaimIfCurrent(ctx, claim)
 	}); err != nil {
 		return domain.CRLPublication{}, err
 	}
+	claimCompleted = true
 	return publication, nil
+}
+
+func (s *Service) claimCRLGeneration(ctx context.Context, issuerID string, distributionPoint string, now time.Time) (domain.CRLGenerationClaim, error) {
+	var claim domain.CRLGenerationClaim
+	if err := s.repo.WithinTx(ctx, func(repo store.Repository) error {
+		publications, err := repo.ListCRLPublicationsByIssuer(ctx, issuerID)
+		if err != nil {
+			return err
+		}
+		nextNumber := nextCRLNumber(publications, distributionPoint)
+		current, err := repo.GetCRLGenerationClaim(ctx, issuerID, distributionPoint)
+		if errors.Is(err, domain.ErrCRLGenerationClaimNotFound) {
+			claim = domain.CRLGenerationClaim{
+				IssuerID:          issuerID,
+				DistributionPoint: distributionPoint,
+				CRLNumber:         nextNumber,
+				LeaseExpiresAt:    now.Add(defaultCRLGenerationLease),
+				CreatedAt:         now,
+				UpdatedAt:         now,
+			}
+			return repo.CreateCRLGenerationClaim(ctx, claim)
+		}
+		if err != nil {
+			return err
+		}
+		if current.LeaseExpiresAt.After(now) {
+			return domain.ErrInvalidTransition
+		}
+		claim = current
+		claim.CRLNumber = nextNumber
+		claim.LeaseExpiresAt = now.Add(defaultCRLGenerationLease)
+		claim.UpdatedAt = now
+		return repo.UpdateCRLGenerationClaimIfCurrent(ctx, claim, current)
+	}); err != nil {
+		return domain.CRLGenerationClaim{}, err
+	}
+	return claim, nil
 }
 
 func (s *Service) RespondOCSP(ctx context.Context, actor string, requestDER []byte) (OCSPResponse, error) {
@@ -3453,6 +3605,10 @@ func (s *Service) ListAuditEventsQuery(ctx context.Context, query AuditEventQuer
 		return nil, domain.ErrInvalidRequest
 	}
 	return s.repo.ListAuditEventsQuery(ctx, query)
+}
+
+func (s *Service) GetAuditIntegrity(ctx context.Context) (domain.AuditIntegrity, error) {
+	return s.repo.VerifyAuditChain(ctx)
 }
 
 func (s *Service) PruneAuditEventsBefore(ctx context.Context, actor string, before time.Time) (int, error) {
@@ -4185,6 +4341,8 @@ func auditErrorCode(err error) string {
 		return "ocsp_responder_validation_failed"
 	case errors.Is(err, domain.ErrOCSPResponseFailed):
 		return "ocsp_response_failed"
+	case errors.Is(err, domain.ErrAuditIntegrity):
+		return "audit_integrity_failed"
 	case errors.Is(err, domain.ErrStorageFailure):
 		return "storage_failure"
 	default:
@@ -4470,6 +4628,20 @@ func validateCreateIssuerRequest(req CreateIssuerRequest, productionPolicy bool)
 
 func validateSupportedSigningKeyRef(ref string) error {
 	if keyref.Class(ref) != keyref.ClassFile {
+		return domain.ErrInvalidRequest
+	}
+	return nil
+}
+
+func validateCertificateProfileIssuerTransitionRequest(req TransitionCertificateProfileIssuerRequest) error {
+	if isBlank(req.ProfileID) || isBlank(req.CurrentIssuerID) || isBlank(req.NextIssuerID) || req.CurrentIssuerID == req.NextIssuerID {
+		return domain.ErrInvalidRequest
+	}
+	if req.Transition != CertificateProfileIssuerRollover && req.Transition != CertificateProfileIssuerRollback {
+		return domain.ErrInvalidRequest
+	}
+	reason := strings.TrimSpace(req.Reason)
+	if reason == "" || len(reason) > 256 || strings.ContainsAny(reason, "\r\n") {
 		return domain.ErrInvalidRequest
 	}
 	return nil
