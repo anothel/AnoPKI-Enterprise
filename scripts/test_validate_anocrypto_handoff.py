@@ -11,7 +11,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 HANDOFF = ROOT / "docs" / "enterprise" / "handoff"
 ENTERPRISE_COMMIT = "152a657c8cc49775e8fa3bf33a3819b62c9d8e36"
-COMMUNITY_COMMIT = "96297b14d2f681b75861032d9871a41d6e689c78"
+COMMUNITY_COMMIT = "437a6ab4228e1d516b5e1f04d4d4c185aed40c29"
 
 BACKEND_OPERATIONS = {
     "csr_inspect",

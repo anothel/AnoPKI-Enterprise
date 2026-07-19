@@ -77,6 +77,9 @@ commands and known gaps before tagging.
 
 ### Changed
 
+- Optional generic request authorization now has a bounded two-second default
+  deadline with fail-closed timeout semantics; `GET /debug/vars` now requires
+  `operator` scope in API-key mode.
 - Release-evidence validation pins canonical audit-replay minimum-Go tuple
   spelling and rejects formatting drift.
 - The shared C++ OpenSSL parity harness builds without the range-loop

@@ -2,7 +2,7 @@
   "schema_version": 1,
   "source": {
     "path": "service/internal/httpapi/server.go",
-    "sha256": "46475503224e06724edb3a2951781eb404cbd16a3c9948edcc98d9836fcfdb77"
+    "sha256": "4d08231303743b8c7020134befbcda199ab41155f1f1452702b53289a98f8fbc"
   },
   "authentication_implementations": [
     "dev",
@@ -15,7 +15,7 @@
       "resource_type": "operator_inventory",
       "operation_class": "operator",
       "current_route_or_operation": "GET /debug/vars",
-      "legacy_required_scope": "read",
+      "legacy_required_scope": "operator",
       "approval_capable": false,
       "ownership": "community",
       "status": "implemented"

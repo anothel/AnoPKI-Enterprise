@@ -94,7 +94,7 @@ def test_conflicting_route_fails() -> None:
 
 def test_unknown_route_fails() -> None:
     expect_failure(
-        lambda value: value["actions"][0].__setitem__("current_route_or_operation", "GET /unknown"),
+        lambda value: value["actions"][0].__setitem__("current_route_or_operation", "GET /operator/unknown"),
         "protected route coverage mismatch",
     )
 
@@ -150,7 +150,7 @@ def test_unknown_status_fails() -> None:
 
 
 def test_legacy_scope_drift_fails() -> None:
-    expect_failure(lambda value: value["actions"][0].__setitem__("legacy_required_scope", "write"), "legacy scope does not match")
+    expect_failure(lambda value: value["actions"][0].__setitem__("legacy_required_scope", "read"), "legacy scope does not match")
 
 
 def test_authentication_claim_drift_fails() -> None:

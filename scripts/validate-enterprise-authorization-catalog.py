@@ -13,8 +13,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 SERVER_PATH = "service/internal/httpapi/server.go"
-SERVER_SHA256 = "46475503224e06724edb3a2951781eb404cbd16a3c9948edcc98d9836fcfdb77"
-CATALOG_ACTIONS_SHA256 = "e34ec8f04f945f052ceaeba31b6779dc9a18852ef028ba518a425a94408d2061"
+SERVER_SHA256 = "4d08231303743b8c7020134befbcda199ab41155f1f1452702b53289a98f8fbc"
+CATALOG_ACTIONS_SHA256 = "2fd390b0a862c51c5ce0d87b54609ccb7a7514ba6aac8dee74810bb6d54990cf"
 CATALOG_PATH = "docs/enterprise/authorization-action-catalog.json"
 TOP_FIELDS = {
     "schema_version",
@@ -149,7 +149,7 @@ def read_catalog(root: Path) -> dict[str, object]:
 
 def required_scope(route: str) -> str:
     method, path = route.split(" ", 1)
-    if path.startswith(("/api-keys", "/outbox/", "/audit-events", "/operator/")):
+    if path == "/debug/vars" or path.startswith(("/api-keys", "/outbox/", "/audit-events", "/operator/")):
         return "operator"
     if method == "POST" and path == "/certificates/expiration-scan":
         return "operator"
