@@ -9,6 +9,10 @@ commands and known gaps before tagging.
 
 ### Added
 
+- Generic authorization decision audit correlation for successful and failed
+  protected requests, with bounded decision/reason/revision references, stable
+  evaluator status, fail-closed timeout/error evidence, and no default
+  Community claim when no authorizer is configured.
 - A tamper-evident `sha256-v1` audit chain with monotonic sequence, migration
   backfill, Memory/SQLite/PostgreSQL verification, fail-closed append and
   retention, prune checkpoints, integrity API, and recovery evidence.

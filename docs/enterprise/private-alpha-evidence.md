@@ -9,7 +9,7 @@ blocked.
 
 | Field | Value |
 | --- | --- |
-| Community baseline | `437a6ab4228e1d516b5e1f04d4d4c185aed40c29` |
+| Community baseline | `acb71b8f4e9133d9c25dad1be3bca58209fba0d7` |
 | Base version | `0.1.0-alpha.0` |
 | Edition | AnoPKI Enterprise |
 | Enterprise overlay version | `unreleased` |
@@ -112,7 +112,7 @@ GitHub Actions run.
 | --- | --- |
 | Reviewed commit SHA | `PENDING` |
 | GitHub Actions run URL | `PENDING` |
-| Community baseline commit | `437a6ab4228e1d516b5e1f04d4d4c185aed40c29` |
+| Community baseline commit | `acb71b8f4e9133d9c25dad1be3bca58209fba0d7` |
 | Active OpenSSL version | `PENDING` |
 | Enterprise metadata result | `PENDING` |
 | AnoCrypto-C SDK integration result | `PENDING` |

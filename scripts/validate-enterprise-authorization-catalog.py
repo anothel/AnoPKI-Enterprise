@@ -13,7 +13,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 SERVER_PATH = "service/internal/httpapi/server.go"
-SERVER_SHA256 = "4d08231303743b8c7020134befbcda199ab41155f1f1452702b53289a98f8fbc"
+SERVER_SHA256 = "892f4afc739152414c803b9a4047d416f95c6341305874b1d93314a5220543f0"
 CATALOG_ACTIONS_SHA256 = "2fd390b0a862c51c5ce0d87b54609ccb7a7514ba6aac8dee74810bb6d54990cf"
 CATALOG_PATH = "docs/enterprise/authorization-action-catalog.json"
 TOP_FIELDS = {

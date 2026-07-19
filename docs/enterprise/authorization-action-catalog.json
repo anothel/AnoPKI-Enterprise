@@ -2,7 +2,7 @@
   "schema_version": 1,
   "source": {
     "path": "service/internal/httpapi/server.go",
-    "sha256": "4d08231303743b8c7020134befbcda199ab41155f1f1452702b53289a98f8fbc"
+    "sha256": "892f4afc739152414c803b9a4047d416f95c6341305874b1d93314a5220543f0"
   },
   "authentication_implementations": [
     "dev",
