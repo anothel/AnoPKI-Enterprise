@@ -15,6 +15,7 @@ const CryptoBackendDirection = ExperimentalCryptoBackend
 
 func EnabledFeatures() []string {
 	return []string{
+		"authorization-decision-contract",
 		"external-anocrypto-sdk-adapter-boundary",
 		"commercial-license-boundary",
 		"future-sso-rbac",

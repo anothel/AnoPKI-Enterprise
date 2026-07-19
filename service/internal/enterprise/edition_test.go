@@ -1,7 +1,10 @@
 // SPDX-License-Identifier: LicenseRef-AnoPKI-Enterprise
 package enterprise
 
-import "testing"
+import (
+	"slices"
+	"testing"
+)
 
 func TestEnterpriseEditionMetadata(t *testing.T) {
 	if EditionName != "AnoPKI Enterprise" {
@@ -9,6 +12,9 @@ func TestEnterpriseEditionMetadata(t *testing.T) {
 	}
 	if len(EnabledFeatures()) == 0 {
 		t.Fatal("expected Enterprise feature metadata")
+	}
+	if !slices.Contains(EnabledFeatures(), "authorization-decision-contract") {
+		t.Fatal("expected authorization decision contract feature metadata")
 	}
 	if OverlayVersion != "unreleased" || OverlayStatus != "private-alpha" {
 		t.Fatalf("unexpected overlay metadata: %q %q", OverlayVersion, OverlayStatus)

@@ -1,0 +1,100 @@
+{
+  "catalog": {
+    "actions": {
+      "certificate.issue": "certificate",
+      "certificate.read": "certificate",
+      "certificate.reissue": "certificate",
+      "certificate.revoke": "certificate",
+      "issuer.rotate": "issuer",
+      "operator.inventory.read": "operator_inventory"
+    },
+    "resource_types": [
+      "certificate",
+      "issuer",
+      "operator_inventory"
+    ]
+  },
+  "policy_set": {
+    "id": "enterprise-test",
+    "version": "1",
+    "policies": [
+      {
+        "id": "reader-read",
+        "version": "1",
+        "effect": "allow",
+        "subjects": [],
+        "roles": ["reader"],
+        "actions": ["certificate.read"],
+        "resource_types": ["certificate"],
+        "conditions": {},
+        "approval_requirement": "none"
+      },
+      {
+        "id": "operator-issue",
+        "version": "1",
+        "effect": "allow",
+        "subjects": [],
+        "roles": ["operator"],
+        "actions": ["certificate.issue"],
+        "resource_types": ["certificate"],
+        "conditions": {},
+        "approval_requirement": "none"
+      },
+      {
+        "id": "suspended-issuer-deny",
+        "version": "1",
+        "effect": "deny",
+        "subjects": [],
+        "roles": ["operator"],
+        "actions": ["certificate.issue"],
+        "resource_types": ["certificate"],
+        "conditions": {"subject.issuer_status": "suspended"},
+        "approval_requirement": "none"
+      },
+      {
+        "id": "certificate-revoke-single",
+        "version": "1",
+        "effect": "allow",
+        "subjects": [],
+        "roles": ["operator"],
+        "actions": ["certificate.revoke"],
+        "resource_types": ["certificate"],
+        "conditions": {},
+        "approval_requirement": "single"
+      },
+      {
+        "id": "issuer-rotate-dual",
+        "version": "1",
+        "effect": "allow",
+        "subjects": [],
+        "roles": ["operator"],
+        "actions": ["issuer.rotate"],
+        "resource_types": ["issuer"],
+        "conditions": {},
+        "approval_requirement": "dual"
+      },
+      {
+        "id": "team-bound-reissue",
+        "version": "1",
+        "effect": "allow",
+        "subjects": [],
+        "roles": ["operator"],
+        "actions": ["certificate.reissue"],
+        "resource_types": ["certificate"],
+        "conditions": {"subject.team": "pki"},
+        "approval_requirement": "none"
+      },
+      {
+        "id": "support-inventory",
+        "version": "1",
+        "effect": "allow",
+        "subjects": [],
+        "roles": ["support"],
+        "actions": ["operator.inventory.read"],
+        "resource_types": ["operator_inventory"],
+        "conditions": {},
+        "approval_requirement": "none"
+      }
+    ]
+  }
+}

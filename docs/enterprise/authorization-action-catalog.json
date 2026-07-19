@@ -1,0 +1,602 @@
+{
+  "schema_version": 1,
+  "source": {
+    "path": "service/internal/httpapi/server.go",
+    "sha256": "ece1c85d270e53c4fa1a677c647e19295fb54cb05f274c108508299bee963390"
+  },
+  "authentication_implementations": [
+    "dev",
+    "api_key"
+  ],
+  "approval_workflow_status": "not_implemented",
+  "actions": [
+    {
+      "id": "diagnostics.read",
+      "resource_type": "operator_inventory",
+      "operation_class": "operator",
+      "current_route_or_operation": "GET /debug/vars",
+      "legacy_required_scope": "read",
+      "approval_capable": false,
+      "ownership": "community",
+      "status": "implemented"
+    },
+    {
+      "id": "identity.create",
+      "resource_type": "identity",
+      "operation_class": "write",
+      "current_route_or_operation": "POST /identities",
+      "legacy_required_scope": "write",
+      "approval_capable": true,
+      "ownership": "community",
+      "status": "implemented"
+    },
+    {
+      "id": "identity.list",
+      "resource_type": "identity",
+      "operation_class": "read",
+      "current_route_or_operation": "GET /identities",
+      "legacy_required_scope": "read",
+      "approval_capable": false,
+      "ownership": "community",
+      "status": "implemented"
+    },
+    {
+      "id": "identity.read",
+      "resource_type": "identity",
+      "operation_class": "read",
+      "current_route_or_operation": "GET /identities/{id}",
+      "legacy_required_scope": "read",
+      "approval_capable": false,
+      "ownership": "community",
+      "status": "implemented"
+    },
+    {
+      "id": "issuer.create",
+      "resource_type": "issuer",
+      "operation_class": "write",
+      "current_route_or_operation": "POST /issuers",
+      "legacy_required_scope": "write",
+      "approval_capable": true,
+      "ownership": "community",
+      "status": "implemented"
+    },
+    {
+      "id": "issuer.chain.read",
+      "resource_type": "issuer",
+      "operation_class": "read",
+      "current_route_or_operation": "GET /issuers/{id}/chain",
+      "legacy_required_scope": "read",
+      "approval_capable": false,
+      "ownership": "community",
+      "status": "implemented"
+    },
+    {
+      "id": "ocsp_responder.create",
+      "resource_type": "ocsp_responder",
+      "operation_class": "write",
+      "current_route_or_operation": "POST /issuers/{id}/ocsp-responders",
+      "legacy_required_scope": "write",
+      "approval_capable": true,
+      "ownership": "community",
+      "status": "implemented"
+    },
+    {
+      "id": "ocsp_responder.list",
+      "resource_type": "ocsp_responder",
+      "operation_class": "read",
+      "current_route_or_operation": "GET /issuers/{id}/ocsp-responders",
+      "legacy_required_scope": "read",
+      "approval_capable": false,
+      "ownership": "community",
+      "status": "implemented"
+    },
+    {
+      "id": "ocsp_responder.rotate",
+      "resource_type": "ocsp_responder",
+      "operation_class": "write",
+      "current_route_or_operation": "POST /issuers/{id}/ocsp-responders/rotate",
+      "legacy_required_scope": "write",
+      "approval_capable": true,
+      "ownership": "community",
+      "status": "implemented"
+    },
+    {
+      "id": "ocsp_responder.disable",
+      "resource_type": "ocsp_responder",
+      "operation_class": "write",
+      "current_route_or_operation": "POST /issuers/{id}/ocsp-responders/{responderID}/disable",
+      "legacy_required_scope": "write",
+      "approval_capable": true,
+      "ownership": "community",
+      "status": "implemented"
+    },
+    {
+      "id": "notification_endpoint.create",
+      "resource_type": "notification_endpoint",
+      "operation_class": "write",
+      "current_route_or_operation": "POST /notification-endpoints",
+      "legacy_required_scope": "write",
+      "approval_capable": true,
+      "ownership": "community",
+      "status": "implemented"
+    },
+    {
+      "id": "notification_endpoint.list",
+      "resource_type": "notification_endpoint",
+      "operation_class": "read",
+      "current_route_or_operation": "GET /notification-endpoints",
+      "legacy_required_scope": "read",
+      "approval_capable": false,
+      "ownership": "community",
+      "status": "implemented"
+    },
+    {
+      "id": "notification_endpoint.disable",
+      "resource_type": "notification_endpoint",
+      "operation_class": "write",
+      "current_route_or_operation": "POST /notification-endpoints/{id}/disable",
+      "legacy_required_scope": "write",
+      "approval_capable": true,
+      "ownership": "community",
+      "status": "implemented"
+    },
+    {
+      "id": "outbox.list",
+      "resource_type": "outbox",
+      "operation_class": "operator",
+      "current_route_or_operation": "GET /outbox/messages",
+      "legacy_required_scope": "operator",
+      "approval_capable": false,
+      "ownership": "community",
+      "status": "implemented"
+    },
+    {
+      "id": "outbox.dead_letter.replay",
+      "resource_type": "outbox",
+      "operation_class": "operator",
+      "current_route_or_operation": "POST /outbox/messages/dead-letter/replay",
+      "legacy_required_scope": "operator",
+      "approval_capable": true,
+      "ownership": "community",
+      "status": "implemented"
+    },
+    {
+      "id": "outbox.retry",
+      "resource_type": "outbox",
+      "operation_class": "operator",
+      "current_route_or_operation": "POST /outbox/messages/{id}/retry",
+      "legacy_required_scope": "operator",
+      "approval_capable": true,
+      "ownership": "community",
+      "status": "implemented"
+    },
+    {
+      "id": "operator_inventory.certificates.read",
+      "resource_type": "operator_inventory",
+      "operation_class": "operator",
+      "current_route_or_operation": "GET /operator/certificate-inventory",
+      "legacy_required_scope": "operator",
+      "approval_capable": false,
+      "ownership": "community",
+      "status": "implemented"
+    },
+    {
+      "id": "operator_inventory.expiry_slo.read",
+      "resource_type": "operator_inventory",
+      "operation_class": "operator",
+      "current_route_or_operation": "GET /operator/expiry-slo",
+      "legacy_required_scope": "operator",
+      "approval_capable": false,
+      "ownership": "community",
+      "status": "implemented"
+    },
+    {
+      "id": "api_key.create",
+      "resource_type": "api_key",
+      "operation_class": "operator",
+      "current_route_or_operation": "POST /api-keys",
+      "legacy_required_scope": "operator",
+      "approval_capable": true,
+      "ownership": "community",
+      "status": "implemented"
+    },
+    {
+      "id": "api_key.list",
+      "resource_type": "api_key",
+      "operation_class": "operator",
+      "current_route_or_operation": "GET /api-keys",
+      "legacy_required_scope": "operator",
+      "approval_capable": false,
+      "ownership": "community",
+      "status": "implemented"
+    },
+    {
+      "id": "api_key.rotate",
+      "resource_type": "api_key",
+      "operation_class": "operator",
+      "current_route_or_operation": "POST /api-keys/{id}/rotate",
+      "legacy_required_scope": "operator",
+      "approval_capable": true,
+      "ownership": "community",
+      "status": "implemented"
+    },
+    {
+      "id": "api_key.disable",
+      "resource_type": "api_key",
+      "operation_class": "operator",
+      "current_route_or_operation": "POST /api-keys/{id}/disable",
+      "legacy_required_scope": "operator",
+      "approval_capable": true,
+      "ownership": "community",
+      "status": "implemented"
+    },
+    {
+      "id": "acme_account.create",
+      "resource_type": "acme_account",
+      "operation_class": "write",
+      "current_route_or_operation": "POST /acme/accounts",
+      "legacy_required_scope": "write",
+      "approval_capable": true,
+      "ownership": "community",
+      "status": "implemented"
+    },
+    {
+      "id": "acme_account.list",
+      "resource_type": "acme_account",
+      "operation_class": "read",
+      "current_route_or_operation": "GET /acme/accounts",
+      "legacy_required_scope": "read",
+      "approval_capable": false,
+      "ownership": "community",
+      "status": "implemented"
+    },
+    {
+      "id": "acme_order.create",
+      "resource_type": "acme_order",
+      "operation_class": "write",
+      "current_route_or_operation": "POST /acme/orders",
+      "legacy_required_scope": "write",
+      "approval_capable": true,
+      "ownership": "community",
+      "status": "implemented"
+    },
+    {
+      "id": "acme_order.read",
+      "resource_type": "acme_order",
+      "operation_class": "read",
+      "current_route_or_operation": "GET /acme/orders/{id}",
+      "legacy_required_scope": "read",
+      "approval_capable": false,
+      "ownership": "community",
+      "status": "implemented"
+    },
+    {
+      "id": "acme_order.authorizations.list",
+      "resource_type": "acme_authorization",
+      "operation_class": "read",
+      "current_route_or_operation": "GET /acme/orders/{id}/authorizations",
+      "legacy_required_scope": "read",
+      "approval_capable": false,
+      "ownership": "community",
+      "status": "implemented"
+    },
+    {
+      "id": "acme_order.finalize",
+      "resource_type": "acme_order",
+      "operation_class": "write",
+      "current_route_or_operation": "POST /acme/orders/{id}/finalize",
+      "legacy_required_scope": "write",
+      "approval_capable": true,
+      "ownership": "community",
+      "status": "implemented"
+    },
+    {
+      "id": "acme_authorization.challenges.list",
+      "resource_type": "acme_challenge",
+      "operation_class": "read",
+      "current_route_or_operation": "GET /acme/authorizations/{id}/challenges",
+      "legacy_required_scope": "read",
+      "approval_capable": false,
+      "ownership": "community",
+      "status": "implemented"
+    },
+    {
+      "id": "acme_challenge.complete",
+      "resource_type": "acme_challenge",
+      "operation_class": "write",
+      "current_route_or_operation": "POST /acme/challenges/{id}/complete",
+      "legacy_required_scope": "write",
+      "approval_capable": true,
+      "ownership": "community",
+      "status": "implemented"
+    },
+    {
+      "id": "certificate_profile.create",
+      "resource_type": "certificate_profile",
+      "operation_class": "write",
+      "current_route_or_operation": "POST /certificate-profiles",
+      "legacy_required_scope": "write",
+      "approval_capable": true,
+      "ownership": "community",
+      "status": "implemented"
+    },
+    {
+      "id": "certificate_profile.list",
+      "resource_type": "certificate_profile",
+      "operation_class": "read",
+      "current_route_or_operation": "GET /certificate-profiles",
+      "legacy_required_scope": "read",
+      "approval_capable": false,
+      "ownership": "community",
+      "status": "implemented"
+    },
+    {
+      "id": "certificate_profile.read",
+      "resource_type": "certificate_profile",
+      "operation_class": "read",
+      "current_route_or_operation": "GET /certificate-profiles/{id}",
+      "legacy_required_scope": "read",
+      "approval_capable": false,
+      "ownership": "community",
+      "status": "implemented"
+    },
+    {
+      "id": "enrollment.create",
+      "resource_type": "enrollment",
+      "operation_class": "write",
+      "current_route_or_operation": "POST /enrollments",
+      "legacy_required_scope": "write",
+      "approval_capable": true,
+      "ownership": "community",
+      "status": "implemented"
+    },
+    {
+      "id": "enrollment.list",
+      "resource_type": "enrollment",
+      "operation_class": "read",
+      "current_route_or_operation": "GET /enrollments",
+      "legacy_required_scope": "read",
+      "approval_capable": false,
+      "ownership": "community",
+      "status": "implemented"
+    },
+    {
+      "id": "enrollment.read",
+      "resource_type": "enrollment",
+      "operation_class": "read",
+      "current_route_or_operation": "GET /enrollments/{id}",
+      "legacy_required_scope": "read",
+      "approval_capable": false,
+      "ownership": "community",
+      "status": "implemented"
+    },
+    {
+      "id": "enrollment.approve",
+      "resource_type": "enrollment",
+      "operation_class": "write",
+      "current_route_or_operation": "POST /enrollments/{id}/approve",
+      "legacy_required_scope": "write",
+      "approval_capable": true,
+      "ownership": "community",
+      "status": "implemented"
+    },
+    {
+      "id": "enrollment.reject",
+      "resource_type": "enrollment",
+      "operation_class": "write",
+      "current_route_or_operation": "POST /enrollments/{id}/reject",
+      "legacy_required_scope": "write",
+      "approval_capable": true,
+      "ownership": "community",
+      "status": "implemented"
+    },
+    {
+      "id": "certificate.issue",
+      "resource_type": "certificate",
+      "operation_class": "write",
+      "current_route_or_operation": "POST /certificates",
+      "legacy_required_scope": "write",
+      "approval_capable": true,
+      "ownership": "community",
+      "status": "implemented"
+    },
+    {
+      "id": "certificate.list",
+      "resource_type": "certificate",
+      "operation_class": "read",
+      "current_route_or_operation": "GET /certificates",
+      "legacy_required_scope": "read",
+      "approval_capable": false,
+      "ownership": "community",
+      "status": "implemented"
+    },
+    {
+      "id": "certificate.expiration_scan",
+      "resource_type": "certificate",
+      "operation_class": "operator",
+      "current_route_or_operation": "POST /certificates/expiration-scan",
+      "legacy_required_scope": "operator",
+      "approval_capable": true,
+      "ownership": "community",
+      "status": "implemented"
+    },
+    {
+      "id": "certificate.read",
+      "resource_type": "certificate",
+      "operation_class": "read",
+      "current_route_or_operation": "GET /certificates/{id}",
+      "legacy_required_scope": "read",
+      "approval_capable": false,
+      "ownership": "community",
+      "status": "implemented"
+    },
+    {
+      "id": "revocation.create",
+      "resource_type": "revocation",
+      "operation_class": "write",
+      "current_route_or_operation": "POST /certificates/{id}/revoke",
+      "legacy_required_scope": "write",
+      "approval_capable": true,
+      "ownership": "community",
+      "status": "implemented"
+    },
+    {
+      "id": "certificate.suspend",
+      "resource_type": "certificate",
+      "operation_class": "write",
+      "current_route_or_operation": "POST /certificates/{id}/suspend",
+      "legacy_required_scope": "write",
+      "approval_capable": true,
+      "ownership": "community",
+      "status": "implemented"
+    },
+    {
+      "id": "certificate.resume",
+      "resource_type": "certificate",
+      "operation_class": "write",
+      "current_route_or_operation": "POST /certificates/{id}/resume",
+      "legacy_required_scope": "write",
+      "approval_capable": true,
+      "ownership": "community",
+      "status": "implemented"
+    },
+    {
+      "id": "certificate.renew",
+      "resource_type": "certificate",
+      "operation_class": "write",
+      "current_route_or_operation": "POST /certificates/{id}/renew",
+      "legacy_required_scope": "write",
+      "approval_capable": true,
+      "ownership": "community",
+      "status": "implemented"
+    },
+    {
+      "id": "certificate.reissue",
+      "resource_type": "certificate",
+      "operation_class": "write",
+      "current_route_or_operation": "POST /certificates/{id}/reissue",
+      "legacy_required_scope": "write",
+      "approval_capable": true,
+      "ownership": "community",
+      "status": "implemented"
+    },
+    {
+      "id": "crl.publish",
+      "resource_type": "crl",
+      "operation_class": "write",
+      "current_route_or_operation": "POST /crls",
+      "legacy_required_scope": "write",
+      "approval_capable": true,
+      "ownership": "community",
+      "status": "implemented"
+    },
+    {
+      "id": "audit_event.list",
+      "resource_type": "audit_event",
+      "operation_class": "operator",
+      "current_route_or_operation": "GET /audit-events",
+      "legacy_required_scope": "operator",
+      "approval_capable": false,
+      "ownership": "community",
+      "status": "implemented"
+    },
+    {
+      "id": "audit_event.retention.prune",
+      "resource_type": "audit_event",
+      "operation_class": "operator",
+      "current_route_or_operation": "POST /audit-events/retention/prune",
+      "legacy_required_scope": "operator",
+      "approval_capable": true,
+      "ownership": "community",
+      "status": "implemented"
+    },
+    {
+      "id": "audit_event.issuance.repair",
+      "resource_type": "audit_event",
+      "operation_class": "operator",
+      "current_route_or_operation": "POST /audit-events/repair/issuance",
+      "legacy_required_scope": "operator",
+      "approval_capable": true,
+      "ownership": "community",
+      "status": "implemented"
+    },
+    {
+      "id": "trust_anchor.list",
+      "resource_type": "trust_anchor",
+      "operation_class": "read",
+      "current_route_or_operation": "GET /trust/anchors",
+      "legacy_required_scope": "read",
+      "approval_capable": false,
+      "ownership": "community",
+      "status": "implemented"
+    },
+    {
+      "id": "policy_configuration.read",
+      "resource_type": "policy_configuration",
+      "operation_class": "operator",
+      "current_route_or_operation": "future: Enterprise policy configuration read",
+      "legacy_required_scope": "operator",
+      "approval_capable": false,
+      "ownership": "enterprise",
+      "status": "future"
+    },
+    {
+      "id": "policy_configuration.write",
+      "resource_type": "policy_configuration",
+      "operation_class": "operator",
+      "current_route_or_operation": "future: Enterprise policy configuration write",
+      "legacy_required_scope": "operator",
+      "approval_capable": true,
+      "ownership": "enterprise",
+      "status": "future"
+    }
+  ],
+  "resource_types": [
+    "identity",
+    "issuer",
+    "certificate",
+    "revocation",
+    "crl",
+    "ocsp_responder",
+    "ocsp_response",
+    "notification_endpoint",
+    "outbox",
+    "audit_event",
+    "api_key",
+    "operator_inventory",
+    "acme_account",
+    "acme_order",
+    "acme_authorization",
+    "acme_challenge",
+    "certificate_profile",
+    "enrollment",
+    "trust_anchor",
+    "policy_configuration"
+  ],
+  "legacy_scope_mapping": {
+    "read": ["read"],
+    "write": ["read", "write"],
+    "operator": ["read", "write", "operator"]
+  },
+  "public_routes": [
+    "GET /acme/directory",
+    "HEAD /acme/new-nonce",
+    "GET /acme/new-nonce",
+    "POST /acme/new-account",
+    "POST /acme/account/{id}",
+    "POST /acme/new-order",
+    "POST /acme/key-change",
+    "GET /acme/order/{id}",
+    "POST /acme/order/{id}",
+    "GET /acme/authz/{id}",
+    "POST /acme/authz/{id}",
+    "POST /acme/challenge/{id}",
+    "POST /acme/order/{id}/finalize",
+    "POST /acme/revoke-cert",
+    "GET /acme/cert/{id}",
+    "POST /acme/cert/{id}",
+    "GET /crls/{id}",
+    "GET /issuers/{id}/crl",
+    "POST /ocsp"
+  ]
+}
