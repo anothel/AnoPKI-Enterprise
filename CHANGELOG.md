@@ -9,6 +9,10 @@ commands and known gaps before tagging.
 
 ### Added
 
+- Exact-commit generic authorization boundary evidence covering
+  authentication/scope ordering, public-route exclusion, bounded timeout,
+  fail-closed outcomes, canonical-route redaction, decision audit correlation,
+  focused race execution, and strict release artifact validation.
 - Generic authorization decision audit correlation for successful and failed
   protected requests, with bounded decision/reason/revision references, stable
   evaluator status, fail-closed timeout/error evidence, and no default

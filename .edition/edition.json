@@ -2,7 +2,7 @@
   "project": "AnoPKI",
   "edition": "AnoPKI Enterprise",
   "repository_slug": "anopki-enterprise",
-  "community_baseline_commit": "acb71b8f4e9133d9c25dad1be3bca58209fba0d7",
+  "community_baseline_commit": "ab9d76597df93ac1ac8b7938f4d25ba64f59f8dc",
   "base_version": "0.1.0-alpha.0",
   "enterprise_overlay_version": "unreleased",
   "enterprise_overlay_status": "private-alpha",

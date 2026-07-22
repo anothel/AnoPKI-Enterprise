@@ -6,13 +6,15 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import subprocess
 from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
-BASELINE_COMMIT = "acb71b8f4e9133d9c25dad1be3bca58209fba0d7"
-PREVIOUS_BASELINE_COMMIT = "437a6ab4228e1d516b5e1f04d4d4c185aed40c29"
+BASELINE_COMMIT = "ab9d76597df93ac1ac8b7938f4d25ba64f59f8dc"
+PREVIOUS_BASELINE_COMMIT = "acb71b8f4e9133d9c25dad1be3bca58209fba0d7"
+COMMIT_RE = re.compile(r"^[0-9a-f]{40}$")
 
 COMMUNITY_ONLY_FILES = {
     "docs-pack/README.md",
@@ -48,6 +50,8 @@ MIXED_REQUIRED_TEXT = {
         "anopki-audit-replay-verification",
         "python scripts/verify-audit-integrity-drill.py",
         "anopki-audit-integrity-verification",
+        "python scripts/verify-authorization-boundary.py",
+        "anopki-authorization-boundary-verification",
         "python scripts/verify-issuer-rollover-drill.py",
         "anopki-issuer-rollover-verification",
         "python scripts/verify-multi-node-reliability.py",
@@ -67,6 +71,7 @@ MIXED_REQUIRED_TEXT = {
         "anopki-status-outage-verification.tar.gz",
         "anopki-audit-replay-verification.tar.gz",
         "anopki-audit-integrity-verification.tar.gz",
+        "anopki-authorization-boundary-verification.tar.gz",
         "anopki-issuer-rollover-verification.tar.gz",
         "anopki-multi-node-verification.tar.gz",
         "anopki-postgres-recovery-verification.tar.gz",
@@ -82,6 +87,7 @@ MIXED_REQUIRED_TEXT = {
         "Enterprise Go release verification runner",
         "tamper-evident `sha256-v1` audit chain",
         "PostgreSQL backup/restore verification",
+        "authorization boundary evidence",
     ),
     "CMakeLists.txt": (
         'set(ANOPKI_PRODUCT_PROFILE "enterprise-openssl"',
@@ -106,6 +112,7 @@ MIXED_REQUIRED_TEXT = {
         "verify-status-outage-drill.py",
         "verify-audit-replay-drill.py",
         "verify-audit-integrity-drill.py",
+        "verify-authorization-boundary.py",
         "verify-issuer-rollover-drill.py",
         "verify-multi-node-reliability.py",
         "verify-postgres-recovery-drill.py",
@@ -116,6 +123,7 @@ MIXED_REQUIRED_TEXT = {
         "AnoCrypto-C",
         "verify-go-release.py --profile full",
         "Keep SQLite/PostgreSQL backup/restore, CRL/OCSP outage-and-recovery",
+        "generic authorization boundary",
     ),
     "docs/adr/0006-crypto-backend-direction-anocrypto.md": (
         "Community owns the backend-neutral core contract and OpenSSL adapter",
@@ -152,6 +160,7 @@ MIXED_REQUIRED_TEXT = {
         "anopki-status-outage-verification.tar.gz",
         "anopki-audit-replay-verification.tar.gz",
         "anopki-audit-integrity-verification.tar.gz",
+        "anopki-authorization-boundary-verification.tar.gz",
         "anopki-issuer-rollover-verification.tar.gz",
         "anopki-multi-node-verification.tar.gz",
         "anopki-postgres-recovery-verification.tar.gz",
@@ -171,6 +180,7 @@ MIXED_REQUIRED_TEXT = {
         "verify-status-outage-drill.py",
         "verify-audit-replay-drill.py",
         "verify-audit-integrity-drill.py",
+        "verify-authorization-boundary.py",
         "verify-issuer-rollover-drill.py",
         "verify-multi-node-reliability.py",
         "verify-postgres-recovery-drill.py",
@@ -196,6 +206,9 @@ MIXED_REQUIRED_TEXT = {
         "test_missing_status_outage_evidence_fails",
         "test_missing_audit_replay_evidence_fails",
         "test_missing_audit_integrity_evidence_fails",
+        "test_missing_authorization_boundary_evidence_fails",
+        "test_authorization_boundary_placeholder_commit_fails",
+        "test_authorization_boundary_stale_baseline_fails",
         "test_missing_issuer_rollover_evidence_fails",
         "test_missing_multi_node_evidence_fails",
         "test_missing_postgres_recovery_evidence_fails",
@@ -210,6 +223,7 @@ MIXED_REQUIRED_TEXT = {
         "require_status_outage_evidence_archive",
         "require_audit_replay_evidence_archive",
         "require_audit_integrity_evidence_archive",
+        "require_authorization_boundary_evidence_archive",
         "require_issuer_rollover_evidence_archive",
         "require_multi_node_evidence_archive",
         "require_postgres_recovery_evidence_archive",
@@ -221,6 +235,7 @@ MIXED_REQUIRED_TEXT = {
         "test_missing_release_status_outage_evidence_fails",
         "test_missing_release_audit_replay_evidence_fails",
         "test_missing_release_audit_integrity_evidence_fails",
+        "test_missing_release_authorization_boundary_evidence_fails",
         "test_missing_release_issuer_rollover_evidence_fails",
         "test_missing_release_multi_node_evidence_fails",
         "test_missing_release_postgres_recovery_evidence_fails",
@@ -234,11 +249,15 @@ MIXED_REQUIRED_TEXT = {
         "REQUIRED_STATUS_OUTAGE_RUNNER_TEXT",
         "REQUIRED_AUDIT_REPLAY_RUNNER_TEXT",
         "REQUIRED_AUDIT_INTEGRITY_RUNNER_TEXT",
+        "REQUIRED_AUTHORIZATION_BOUNDARY_RUNNER_TEXT",
         "REQUIRED_ISSUER_ROLLOVER_RUNNER_TEXT",
         "REQUIRED_MULTI_NODE_RUNNER_TEXT",
         "REQUIRED_POSTGRES_RECOVERY_RUNNER_TEXT",
     ),
-    "scripts/test_validate_version_metadata.py": ("Enterprise edition metadata drift",),
+    "scripts/test_validate_version_metadata.py": (
+        "Enterprise edition metadata drift",
+        "test_non_exact_or_stale_community_baseline_fails",
+    ),
     "scripts/validate-version-metadata.py": (BASELINE_COMMIT, "Enterprise edition metadata drift"),
     "scripts/test_verify_go_release.py": (
         "AnoPKI Enterprise",
@@ -265,6 +284,7 @@ MIXED_REQUIRED_TEXT = {
         "verify-status-outage-drill.py",
         "verify-audit-replay-drill.py",
         "verify-audit-integrity-drill.py",
+        "verify-authorization-boundary.py",
         "verify-issuer-rollover-drill.py",
         "verify-multi-node-reliability.py",
         "test_verify_postgres_recovery_drill.py",
@@ -277,6 +297,7 @@ MIXED_REQUIRED_TEXT = {
         "verify-status-outage-drill.py",
         "verify-audit-replay-drill.py",
         "verify-audit-integrity-drill.py",
+        "verify-authorization-boundary.py",
         "verify-issuer-rollover-drill.py",
         "verify-multi-node-reliability.py",
         "test_verify_postgres_recovery_drill.py",
@@ -319,6 +340,10 @@ def exact_shared(path: str) -> bool:
 
 def validate(root: Path) -> None:
     root = root.resolve()
+    if not COMMIT_RE.fullmatch(BASELINE_COMMIT) or not COMMIT_RE.fullmatch(PREVIOUS_BASELINE_COMMIT):
+        raise SystemExit("Community baselines must be exact lowercase 40-character SHAs")
+    if BASELINE_COMMIT == PREVIOUS_BASELINE_COMMIT:
+        raise SystemExit("Community baseline must not reuse the stale previous baseline")
     edition = json.loads((root / ".edition/edition.json").read_text(encoding="utf-8"))
     if edition.get("community_baseline_commit") != BASELINE_COMMIT:
         raise SystemExit("Enterprise edition metadata does not match synchronized Community baseline")

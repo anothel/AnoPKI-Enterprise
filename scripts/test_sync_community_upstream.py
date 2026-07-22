@@ -8,8 +8,8 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
-TARGET = "acb71b8f4e9133d9c25dad1be3bca58209fba0d7"
-PREVIOUS = "437a6ab4228e1d516b5e1f04d4d4c185aed40c29"
+TARGET = "ab9d76597df93ac1ac8b7938f4d25ba64f59f8dc"
+PREVIOUS = "acb71b8f4e9133d9c25dad1be3bca58209fba0d7"
 
 
 def main() -> None:
@@ -40,6 +40,8 @@ def main() -> None:
         "TargetCommit",
         TARGET,
         PREVIOUS,
+        "exact lowercase 40-character SHA",
+        "must not reuse the stale previous baseline",
         'Invoke-Git @("cat-file", "-e"',
         'Invoke-Git @("diff", "--name-status"',
         "validate-community-baseline.py",
@@ -51,6 +53,8 @@ def main() -> None:
 
     required_validator_text = [
         f'BASELINE_COMMIT = "{TARGET}"',
+        'COMMIT_RE = re.compile(r"^[0-9a-f]{40}$")',
+        "must not reuse the stale previous baseline",
         "COMMUNITY_ONLY_FILES",
         "MIXED_REQUIRED_TEXT",
         "stale files deleted by Community target",

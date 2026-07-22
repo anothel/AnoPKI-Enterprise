@@ -123,7 +123,7 @@ def test_full_profile_passes() -> None:
         assert payload["edition"] == "enterprise"
         assert payload["product_profile"] == "enterprise-openssl"
         assert payload["enterprise_commit"] == "0123456789abcdef0123456789abcdef01234567"
-        assert payload["community_baseline_commit"] == "acb71b8f4e9133d9c25dad1be3bca58209fba0d7"
+        assert payload["community_baseline_commit"] == "ab9d76597df93ac1ac8b7938f4d25ba64f59f8dc"
         assert payload["fallback_enabled"] is False
         assert payload["fallback_used"] is False
         assert payload["commercial_release_authorized"] is False

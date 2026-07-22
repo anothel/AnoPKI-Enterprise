@@ -9,7 +9,7 @@ blocked.
 
 | Field | Value |
 | --- | --- |
-| Community baseline | `acb71b8f4e9133d9c25dad1be3bca58209fba0d7` |
+| Community baseline | `ab9d76597df93ac1ac8b7938f4d25ba64f59f8dc` |
 | Base version | `0.1.0-alpha.0` |
 | Edition | AnoPKI Enterprise |
 | Enterprise overlay version | `unreleased` |
@@ -32,6 +32,17 @@ The current tree contains the shared Community/OpenSSL tree synchronized to the
 reviewed baseline above. The hosted attempt recorded below remains historical
 evidence for its exact older Enterprise commit and Community baseline. Durable
 hosted CI evidence remains required before release review.
+
+## Authorization Boundary Limitations
+
+The synchronized exact-commit evidence preserves these known limitations for
+E4-02B or a later enhanced-audit task:
+
+- a successful read handler that creates no lifecycle audit event has no
+  standalone authorization audit record,
+- failure-audit persistence failure never converts a denied request to allow,
+- evaluator timeout remains cooperative context cancellation, and
+- the Enterprise authorization engine remains unconnected.
 
 ## AnoCrypto-C Integration Status
 
@@ -112,7 +123,7 @@ GitHub Actions run.
 | --- | --- |
 | Reviewed commit SHA | `PENDING` |
 | GitHub Actions run URL | `PENDING` |
-| Community baseline commit | `acb71b8f4e9133d9c25dad1be3bca58209fba0d7` |
+| Community baseline commit | `ab9d76597df93ac1ac8b7938f4d25ba64f59f8dc` |
 | Active OpenSSL version | `PENDING` |
 | Enterprise metadata result | `PENDING` |
 | AnoCrypto-C SDK integration result | `PENDING` |

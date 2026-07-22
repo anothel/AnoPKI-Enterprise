@@ -5,7 +5,7 @@ OpenSSL adapter, Go service, public contracts, common tests, and validators from
 one exact target tree. Git histories remain unrelated and are never joined.
 
 Current synchronized baseline:
-`acb71b8f4e9133d9c25dad1be3bca58209fba0d7`.
+`ab9d76597df93ac1ac8b7938f4d25ba64f59f8dc`.
 
 ## Remote And Target Verification
 
@@ -14,7 +14,7 @@ Use a remote named `community`:
 ```powershell
 git remote add community <community-url-or-local-path>
 git fetch community
-git cat-file -e "acb71b8f4e9133d9c25dad1be3bca58209fba0d7^{commit}"
+git cat-file -e "ab9d76597df93ac1ac8b7938f4d25ba64f59f8dc^{commit}"
 ```
 
 For local sibling repositories:
@@ -33,15 +33,15 @@ Recalculate the full diff from the previous baseline to the pinned target:
 
 ```powershell
 git diff --name-status `
-  437a6ab4228e1d516b5e1f04d4d4c185aed40c29 `
-  acb71b8f4e9133d9c25dad1be3bca58209fba0d7
+  acb71b8f4e9133d9c25dad1be3bca58209fba0d7 `
+  ab9d76597df93ac1ac8b7938f4d25ba64f59f8dc
 ```
 
 Extract allow-listed shared paths from the exact target tree. Do not use branch
 HEAD as the source:
 
 ```powershell
-$Target = "acb71b8f4e9133d9c25dad1be3bca58209fba0d7"
+$Target = "ab9d76597df93ac1ac8b7938f4d25ba64f59f8dc"
 git restore --source=$Target --worktree -- <allow-listed-shared-paths>
 ```
 

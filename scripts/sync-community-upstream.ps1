@@ -3,8 +3,8 @@ param(
     [string]$CommunityRemote = "community",
     [string]$CommunityBranch = "main",
     [string]$CommunityUrl = "",
-    [string]$TargetCommit = "acb71b8f4e9133d9c25dad1be3bca58209fba0d7",
-    [string]$PreviousBaseline = "437a6ab4228e1d516b5e1f04d4d4c185aed40c29",
+    [string]$TargetCommit = "ab9d76597df93ac1ac8b7938f4d25ba64f59f8dc",
+    [string]$PreviousBaseline = "acb71b8f4e9133d9c25dad1be3bca58209fba0d7",
     [switch]$ConfigureRemote,
     [switch]$Fetch,
     [switch]$Verify
@@ -26,6 +26,16 @@ function Invoke-Git {
 
 if ($null -eq (Get-Command git -ErrorAction SilentlyContinue)) {
     throw "git executable not found"
+}
+
+if ($TargetCommit -cnotmatch '^[0-9a-f]{40}$') {
+    throw "TargetCommit must be an exact lowercase 40-character SHA"
+}
+if ($PreviousBaseline -cnotmatch '^[0-9a-f]{40}$') {
+    throw "PreviousBaseline must be an exact lowercase 40-character SHA"
+}
+if ($TargetCommit -ceq $PreviousBaseline) {
+    throw "TargetCommit must not reuse the stale previous baseline"
 }
 
 Push-Location -LiteralPath $RepoRoot

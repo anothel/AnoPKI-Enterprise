@@ -101,8 +101,9 @@ Goal: raise operator accountability and recovery confidence.
 - Keep policy-decision reasons and redacted validation-evidence references
   stable across enrollment, issuance, retry, and audit repair.
 - Keep SQLite/PostgreSQL backup/restore, CRL/OCSP outage-and-recovery,
-  audit-repair, hash-chain integrity, issuer rollover, multi-node single-writer,
-  and dead-letter replay evidence contracts current.
+  audit-repair, hash-chain integrity, generic authorization boundary, issuer
+  rollover, multi-node single-writer, and dead-letter replay evidence contracts
+  current.
 - Add synthetic checks for CRL, OCSP, ACME order/finalize, and post-deployment
   certificate health after a deployment target is selected.
 - Expand real multi-node PostgreSQL failover and traffic-shift evidence.
