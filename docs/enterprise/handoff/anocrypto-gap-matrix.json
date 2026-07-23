@@ -1,83 +1,50 @@
 {
   "schema_version": 1,
-  "enterprise_commit": "152a657c8cc49775e8fa3bf33a3819b62c9d8e36",
+  "enterprise_commit": "c3f7b679782f52c90311b7b7670b577ee972c1f6",
   "community_baseline_commit": "ab9d76597df93ac1ac8b7938f4d25ba64f59f8dc",
+  "sdk_commit": "98f544a574f70b387c300f171243b4e87174937a",
   "allowed_results": [
     "semantic_equal",
     "exact_der_equal",
-    "unsupported_pending",
+    "local_parity_verified",
     "failure"
   ],
   "operations": [
     {
       "operation": "csr_parse",
-      "current_openssl_implementation": "src/backends/openssl/csr.cpp",
-      "current_anocrypto_c_adapter_state": "throws backend.capability_unavailable; unsupported_pending",
-      "required_sdk_functionality": "CSR PEM/DER decode, ASN.1 field extraction and CSR signature validation, or sufficient verified primitives for an Enterprise-owned codec",
-      "required_enterprise_adapter_work": "map CSR input, normalized output and stable failures without OpenSSL",
-      "required_fixture": "backend-neutral valid/invalid CSR fixtures covering RSA and approved algorithm scope",
-      "positive_test": "run same fixture through OpenSSL and AnoCrypto-C; compare normalized CsrInfo",
-      "negative_test": "malformed encoding and invalid CSR signature fail with stable redacted errors",
-      "no_fallback_test": "enterprise/tests/anocrypto_no_fallback_test.cpp",
-      "acceptance_criteria": "semantic_equal, or exact_der_equal where a fixed DER fixture applies",
-      "current_blocker": "unsupported_pending; exact AnoCrypto-C PKI/API capability discovery and trusted SDK execution pending",
-      "current_status": "unsupported_pending"
+      "current_status": "semantic_equal",
+      "positive": "RSA and P-256 PoP verified",
+      "negative": "malformed, invalid signature, mismatch, unsupported algorithms",
+      "no_fallback": true
     },
     {
       "operation": "certificate_issue",
-      "current_openssl_implementation": "src/backends/openssl/issue.cpp",
-      "current_anocrypto_c_adapter_state": "throws backend.capability_unavailable; unsupported_pending",
-      "required_sdk_functionality": "X.509 certificate encode/sign or verified signing primitives plus chosen PKI codec model",
-      "required_enterprise_adapter_work": "preserve IssueRequest/IssueResult, profile validation, key binding, error mapping and signing evidence",
-      "required_fixture": "fixed CSR, issuer, profile and key-provider fixtures",
-      "positive_test": "compare decoded certificate semantics and verify signature with independent parser",
-      "negative_test": "invalid profile, algorithm mismatch, key binding mismatch and provider failure",
-      "no_fallback_test": "enterprise/tests/anocrypto_no_fallback_test.cpp plus provider failure assertion",
-      "acceptance_criteria": "semantic_equal; exact_der_equal only where serial/time/signature inputs are fixed",
-      "current_blocker": "SDK certificate/signing and key-handle contracts unverified",
-      "current_status": "unsupported_pending"
+      "current_status": "semantic_equal",
+      "positive": "RSA SHA-256/384/512 and P-256 SHA-256",
+      "negative": "profile, algorithm, provider and key-binding failures",
+      "no_fallback": true
     },
     {
       "operation": "crl_generate_sign",
-      "current_openssl_implementation": "src/backends/openssl/crl.cpp",
-      "current_anocrypto_c_adapter_state": "throws backend.capability_unavailable; unsupported_pending",
-      "required_sdk_functionality": "X.509 CRL encode/sign or verified primitives plus chosen PKI codec model",
-      "required_enterprise_adapter_work": "map CRL request/result, provider boundary, stable failures and signing evidence",
-      "required_fixture": "fixed issuer, CRL number, update times and revoked-entry set",
-      "positive_test": "compare decoded CRL semantics and verify signature",
-      "negative_test": "bad times, invalid reason, key mismatch and provider failure",
-      "no_fallback_test": "enterprise/tests/anocrypto_no_fallback_test.cpp plus provider failure assertion",
-      "acceptance_criteria": "semantic_equal; exact_der_equal when all encoding and signing inputs are deterministic",
-      "current_blocker": "SDK CRL/signing and key-handle contracts unverified",
-      "current_status": "unsupported_pending"
+      "current_status": "semantic_equal",
+      "positive": "RSA/P-256 decoded semantics and signatures",
+      "negative": "time, serial, reason, algorithm, binding and provider failures",
+      "no_fallback": true
     },
     {
       "operation": "ocsp_decode",
-      "current_openssl_implementation": "src/backends/openssl/ocsp.cpp",
-      "current_anocrypto_c_adapter_state": "throws backend.capability_unavailable; unsupported_pending",
-      "required_sdk_functionality": "OCSP request DER decode, certificate-ID and nonce extraction, issuer hash derivation",
-      "required_enterprise_adapter_work": "map request/issuer inspection contracts and reject malformed or unsupported input",
-      "required_fixture": "tests/fixtures/ocsp curated request plus malformed and multi-request variants",
-      "positive_test": "compare certificate IDs, hash algorithms and nonce semantics",
-      "negative_test": "malformed DER, unsupported digest and issuer mismatch",
-      "no_fallback_test": "extend enterprise/tests/anocrypto_no_fallback_test.cpp for issuer inspection",
-      "acceptance_criteria": "semantic_equal against curated fixtures",
-      "current_blocker": "SDK OCSP/ASN.1 capability unverified; issuer-inspection no-fallback assertion absent",
-      "current_status": "unsupported_pending"
+      "current_status": "semantic_equal",
+      "positive": "multi-CertID, nonce and exact restricted SHA-1 fixture",
+      "negative": "malformed DER, unknown algorithms and wrong boundaries",
+      "no_fallback": true
     },
     {
       "operation": "ocsp_response_sign",
-      "current_openssl_implementation": "src/backends/openssl/ocsp.cpp",
-      "current_anocrypto_c_adapter_state": "throws backend.capability_unavailable; unsupported_pending",
-      "required_sdk_functionality": "OCSP BasicResponse encode/sign, responder validation or verified primitives plus chosen codec model",
-      "required_enterprise_adapter_work": "map response contracts, responder validation, provider boundary and signing evidence",
-      "required_fixture": "fixed issuer/responder certificates, request, status set and update times",
-      "positive_test": "compare decoded response semantics and independently verify signature/responder chain",
-      "negative_test": "unauthorized responder, stale time, mismatched issuer/key and provider failure",
-      "no_fallback_test": "enterprise/tests/anocrypto_no_fallback_test.cpp; add responder-validation assertion",
-      "acceptance_criteria": "semantic_equal; exact_der_equal only for deterministic encoding/signature cases",
-      "current_blocker": "SDK OCSP response/signing contracts unverified; responder-validation no-fallback assertion absent",
-      "current_status": "unsupported_pending"
+      "current_status": "semantic_equal",
+      "positive": "RSA/P-256 response and responder validation",
+      "negative": "unauthorized, expired, mismatch and provider failures",
+      "no_fallback": true
     }
-  ]
+  ],
+  "production_ready": false
 }

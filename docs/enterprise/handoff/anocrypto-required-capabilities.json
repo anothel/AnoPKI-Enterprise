@@ -1,168 +1,65 @@
 {
   "schema_version": 1,
-  "enterprise_commit": "152a657c8cc49775e8fa3bf33a3819b62c9d8e36",
+  "enterprise_commit": "c3f7b679782f52c90311b7b7670b577ee972c1f6",
   "community_baseline_commit": "ab9d76597df93ac1ac8b7938f4d25ba64f59f8dc",
-  "observed_anocrypto_capabilities": [],
+  "sdk_commit": "98f544a574f70b387c300f171243b4e87174937a",
+  "evidence_scope": "P3-11 local Phase 1",
+  "observed_anocrypto_capabilities": [
+    "csr_inspect",
+    "certificate_issue",
+    "crl_generate",
+    "crl_inspect",
+    "ocsp_request_inspect",
+    "ocsp_issuer_inspect",
+    "ocsp_response_generate",
+    "ocsp_responder_validate"
+  ],
   "capabilities": [
     {
       "stable_operation_name": "csr_inspect",
-      "input_contract": "CSR PEM text",
-      "output_contract": "CsrInfo: subject, DNS/IP SANs, public-key metadata, signature metadata, extension OIDs",
-      "required_backend_metadata": [
-        "backend id",
-        "dependency name",
-        "dependency version",
-        "build fingerprint",
-        "ABI version",
-        "readiness",
-        "capability set",
-        "selected product profile",
-        "fallback_enabled=false"
-      ],
-      "current_openssl_state": "available",
-      "current_anocrypto_c_state": "unsupported_pending",
-      "unavailable_error": "backend.capability_unavailable",
-      "release_impact": "production release blocked pending parity evidence"
+      "current_anocrypto_c_state": "implemented_local_parity_verified",
+      "evidence": ["RSA/P-256 PoP", "strict parser negatives", "no fallback"]
     },
     {
       "stable_operation_name": "certificate_issue",
-      "input_contract": "IssueRequest: CSR, issuer certificate, issuer key reference, validity and certificate profile fields",
-      "output_contract": "IssueResult: certificate PEM, serial, subject and validity",
-      "required_backend_metadata": [
-        "backend id",
-        "dependency name",
-        "dependency version",
-        "build fingerprint",
-        "ABI version",
-        "readiness",
-        "capability set",
-        "selected product profile",
-        "fallback_enabled=false"
-      ],
-      "current_openssl_state": "available",
-      "current_anocrypto_c_state": "unsupported_pending",
-      "unavailable_error": "backend.capability_unavailable",
-      "release_impact": "production release blocked pending parity evidence"
+      "current_anocrypto_c_state": "implemented_local_parity_verified",
+      "evidence": ["RSA SHA-256/384/512", "P-256 SHA-256", "binding/provider negatives"]
     },
     {
       "stable_operation_name": "crl_generate",
-      "input_contract": "GenerateCRLRequest: issuer certificate, issuer key reference, CRL number, update times and revoked entries",
-      "output_contract": "GenerateCRLResult: signed CRL PEM",
-      "required_backend_metadata": [
-        "backend id",
-        "dependency name",
-        "dependency version",
-        "build fingerprint",
-        "ABI version",
-        "readiness",
-        "capability set",
-        "selected product profile",
-        "fallback_enabled=false"
-      ],
-      "current_openssl_state": "available",
-      "current_anocrypto_c_state": "unsupported_pending",
-      "unavailable_error": "backend.capability_unavailable",
-      "release_impact": "production release blocked pending parity evidence"
+      "current_anocrypto_c_state": "implemented_local_parity_verified",
+      "evidence": ["RSA/P-256 signature verification", "failure leaves no evidence"]
     },
     {
       "stable_operation_name": "crl_inspect",
-      "input_contract": "CRL PEM or DER",
-      "output_contract": "CRLInfo: issuer, update times, CRL number and revoked entries",
-      "required_backend_metadata": [
-        "backend id",
-        "dependency name",
-        "dependency version",
-        "build fingerprint",
-        "ABI version",
-        "readiness",
-        "capability set",
-        "selected product profile",
-        "fallback_enabled=false"
-      ],
-      "current_openssl_state": "available",
-      "current_anocrypto_c_state": "unsupported_pending",
-      "unavailable_error": "backend.capability_unavailable",
-      "release_impact": "production release blocked pending parity evidence"
+      "current_anocrypto_c_state": "implemented_local_parity_verified",
+      "evidence": ["PEM/DER semantic parity", "malformed input rejection"]
     },
     {
       "stable_operation_name": "ocsp_request_inspect",
-      "input_contract": "OCSP request DER",
-      "output_contract": "OCSPRequestInfo: certificate IDs and nonce metadata",
-      "required_backend_metadata": [
-        "backend id",
-        "dependency name",
-        "dependency version",
-        "build fingerprint",
-        "ABI version",
-        "readiness",
-        "capability set",
-        "selected product profile",
-        "fallback_enabled=false"
-      ],
-      "current_openssl_state": "available",
-      "current_anocrypto_c_state": "unsupported_pending",
-      "unavailable_error": "backend.capability_unavailable",
-      "release_impact": "production release blocked pending parity evidence"
+      "current_anocrypto_c_state": "implemented_local_parity_verified",
+      "evidence": ["multi-CertID", "nonce", "strict DER negatives"]
     },
     {
       "stable_operation_name": "ocsp_issuer_inspect",
-      "input_contract": "issuer certificate PEM and requested hash algorithm",
-      "output_contract": "OCSPIssuerInfo: issuer name hash, issuer key hash and hash algorithm",
-      "required_backend_metadata": [
-        "backend id",
-        "dependency name",
-        "dependency version",
-        "build fingerprint",
-        "ABI version",
-        "readiness",
-        "capability set",
-        "selected product profile",
-        "fallback_enabled=false"
-      ],
-      "current_openssl_state": "available",
-      "current_anocrypto_c_state": "unsupported_pending",
-      "unavailable_error": "backend.capability_unavailable",
-      "release_impact": "production release blocked pending parity evidence"
+      "current_anocrypto_c_state": "implemented_local_parity_verified",
+      "evidence": ["exact Name/SPKI-bit boundary", "restricted SHA-1", "SHA-2"]
     },
     {
       "stable_operation_name": "ocsp_response_generate",
-      "input_contract": "GenerateOCSPResponseRequest: request DER, issuer certificate, issuer key reference, update times and statuses",
-      "output_contract": "GenerateOCSPResponseResult: signed OCSP response DER",
-      "required_backend_metadata": [
-        "backend id",
-        "dependency name",
-        "dependency version",
-        "build fingerprint",
-        "ABI version",
-        "readiness",
-        "capability set",
-        "selected product profile",
-        "fallback_enabled=false"
-      ],
-      "current_openssl_state": "available",
-      "current_anocrypto_c_state": "unsupported_pending",
-      "unavailable_error": "backend.capability_unavailable",
-      "release_impact": "production release blocked pending parity evidence"
+      "current_anocrypto_c_state": "implemented_local_parity_verified",
+      "evidence": ["RSA/P-256", "nonce/status semantics", "binding/provider negatives"]
     },
     {
       "stable_operation_name": "ocsp_responder_validate",
-      "input_contract": "issuer certificate PEM and responder certificate PEM",
-      "output_contract": "ValidateOCSPResponderResult: valid boolean",
-      "required_backend_metadata": [
-        "backend id",
-        "dependency name",
-        "dependency version",
-        "build fingerprint",
-        "ABI version",
-        "readiness",
-        "capability set",
-        "selected product profile",
-        "fallback_enabled=false"
-      ],
-      "current_openssl_state": "available",
-      "current_anocrypto_c_state": "unsupported_pending",
-      "unavailable_error": "backend.capability_unavailable",
-      "release_impact": "production release blocked pending parity evidence"
+      "current_anocrypto_c_state": "implemented_local_parity_verified",
+      "evidence": ["issuer signature", "EKU/validity", "mismatch negatives"]
     }
-  ]
+  ],
+  "release_state": {
+    "production_ready": false,
+    "hosted_qualification": "not_run",
+    "kcmvp_status": "not_validated",
+    "commercialization": "UNDECIDED"
+  }
 }

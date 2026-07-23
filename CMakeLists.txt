@@ -23,6 +23,7 @@ if(ANOPKI_PRODUCT_PROFILE STREQUAL "enterprise-openssl")
     set(ANOPKI_PROFILE_REQUIRES_FULL_OPERATIONS 1)
     find_package(OpenSSL REQUIRED COMPONENTS Crypto)
     set(ANOPKI_OPENSSL_BACKEND_ABI_VERSION 1)
+    set(ANOPKI_ANOCRYPTO_PROFILE 0)
     if(DEFINED OpenSSL_VERSION)
         set(ANOPKI_OPENSSL_CONFIG_VERSION "${OpenSSL_VERSION}")
     elseif(DEFINED OPENSSL_VERSION)
@@ -42,7 +43,8 @@ if(ANOPKI_PRODUCT_PROFILE STREQUAL "enterprise-openssl")
     )
 elseif(ANOPKI_PRODUCT_PROFILE STREQUAL "enterprise-anocrypto-c")
     set(ANOPKI_SELECTED_BACKEND_ID "anocrypto-c")
-    set(ANOPKI_PROFILE_REQUIRES_FULL_OPERATIONS 0)
+    set(ANOPKI_PROFILE_REQUIRES_FULL_OPERATIONS 1)
+    set(ANOPKI_ANOCRYPTO_PROFILE 1)
     if(ANOCRYPTO_SDK_ROOT)
         list(PREPEND CMAKE_PREFIX_PATH "${ANOCRYPTO_SDK_ROOT}")
     endif()
@@ -87,6 +89,7 @@ target_compile_definitions(anopki_core
         ANOPKI_EDITION_ID="enterprise"
         ANOPKI_SELECTED_BACKEND_ID="${ANOPKI_SELECTED_BACKEND_ID}"
         ANOPKI_PROFILE_REQUIRES_FULL_OPERATIONS=${ANOPKI_PROFILE_REQUIRES_FULL_OPERATIONS}
+        ANOPKI_ANOCRYPTO_PROFILE=${ANOPKI_ANOCRYPTO_PROFILE}
 )
 
 if(ANOPKI_PRODUCT_PROFILE STREQUAL "enterprise-openssl")
@@ -114,6 +117,7 @@ if(ANOPKI_PRODUCT_PROFILE STREQUAL "enterprise-openssl")
 else()
     add_library(anopki_enterprise_anocrypto_adapter STATIC
         src/backends/anocrypto_c/anocrypto_backend.cpp
+        src/backends/anocrypto_c/pki.cpp
     )
     target_compile_features(anopki_enterprise_anocrypto_adapter PUBLIC cxx_std_20)
     target_include_directories(anopki_enterprise_anocrypto_adapter PUBLIC
@@ -123,11 +127,24 @@ else()
         PUBLIC anopki::core
         PRIVATE AnoCryptoC::AnoCryptoC
     )
+    function(anopki_stage_anocrypto_runtime target)
+        if(WIN32)
+            add_custom_command(
+                TARGET ${target} POST_BUILD
+                COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                    $<TARGET_FILE:AnoCryptoC::AnoCryptoC>
+                    $<TARGET_FILE_DIR:${target}>
+            )
+        endif()
+    endfunction()
     set(ANOPKI_SELECTED_ADAPTER_TARGET anopki_enterprise_anocrypto_adapter)
 endif()
 
 add_executable(anopki-core src/cli/main.cpp)
 target_link_libraries(anopki-core PRIVATE anopki::core ${ANOPKI_SELECTED_ADAPTER_TARGET})
+if(ANOPKI_PRODUCT_PROFILE STREQUAL "enterprise-anocrypto-c")
+    anopki_stage_anocrypto_runtime(anopki-core)
+endif()
 
 if(ANOPKI_PRODUCT_PROFILE STREQUAL "enterprise-openssl")
     add_custom_target(anopki-enterprise-openssl DEPENDS anopki-core)
@@ -231,18 +248,98 @@ if(BUILD_TESTING)
         add_test(NAME anopki.key_provider_boundary COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/scripts/validate-key-provider-boundary.py --root ${CMAKE_CURRENT_SOURCE_DIR})
         add_test(NAME anopki.key_provider_boundary_validator_tests COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/scripts/test_validate_key_provider_boundary.py)
     else()
+        find_package(Python3 REQUIRED COMPONENTS Interpreter)
         add_executable(anocrypto_sdk_integration_test enterprise/tests/anocrypto_sdk_integration_test.cpp)
         target_link_libraries(anocrypto_sdk_integration_test PRIVATE anopki_enterprise_anocrypto_adapter)
         add_test(NAME anocrypto.sdk_integration COMMAND anocrypto_sdk_integration_test)
         set_tests_properties(anocrypto.sdk_integration PROPERTIES LABELS "anocrypto_sdk_integration")
 
         add_executable(anocrypto_no_fallback_test enterprise/tests/anocrypto_no_fallback_test.cpp)
-        target_link_libraries(anocrypto_no_fallback_test PRIVATE anopki::core anopki_enterprise_anocrypto_adapter)
-        add_test(NAME anocrypto.no_fallback COMMAND anocrypto_no_fallback_test)
+        target_link_libraries(anocrypto_no_fallback_test PRIVATE anopki::core anopki_enterprise_anocrypto_adapter AnoCryptoC::AnoCryptoC)
+        add_test(NAME anocrypto.no_fallback COMMAND anocrypto_no_fallback_test ${CMAKE_CURRENT_BINARY_DIR})
         set_tests_properties(anocrypto.no_fallback PROPERTIES LABELS "anocrypto_no_fallback")
 
-        add_executable(anocrypto_parity_pending_test enterprise/tests/anocrypto_parity_pending_test.cpp)
-        add_test(NAME anopki.crypto_backend_parity.anocrypto_pending COMMAND anocrypto_parity_pending_test)
-        set_tests_properties(anopki.crypto_backend_parity.anocrypto_pending PROPERTIES SKIP_RETURN_CODE 77 LABELS "anocrypto_parity_pending")
+        find_package(OpenSSL REQUIRED COMPONENTS Crypto)
+        add_executable(anocrypto_parity_test tests/core_openssl_golden_test.cpp)
+        target_link_libraries(anocrypto_parity_test PRIVATE anopki::core anopki_enterprise_anocrypto_adapter OpenSSL::Crypto)
+        add_test(NAME anopki.crypto_backend_parity.anocrypto COMMAND anocrypto_parity_test ${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/backend-parity)
+        set_tests_properties(anopki.crypto_backend_parity.anocrypto PROPERTIES LABELS "anocrypto_parity")
+
+        add_executable(anocrypto_crl_test tests/core_crl_test.cpp)
+        target_link_libraries(anocrypto_crl_test PRIVATE anopki::core anopki_enterprise_anocrypto_adapter OpenSSL::Crypto)
+        add_test(NAME anocrypto.crl COMMAND anocrypto_crl_test ${CMAKE_CURRENT_BINARY_DIR})
+
+        add_executable(anocrypto_ocsp_test tests/core_ocsp_test.cpp)
+        target_link_libraries(anocrypto_ocsp_test PRIVATE anopki::core anopki_enterprise_anocrypto_adapter OpenSSL::Crypto)
+        add_test(NAME anocrypto.ocsp COMMAND anocrypto_ocsp_test ${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/ocsp)
+
+        add_executable(anocrypto_crl_file_key_provider_test tests/crl_file_key_provider_test.cpp)
+        target_link_libraries(anocrypto_crl_file_key_provider_test PRIVATE anopki::core anopki_enterprise_anocrypto_adapter OpenSSL::Crypto)
+        add_test(NAME anocrypto.crl_file_key_provider COMMAND anocrypto_crl_file_key_provider_test ${CMAKE_CURRENT_BINARY_DIR})
+
+        add_executable(anocrypto_ocsp_file_key_provider_test tests/ocsp_file_key_provider_test.cpp)
+        target_link_libraries(anocrypto_ocsp_file_key_provider_test PRIVATE anopki::core anopki_enterprise_anocrypto_adapter OpenSSL::Crypto)
+        add_test(NAME anocrypto.ocsp_file_key_provider COMMAND anocrypto_ocsp_file_key_provider_test ${CMAKE_CURRENT_BINARY_DIR})
+
+        add_executable(anocrypto_pki_algorithms_test enterprise/tests/anocrypto_pki_algorithms_test.cpp)
+        target_link_libraries(anocrypto_pki_algorithms_test PRIVATE anopki::core anopki_enterprise_anocrypto_adapter OpenSSL::Crypto)
+        add_test(NAME anocrypto.pki_algorithms COMMAND anocrypto_pki_algorithms_test ${CMAKE_CURRENT_BINARY_DIR})
+        set_tests_properties(anocrypto.pki_algorithms PROPERTIES LABELS "anocrypto_parity;anocrypto_algorithms")
+        set_tests_properties(anocrypto.no_fallback PROPERTIES DEPENDS anocrypto.pki_algorithms)
+
+        add_test(
+            NAME anocrypto.dependency_purity
+            COMMAND ${Python3_EXECUTABLE}
+                ${CMAKE_CURRENT_SOURCE_DIR}/scripts/validate-anocrypto-boundary.py
+                --root ${CMAKE_CURRENT_SOURCE_DIR}
+                --dependency-tool ${CMAKE_LINKER}
+                --artifact runtime=$<TARGET_FILE:anopki-core>
+                --artifact adapter=$<TARGET_FILE:anopki_enterprise_anocrypto_adapter>
+                --artifact sdk=$<TARGET_FILE:AnoCryptoC::AnoCryptoC>
+                --artifact test-sdk-integration=$<TARGET_FILE:anocrypto_sdk_integration_test>
+                --artifact test-no-fallback=$<TARGET_FILE:anocrypto_no_fallback_test>
+        )
+        set_tests_properties(anocrypto.dependency_purity PROPERTIES LABELS "anocrypto_dependency_purity")
+        add_test(
+            NAME anocrypto.boundary_validator_tests
+            COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/scripts/test_validate_anocrypto_boundary.py
+        )
+        add_test(
+            NAME anocrypto.missing_dependency_no_fallback
+            COMMAND ${Python3_EXECUTABLE}
+                ${CMAKE_CURRENT_SOURCE_DIR}/scripts/test-anocrypto-missing-dependency.py
+                --executable $<TARGET_FILE:anopki_backend_profile_test>
+        )
+        set_tests_properties(anocrypto.missing_dependency_no_fallback PROPERTIES LABELS "anocrypto_no_fallback")
+
+        foreach(target
+            anopki_backend_profile_test
+            anocrypto_sdk_integration_test
+            anocrypto_no_fallback_test
+            anocrypto_parity_test
+            anocrypto_crl_test
+            anocrypto_ocsp_test
+            anocrypto_crl_file_key_provider_test
+            anocrypto_ocsp_file_key_provider_test
+            anocrypto_pki_algorithms_test
+        )
+            anopki_stage_anocrypto_runtime(${target})
+        endforeach()
+
+        if(WIN32)
+            get_filename_component(ANOPKI_TEST_OPENSSL_ROOT "${OPENSSL_INCLUDE_DIR}" DIRECTORY)
+            set(ANOPKI_TEST_OPENSSL_RUNTIME_DIR "${ANOPKI_TEST_OPENSSL_ROOT}/bin")
+            string(REPLACE ";" "\\;" ANOPKI_TEST_INHERITED_PATH "$ENV{PATH}")
+            set_tests_properties(
+                anopki.crypto_backend_parity.anocrypto
+                anocrypto.crl
+                anocrypto.ocsp
+                anocrypto.crl_file_key_provider
+                anocrypto.ocsp_file_key_provider
+                anocrypto.pki_algorithms
+                PROPERTIES ENVIRONMENT
+                    "PATH=${ANOPKI_TEST_OPENSSL_RUNTIME_DIR}\\;${ANOPKI_TEST_INHERITED_PATH}"
+            )
+        endif()
     endif()
 endif()

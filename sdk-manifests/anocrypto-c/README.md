@@ -1,5 +1,9 @@
 # AnoCrypto-C SDK Pin And Evidence
 
+P3-11 local Phase 1 evidence is recorded separately in
+`p3-11-local-evidence.json`. It is not hosted qualification evidence and does
+not authorize production or customer distribution.
+
 This directory documents the trusted SDK integration contract. AnoCrypto-C is
 not vendored into this repository. A trusted workflow checks out an exact
 40-character source commit, builds and tests the external project, installs its

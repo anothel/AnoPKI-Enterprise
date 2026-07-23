@@ -57,15 +57,19 @@ def valid(artifact: Path) -> dict:
         "runtime": {
             "backend_id": "anocrypto-c",
             "dependency": "AnoCrypto-C",
-            "runtime_version": "0.1.0-p1-23",
+            "runtime_version": "0.1.0-p3-10-restricted-sha1-ocsp-certid",
             "build_identity_abi": 1,
             "build_fingerprint": "fingerprint",
             "readiness": "ready",
-            "capabilities": [],
+            "capabilities": [
+                "csr_inspect", "certificate_issue", "crl_generate", "crl_inspect",
+                "ocsp_request_inspect", "ocsp_issuer_inspect", "ocsp_response_generate",
+                "ocsp_responder_validate",
+            ],
         },
         "product_profile": "enterprise-anocrypto-c",
         "fallback_used": False,
-        "pki_parity_status": "unsupported_pending",
+        "pki_parity_status": "operation_parity_verified",
         "kcmvp_status": "not_validated",
     }
 
@@ -118,7 +122,7 @@ def main() -> int:
 
         bad = json.loads(json.dumps(data))
         bad["runtime"]["capabilities"] = ["certificate_issue"]
-        assert_fails(module, bad, "must remain empty")
+        assert_fails(module, bad, "exact verified operation set")
 
         artifact.write_bytes(b"changed")
         assert_fails(module, data, "SHA-256", artifact)

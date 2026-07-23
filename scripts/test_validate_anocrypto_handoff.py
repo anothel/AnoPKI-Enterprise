@@ -10,7 +10,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 HANDOFF = ROOT / "docs" / "enterprise" / "handoff"
-ENTERPRISE_COMMIT = "152a657c8cc49775e8fa3bf33a3819b62c9d8e36"
+ENTERPRISE_COMMIT = "c3f7b679782f52c90311b7b7670b577ee972c1f6"
 COMMUNITY_COMMIT = "ab9d76597df93ac1ac8b7938f4d25ba64f59f8dc"
 
 BACKEND_OPERATIONS = {
@@ -69,12 +69,12 @@ def load(name: str) -> dict[str, object]:
 
 def main() -> None:
     capabilities = load("anocrypto-required-capabilities.json")
-    assert capabilities["observed_anocrypto_capabilities"] == []
+    assert set(capabilities["observed_anocrypto_capabilities"]) == BACKEND_OPERATIONS
     assert {row["stable_operation_name"] for row in capabilities["capabilities"]} == BACKEND_OPERATIONS
-    assert all(row["current_anocrypto_c_state"] == "unsupported_pending" for row in capabilities["capabilities"])
+    assert all(row["current_anocrypto_c_state"] == "implemented_local_parity_verified" for row in capabilities["capabilities"])
 
     gaps = load("anocrypto-gap-matrix.json")
-    allowed = {"semantic_equal", "exact_der_equal", "unsupported_pending", "failure"}
+    allowed = {"semantic_equal", "exact_der_equal", "local_parity_verified", "failure"}
     assert set(gaps["allowed_results"]) == allowed
     assert {row["operation"] for row in gaps["operations"]} == PARITY_OPERATIONS
     assert all(row["current_status"] in allowed and row["current_status"] != "skip" for row in gaps["operations"])
@@ -85,8 +85,18 @@ def main() -> None:
     assert all(set(row) == RESPONSIBILITY_FIELDS and row["blockers"] and row["acceptance_tests"] for row in rows)
 
     status = (ROOT / "docs" / "enterprise" / "anocrypto-handoff-current-status.md").read_text(encoding="utf-8")
-    for marker in ("not_run", "unverified", "unsupported_pending", "Production ready", "Decide high-level SDK"):
+    for marker in ("local_release_102_tests_passed", "local_parity_verified", "Production ready", "not_run", "P3-12"):
         assert marker in status
+
+    local_evidence = json.loads(
+        (ROOT / "sdk-manifests" / "anocrypto-c" / "p3-11-local-evidence.json").read_text(encoding="utf-8")
+    )
+    assert local_evidence["sdk_source_commit"] == "98f544a574f70b387c300f171243b4e87174937a"
+    assert set(local_evidence["capabilities"]) == BACKEND_OPERATIONS
+    assert local_evidence["fallback_used"] is False
+    assert local_evidence["production_ready"] is False
+    assert local_evidence["kcmvp_status"] == "not_validated"
+    assert local_evidence["commercialization"] == "UNDECIDED"
     print("AnoCrypto-C handoff matrices ok")
 
 

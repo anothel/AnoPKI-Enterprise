@@ -36,7 +36,7 @@ int main(int argc, char **argv)
     assert(!info.dependency_version.empty());
     assert(!info.build_fingerprint.empty());
     assert(info.abi_version == 1U);
-    assert(info.capabilities.empty());
+    assert(info.capabilities.size() == 8U);
 
     if (argc == 2)
     {
@@ -49,7 +49,7 @@ int main(int argc, char **argv)
                << "  \"build_identity_abi\": " << info.abi_version << ",\n"
                << "  \"build_fingerprint\": \"" << escape_json(info.build_fingerprint) << "\",\n"
                << "  \"readiness\": \"ready\",\n"
-               << "  \"capabilities\": []\n"
+               << "  \"capabilities\": [\"csr_inspect\", \"certificate_issue\", \"crl_generate\", \"crl_inspect\", \"ocsp_request_inspect\", \"ocsp_issuer_inspect\", \"ocsp_response_generate\", \"ocsp_responder_validate\"]\n"
                << "}\n";
         assert(output.good());
     }

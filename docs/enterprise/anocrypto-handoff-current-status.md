@@ -1,59 +1,53 @@
-# AnoCrypto-C Handoff Current Status (Pending)
+# AnoCrypto-C P3-11 Local Phase 1 Status
 
-Recorded source state: Enterprise
-`152a657c8cc49775e8fa3bf33a3819b62c9d8e36`, Community
-`ab9d76597df93ac1ac8b7938f4d25ba64f59f8dc`.
+Recorded baselines: Enterprise `c3f7b679782f52c90311b7b7670b577ee972c1f6`,
+Community `ab9d76597df93ac1ac8b7938f4d25ba64f59f8dc`, and AnoCrypto-C
+`98f544a574f70b387c300f171243b4e87174937a`.
 
 ## Current State
 
 | Field | Value |
 | --- | --- |
-| SDK execution | `not_run` |
-| Capability observation | `unverified` |
-| Operation parity | `unsupported_pending` |
-| Production ready | `false` |
+| SDK execution | `local_release_102_tests_passed` |
+| Capability observation | `eight_operations_verified` |
+| Operation parity | `local_parity_verified` |
+| Product profile | `enterprise-anocrypto-c` |
+| Selected adapter | `anocrypto-c` |
+| Key provider | `file` (local/development only) |
 | Fallback enabled / used | `false` / `false` |
+| Production ready | `false` |
 | KCMVP | `not_validated` |
-| Commercial license | `incomplete` |
-| Hosted qualification | `REMOTE_DEFERRED/BLOCKED_EXTERNAL` |
+| Commercialization | `UNDECIDED` |
+| Hosted qualification | `not_run` |
 
-AnoCrypto-C PKI capabilities are not implemented in this adapter. It reports
-runtime identity/readiness metadata only when the external SDK is present and
-throws `backend.capability_unavailable` for the eight PKI backend operations.
+The adapter owns a bounded PKI codec and provider under
+`src/backends/anocrypto_c/`. AnoCrypto-C owns RSA-2048, P-256 ECDSA, SHA-2,
+restricted OCSP CertID SHA-1, key handles, and module lifecycle. All eight
+backend operations are advertised only in the AnoCrypto profile and exercised
+by positive, negative, parity, provider, no-fallback, and dependency-purity
+tests.
+
+OpenSSL remains test-only for independent decoding and signature verification.
+It is not linked by the AnoCrypto runtime, adapter, SDK, SDK integration test,
+or no-fallback test. The unchanged hosted Community evidence SHA
+`71f0e898c32a7d6e00d0725eeab6ca150ccaa0af` remains historical and is not
+replaced by this local result.
 
 ## Source And Test Index
 
-- adapter contract: `include/anopki/enterprise/anocrypto_backend.hpp`
-- adapter source: `src/backends/anocrypto_c/anocrypto_backend.cpp`
-  (`unsupported_pending` operations)
-- SDK consumption test: `enterprise/tests/anocrypto_sdk_integration_test.cpp`
-- capability/no-fallback test: `enterprise/tests/anocrypto_no_fallback_test.cpp`
-- parity-pending test: `enterprise/tests/anocrypto_parity_pending_test.cpp`
-- trusted workflow: `.github/workflows/anocrypto-sdk-integration.yml`
-- evidence schema/example: `sdk-manifests/anocrypto-c/README.md` and
-  `sdk-manifests/anocrypto-c/example-evidence.json`
-- release gates: `docs/enterprise/backend-profile-release-gates.md`
+- adapter lifecycle/capabilities: `src/backends/anocrypto_c/anocrypto_backend.cpp`
+- codec/provider/operations: `src/backends/anocrypto_c/pki.cpp`
+- SDK identity test: `enterprise/tests/anocrypto_sdk_integration_test.cpp`
+- real parity and golden contracts: `tests/core_openssl_golden_test.cpp`
+- algorithm matrix: `enterprise/tests/anocrypto_pki_algorithms_test.cpp`
+- no-fallback: `enterprise/tests/anocrypto_no_fallback_test.cpp`
+- boundary/purity: `scripts/validate-anocrypto-boundary.py`
+- local SDK record: `sdk-manifests/anocrypto-c/p3-11-local-evidence.json`
 
-## Current Work Queue
+## Deferred After P3-11
 
-1. Decide high-level SDK PKI APIs versus Enterprise-owned codec model.
-2. Discover exact SDK capabilities and pin clean source/archive SHA-256.
-3. Record ABI, build fingerprint, package target, platform/toolchain, license,
-   readiness, self-test, thread-safety, lifetime, and zeroization contracts.
-4. Run the protected trusted-SDK workflow and validate dependency failure,
-   capability-unavailable, and no-fallback evidence.
-5. Close phase-1 parity in order: `csr_parse`, `certificate_issue`,
-   `crl_generate_sign`, `ocsp_decode`, `ocsp_response_sign`.
-6. Close remaining full backend operations, key/certificate binding, and
-   signing-evidence behavior.
-7. Review production non-exportable provider ownership and exact KCMVP claim
-   scope only after the implementation/evidence exists.
-
-## Canonical Handoff Files
-
-- `docs/enterprise/anocrypto-sdk-capability-requirements.md`
-- `docs/enterprise/anocrypto-operation-parity-matrix.md`
-- `docs/enterprise/anocrypto-product-sdk-responsibility-boundary.md`
-- `docs/enterprise/handoff/anocrypto-required-capabilities.json`
-- `docs/enterprise/handoff/anocrypto-gap-matrix.json`
-- `docs/enterprise/handoff/operation-responsibility-matrix.json`
+1. P3-12 Phase 1 closeout and independent review.
+2. Non-exportable production key-provider ownership and deployment design.
+3. Hosted qualification and trusted hosted evidence.
+4. Commercial license, customer distribution, signing, timestamp, and tag.
+5. Exact KCMVP scope and validation; no claim is made by P3-11.

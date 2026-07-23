@@ -125,6 +125,25 @@ def test_enterprise_algorithm_metadata_drift_fails() -> None:
     assert "anocrypto_capability_status" in result.stderr
 
 
+def test_enterprise_profile_metadata_wiring_drift_fails() -> None:
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        copy_version_inputs(root)
+        edition_path = root / "src" / "enterprise" / "edition.cpp"
+        edition_path.write_text(
+            edition_path.read_text(encoding="utf-8").replace(
+                'return ANOPKI_ANOCRYPTO_PROFILE ? "local_parity_verified" : "unsupported_pending";',
+                'return "unsupported_pending";',
+                1,
+            ),
+            encoding="utf-8",
+        )
+        result = run_validator(root)
+
+    assert result.returncode == 1
+    assert "local_parity_verified" in result.stderr
+
+
 def test_non_exact_or_stale_community_baseline_fails() -> None:
     invalid_values = (
         "acb71b8f4e9133d9c25dad1be3bca58209fba0d7",
@@ -155,6 +174,7 @@ def main() -> None:
     test_release_workflow_version_drift_fails()
     test_enterprise_backend_metadata_drift_fails()
     test_enterprise_algorithm_metadata_drift_fails()
+    test_enterprise_profile_metadata_wiring_drift_fails()
     test_non_exact_or_stale_community_baseline_fails()
     print("version metadata tests ok")
 

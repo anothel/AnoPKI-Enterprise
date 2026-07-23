@@ -37,8 +37,8 @@ terms.
 - dependency evidence unresolved count: `0`
 - dependency redistribution review: required
 - hosted qualification: `REMOTE_DEFERRED/BLOCKED_EXTERNAL`
-- trusted AnoCrypto-C SDK execution: `not_run` / `REMOTE_UNVERIFIED`
-- AnoCrypto-C parity: `unsupported_pending`
+- AnoCrypto-C SDK execution: local Release build and 102 tests passed; hosted execution `not_run`
+- AnoCrypto-C parity: `local_parity_verified` for P3-11 Phase 1
 - production readiness: `false`
 - KCMVP: `not_validated`
 - automatic fallback: disabled and unused

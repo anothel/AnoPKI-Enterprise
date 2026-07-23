@@ -32,10 +32,19 @@
     "build_identity_abi": 1,
     "build_fingerprint": "example",
     "readiness": "ready",
-    "capabilities": []
+    "capabilities": [
+      "csr_inspect",
+      "certificate_issue",
+      "crl_generate",
+      "crl_inspect",
+      "ocsp_request_inspect",
+      "ocsp_issuer_inspect",
+      "ocsp_response_generate",
+      "ocsp_responder_validate"
+    ]
   },
   "product_profile": "enterprise-anocrypto-c",
   "fallback_used": false,
-  "pki_parity_status": "unsupported_pending",
+  "pki_parity_status": "operation_parity_verified",
   "kcmvp_status": "not_validated"
 }

@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import re
 import subprocess
 from pathlib import Path
@@ -202,12 +203,33 @@ def has_allow_qualifier(line: str) -> bool:
 
 
 def has_active_anocrypto_evidence(root: Path) -> bool:
-    evidence = root / "docs/enterprise/private-release-evidence.md"
-    tests = root / "enterprise/anocrypto/tests"
-    if not evidence.is_file() or not tests.exists():
+    evidence = root / "sdk-manifests/anocrypto-c/p3-11-local-evidence.json"
+    required_paths = (
+        "src/backends/anocrypto_c/pki.cpp",
+        "enterprise/tests/anocrypto_no_fallback_test.cpp",
+        "enterprise/tests/anocrypto_pki_algorithms_test.cpp",
+        "scripts/validate-anocrypto-boundary.py",
+    )
+    if not evidence.is_file() or any(not (root / path).is_file() for path in required_paths):
         return False
-    text = evidence.read_text(encoding="utf-8", errors="ignore").lower()
-    return "active anocrypto backend evidence: complete" in text
+    try:
+        data = json.loads(evidence.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return False
+    required_capabilities = {
+        "csr_inspect", "certificate_issue", "crl_generate", "crl_inspect",
+        "ocsp_request_inspect", "ocsp_issuer_inspect", "ocsp_response_generate",
+        "ocsp_responder_validate",
+    }
+    return (
+        data.get("schema") == "anopki-anocrypto-local-validation-v1"
+        and data.get("sdk_source_commit") == "98f544a574f70b387c300f171243b4e87174937a"
+        and set(data.get("capabilities", [])) == required_capabilities
+        and data.get("fallback_used") is False
+        and data.get("hosted_evidence") is False
+        and data.get("production_ready") is False
+        and data.get("kcmvp_status") == "not_validated"
+    )
 
 
 def has_kcmvp_certification_evidence(root: Path) -> bool:
@@ -394,7 +416,7 @@ def check_ci_markers(root: Path) -> None:
         "ANOPKI_PRODUCT_PROFILE=enterprise-anocrypto-c",
         "CMAKE_DISABLE_FIND_PACKAGE_AnoCryptoC=TRUE",
         "expected AnoCrypto-C SDK configuration failure",
-        "anocrypto_parity_pending",
+        "anopki.crypto_backend_parity.anocrypto",
         "test_validate_anocrypto_sdk_evidence.py",
     ]
     missing = [text for text in required if text not in ci]
@@ -413,7 +435,7 @@ def check_trusted_sdk_workflow(root: Path) -> None:
         "ANOCRYPTO_SDK_ROOT",
         "validate-anocrypto-sdk-evidence.py",
         "Prove no OpenSSL dependency",
-        "PKI operation parity: unsupported/pending",
+        "PKI operation parity: verified",
         "REQUESTED_ANOCRYPTO_COMMIT: ${{ inputs.anocrypto_commit }}",
         "--enterprise-commit",
         "--workflow-run-id",

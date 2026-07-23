@@ -1,5 +1,9 @@
 # Enterprise Private Alpha Checklist
 
+> Historical pre-P3-11 checklist. See `anocrypto-handoff-current-status.md` for
+> the current local AnoCrypto-C parity state. Production/customer gates below
+> remain in force.
+
 This checklist gates internal-only Enterprise alpha builds. Passing it does not
 mean AnoCrypto, KCMVP, SSO/RBAC, HSM/KMS, deployment adapters, or commercial
 packaging are production-ready.

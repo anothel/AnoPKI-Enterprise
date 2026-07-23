@@ -554,4 +554,4 @@ jobs:
       - run: 'echo "Skipping real HSM checks: CI uses no customer hardware or credentials."'
       - run: 'echo "Skipping real KMS checks: CI uses no cloud accounts or private keys."'
       - run: 'echo "Skipping KCMVP evidence checks: certification evidence is not present in skeleton CI."'
-      - run: 'echo "Skipping anocrypto_parity_pending execution: a pinned trusted AnoCrypto-C SDK artifact is not configured in public CI."'
+      - run: 'echo "Skipping anopki.crypto_backend_parity.anocrypto execution: a pinned trusted AnoCrypto-C SDK artifact is not configured in public CI."'

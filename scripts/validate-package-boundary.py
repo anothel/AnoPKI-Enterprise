@@ -222,10 +222,10 @@ def validate_inventory(root: Path, inventory: dict[str, object], policy: dict[st
     if anocrypto_policy.get("selected_adapter") != "anocrypto-c" or anocrypto_policy.get("kcmvp_status") != "not_validated":
         fail("Enterprise/AnoCrypto-C policy must remain not validated")
     required_anocrypto_blockers = {
-        "exact trusted SDK evidence is absent",
-        "external SDK license is unresolved",
-        "PKI operation parity is incomplete",
-        "production readiness is false",
+        "P3-11 evidence is local Phase 1 only; hosted qualification is not run",
+        "external SDK redistribution license review is unresolved",
+        "a production non-exportable key provider is not integrated",
+        "customer distribution authorization is absent",
         "KCMVP is not validated",
         "fallback detection must remain false",
     }

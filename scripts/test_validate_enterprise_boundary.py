@@ -60,7 +60,7 @@ def write_clean_enterprise_root(root: Path) -> None:
         "ANOPKI_PRODUCT_PROFILE=enterprise-openssl\nANOPKI_PRODUCT_PROFILE=enterprise-anocrypto-c\n"
         "CMAKE_DISABLE_FIND_PACKAGE_AnoCryptoC=TRUE\n"
         "expected AnoCrypto-C SDK configuration failure\n"
-        "anocrypto_parity_pending\ntest_validate_anocrypto_sdk_evidence.py\n",
+        "anopki.crypto_backend_parity.anocrypto\ntest_validate_anocrypto_sdk_evidence.py\n",
     )
     write_file(root, "README.md", "# AnoPKI Enterprise\nOpenSSL remains the active profile.\n")
     write_file(root, "docs/reference/crypto-backend-strategy.md", "AnoCrypto-C external SDK direction. OpenSSL remains current.\n")
@@ -70,7 +70,7 @@ def write_clean_enterprise_root(root: Path) -> None:
     write_file(root, "include/anopki/enterprise/anocrypto_backend.hpp", "// SPDX-License-Identifier: LicenseRef-AnoPKI-Enterprise\n")
     write_file(root, "src/backends/anocrypto_c/anocrypto_backend.cpp", "// SPDX-License-Identifier: LicenseRef-AnoPKI-Enterprise\n")
     write_file(root, "enterprise/tests/anocrypto_sdk_integration_test.cpp", "// SPDX-License-Identifier: LicenseRef-AnoPKI-Enterprise\n")
-    write_file(root, ".github/workflows/anocrypto-sdk-integration.yml", "workflow_dispatch\nanocrypto_commit\nANOCRYPTO_C_READ_TOKEN\nrepository: anothel/AnoCrypto-C\npersist-credentials: false\nANOPKI_PRODUCT_PROFILE=enterprise-anocrypto-c\nANOCRYPTO_SDK_ROOT\nvalidate-anocrypto-sdk-evidence.py\nProve no OpenSSL dependency\nPKI operation parity: unsupported/pending\nREQUESTED_ANOCRYPTO_COMMIT: ${{ inputs.anocrypto_commit }}\n--enterprise-commit\n--workflow-run-id\n--workflow-run-attempt\nanocrypto_no_fallback\nshare/licenses/AnoCrypto-C\n--use-compress-program='gzip -n'\njobs:\n")
+    write_file(root, ".github/workflows/anocrypto-sdk-integration.yml", "workflow_dispatch\nanocrypto_commit\nANOCRYPTO_C_READ_TOKEN\nrepository: anothel/AnoCrypto-C\npersist-credentials: false\nANOPKI_PRODUCT_PROFILE=enterprise-anocrypto-c\nANOCRYPTO_SDK_ROOT\nvalidate-anocrypto-sdk-evidence.py\nProve no OpenSSL dependency\nPKI operation parity: verified\nREQUESTED_ANOCRYPTO_COMMIT: ${{ inputs.anocrypto_commit }}\n--enterprise-commit\n--workflow-run-id\n--workflow-run-attempt\nanocrypto_no_fallback\nshare/licenses/AnoCrypto-C\n--use-compress-program='gzip -n'\njobs:\n")
     write_file(root, "scripts/validate-anocrypto-sdk-evidence.py", "# SPDX-License-Identifier: MPL-2.0\n")
     write_file(root, "scripts/compose-anocrypto-sdk-evidence.py", "# SPDX-License-Identifier: MPL-2.0\n")
     write_file(root, "scripts/test_validate_anocrypto_sdk_evidence.py", "# SPDX-License-Identifier: MPL-2.0\n")

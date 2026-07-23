@@ -38,12 +38,13 @@ Required before production:
 - provider/key-boundary review
 - release artifact and supply-chain evidence
 
-Until complete:
+P3-11 satisfies the local operation/parity/no-fallback/dependency-purity gates.
+The remaining production and external gates are:
 
-- profile status is `development` or `integration`
 - production packaging fails closed
-- unsupported operations return capability-unavailable
-- marketing must not claim full Community parity or KCMVP validation
+- only a local/development exportable file provider exists
+- hosted qualification and external SDK redistribution review are incomplete
+- marketing must not claim production readiness or KCMVP validation
 
 ## Required Release Metadata
 

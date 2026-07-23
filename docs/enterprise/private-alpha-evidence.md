@@ -1,5 +1,9 @@
 # Enterprise Private Alpha Evidence
 
+> Historical pre-P3-11 snapshot. Current AnoCrypto-C Phase 1 status is recorded
+> in `anocrypto-handoff-current-status.md`; hosted evidence below remains
+> unchanged historical evidence.
+
 Status: local private-alpha engineering gate passes for the Enterprise/OpenSSL
 profile. Hosted qualification is deferred because GitHub Actions blocked runner
 allocation before code execution. All customer/production distribution remains

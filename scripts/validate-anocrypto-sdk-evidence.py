@@ -28,6 +28,11 @@ REQUIRED_RUNTIME = {
     "backend_id", "dependency", "runtime_version", "build_identity_abi",
     "build_fingerprint", "readiness", "capabilities",
 }
+OPERATION_CAPABILITIES = {
+    "csr_inspect", "certificate_issue", "crl_generate", "crl_inspect",
+    "ocsp_request_inspect", "ocsp_issuer_inspect", "ocsp_response_generate",
+    "ocsp_responder_validate",
+}
 
 
 def fail(message: str) -> None:
@@ -121,8 +126,8 @@ def validate(data: dict, artifact: Path | None = None, allow_example: bool = Fal
         fail("unexpected product profile")
     if data["fallback_used"] is not False:
         fail("fallback_used must be false")
-    if data["pki_parity_status"] != "unsupported_pending":
-        fail("PKI parity must remain unsupported_pending until real operation parity exists")
+    if data["pki_parity_status"] != "operation_parity_verified":
+        fail("PKI parity must record operation_parity_verified")
     if data["kcmvp_status"] != "not_validated":
         fail("KCMVP status must remain not_validated without exact evidence")
 
@@ -144,8 +149,8 @@ def validate(data: dict, artifact: Path | None = None, allow_example: bool = Fal
         fail("build fingerprint missing")
     if not isinstance(runtime["capabilities"], list):
         fail("runtime capabilities must be an array")
-    if runtime["capabilities"]:
-        fail("operation-level capabilities must remain empty for the inspected SDK scope")
+    if len(runtime["capabilities"]) != len(OPERATION_CAPABILITIES) or set(runtime["capabilities"]) != OPERATION_CAPABILITIES:
+        fail("runtime capabilities must contain the exact verified operation set")
 
     if artifact is not None:
         if not artifact.is_file():

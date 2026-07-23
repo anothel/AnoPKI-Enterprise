@@ -44,8 +44,9 @@ adapter/provider/profile fallback remains disabled and OpenSSL KCMVP status is
 `enterprise-anocrypto-c` selects only the external SDK adapter. Internal
 integration validation may include the adapter and evidence tooling, but no SDK
 source, header, credential, or binary may enter the package without exact SDK
-evidence and resolved external license terms. Parity is `unsupported_pending`,
-production readiness is false, and KCMVP is `not_validated`.
+evidence and resolved external license terms. Local P3-11 parity is verified;
+hosted qualification remains incomplete, production readiness is false, and
+KCMVP is `not_validated`.
 
 ## File And Archive Controls
 

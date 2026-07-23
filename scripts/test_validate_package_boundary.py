@@ -135,6 +135,15 @@ def main() -> None:
     trusted_completed["trusted_anocrypto_sdk_lane"]["status"] = "completed"
     expect_failure(lambda: validator.validate_hosted_state(trusted_completed), "not_run")
 
+    missing_local_only_blocker = copy.deepcopy(policy)
+    missing_local_only_blocker["profiles"]["enterprise-anocrypto-c"]["additional_blockers"].remove(
+        "P3-11 evidence is local Phase 1 only; hosted qualification is not run"
+    )
+    expect_failure(
+        lambda: validator.validate_inventory(ROOT, inventory, missing_local_only_blocker, edition),
+        "fail-closed blockers",
+    )
+
     with tempfile.TemporaryDirectory() as tmp:
         archive = Path(tmp) / "internal.zip"
         sources = generator.git_files(ROOT, [item["path"] for item in manifest["files"]])

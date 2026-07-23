@@ -66,7 +66,7 @@ def main() -> int:
         "runtime": runtime,
         "product_profile": "enterprise-anocrypto-c",
         "fallback_used": False,
-        "pki_parity_status": "unsupported_pending",
+        "pki_parity_status": "operation_parity_verified",
         "kcmvp_status": "not_validated",
     }
     args.output.parent.mkdir(parents=True, exist_ok=True)
