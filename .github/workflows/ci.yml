@@ -492,6 +492,7 @@ jobs:
       - run: python scripts/test_validate_enterprise_boundary.py
       - run: python scripts/validate-enterprise-boundary.py
       - run: python scripts/test_sync_community_upstream.py
+      - run: python scripts/test_validate_community_baseline.py
       - run: python scripts/validate-docs.py
       - run: python scripts/validate-community-baseline.py
       - run: python scripts/test_validate_enterprise_release.py

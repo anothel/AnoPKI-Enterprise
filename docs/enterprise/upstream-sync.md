@@ -7,6 +7,29 @@ one exact target tree. Git histories remain unrelated and are never joined.
 Current synchronized baseline:
 `ab9d76597df93ac1ac8b7938f4d25ba64f59f8dc`.
 
+## Reviewed Enterprise Fixes Against The Frozen Baseline
+
+Community is frozen at `49142ff50f5b37ba142d18cf61b60d8b287bdb49`;
+Enterprise continues to consume the pinned baseline above. The later
+`5348a47` failover tests and `49142ff` closeout/runner changes have not been
+bulk synchronized. Community source and history remain read-only.
+
+Four explicit Enterprise patches are applied to shared files:
+
+| File | Verified reason |
+| --- | --- |
+| `scripts/acme-smoke/test-run-certbot-smoke.ps1` | Linux rejects `-WindowStyle`; the child runner must use the active PowerShell executable. Paths with spaces exercise subprocess quoting. |
+| `service/cmd/anopki-service/main_test.go` | Remove the unused helper rejected by pinned staticcheck 2026.1 (`U1000`). |
+| `service/internal/store/sqlstore_outbox.go` | Use a typed, NULL-safe deadline comparison; PostgreSQL rejects the original untyped `$14 IS NULL` expression. |
+| `service/internal/store/migrate.go` | Preserve row-close errors alongside audit-backfill read/parse errors; pinned gosec reports unchecked close calls. |
+
+`validate-community-baseline.py` pins the normalized upstream and patched
+SHA-256 for each file. All other shared bytes still match the baseline exactly;
+unlisted changes and further changes to these files fail validation. These
+exceptions require review with their diffs and regression results, and must be
+reconciled explicitly if a later sync is selected. They do not advance the
+Community pin or claim that Community contains the fixes.
+
 ## Remote And Target Verification
 
 Use a remote named `community`:
@@ -116,6 +139,7 @@ then run:
 python scripts\test_validate_enterprise_boundary.py
 python scripts\validate-enterprise-boundary.py
 python scripts\test_sync_community_upstream.py
+python scripts\test_validate_community_baseline.py
 python scripts\validate-community-baseline.py
 python scripts\test_validate_key_provider_boundary.py
 python scripts\validate-key-provider-boundary.py

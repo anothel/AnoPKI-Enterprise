@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import re
 import subprocess
@@ -15,6 +16,27 @@ ROOT = Path(__file__).resolve().parents[1]
 BASELINE_COMMIT = "ab9d76597df93ac1ac8b7938f4d25ba64f59f8dc"
 PREVIOUS_BASELINE_COMMIT = "acb71b8f4e9133d9c25dad1be3bca58209fba0d7"
 COMMIT_RE = re.compile(r"^[0-9a-f]{40}$")
+
+# Frozen Community stays read-only. These reviewed fixes pin both normalized
+# upstream and Enterprise bytes; they do not permit arbitrary shared-file drift.
+REVIEWED_ENTERPRISE_PATCHES = {
+    "scripts/acme-smoke/test-run-certbot-smoke.ps1": (
+        "6129848d6afa29e238e580a9b67aef3c95e6cdc48b97ad274c027361c61336e0",
+        "298968aaab3872b3953024cff355047439c483f393ac55087fdeaadd2a8c7885",
+    ),
+    "service/cmd/anopki-service/main_test.go": (
+        "cd06896dd896f5754379c0fb8d6e3b5f45204cfe6c3f4abe2467b13bcc3953df",
+        "89b3962d0c519f3574fd2fedf5004d97ad3a612115df267cfa07a5dfd1f3185b",
+    ),
+    "service/internal/store/sqlstore_outbox.go": (
+        "8fb7a27ff713430270f9e4e9427fd529c0c35dc89a9d50c638356c0aedfaad2b",
+        "0906397c8a4f53958cbf9eee71d2758f48ba0296043d60baee6dfcc139aa6f7e",
+    ),
+    "service/internal/store/migrate.go": (
+        "780ef32d30d68d0c864be22bd953b620d34733e4c6cb69dca0ea88b7a47dbc6f",
+        "5eda4a8f9ed6a395a2f7f0a886dac433ba3a20eb609745052d227429ec1f86f1",
+    ),
+}
 
 COMMUNITY_ONLY_FILES = {
     "docs-pack/README.md",
@@ -356,13 +378,24 @@ def validate(root: Path) -> None:
     missing: list[str] = []
     changed: list[str] = []
     exact_paths = sorted(path for path in target_paths if exact_shared(path))
+    unmatched_patches = sorted(set(REVIEWED_ENTERPRISE_PATCHES) - set(exact_paths))
     for rel in exact_paths:
         path = root / rel
         if not path.is_file():
             missing.append(rel)
             continue
         target = git(root, "show", f"{BASELINE_COMMIT}:{rel}")
-        if normalized(path.read_bytes()) != normalized(target):
+        actual = normalized(path.read_bytes())
+        target = normalized(target)
+        if rel in REVIEWED_ENTERPRISE_PATCHES:
+            expected_upstream, expected_enterprise = REVIEWED_ENTERPRISE_PATCHES[rel]
+            matches = (
+                hashlib.sha256(target).hexdigest() == expected_upstream
+                and hashlib.sha256(actual).hexdigest() == expected_enterprise
+            )
+        else:
+            matches = actual == target
+        if not matches:
             changed.append(rel)
 
     stale = sorted(
@@ -387,6 +420,8 @@ def validate(root: Path) -> None:
     missing_enterprise = sorted(rel for rel in ENTERPRISE_REQUIRED_FILES if not (root / rel).is_file())
 
     details: list[str] = []
+    if unmatched_patches:
+        details.append("reviewed patches outside exact Community files:\n" + "\n".join(unmatched_patches))
     if missing:
         details.append("missing exact Community files:\n" + "\n".join(missing))
     if changed:
@@ -406,7 +441,9 @@ def validate(root: Path) -> None:
 
     print(
         f"community baseline ok: {BASELINE_COMMIT} "
-        f"({len(exact_paths)} exact shared files, {len(MIXED_REQUIRED_TEXT)} mixed files)"
+        f"({len(exact_paths) - len(REVIEWED_ENTERPRISE_PATCHES)} exact shared files, "
+        f"{len(REVIEWED_ENTERPRISE_PATCHES)} reviewed Enterprise patches, "
+        f"{len(MIXED_REQUIRED_TEXT)} mixed files)"
     )
 
 
