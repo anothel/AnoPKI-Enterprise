@@ -12,7 +12,8 @@ permissions:
 jobs:
   build-artifacts:
     name: Build release artifacts
-    runs-on: ubuntu-latest
+    # Keep the required PostgreSQL 16 recovery client/server major aligned.
+    runs-on: ubuntu-24.04
     services:
       postgres:
         image: postgres:16
@@ -68,7 +69,7 @@ jobs:
           .tmp/anopki-enterprise-openssl-internal.zip
       - uses: actions/setup-go@v5
         with:
-          go-version: "1.25.12"
+          go-version: "1.26.11"
           cache-dependency-path: |
             service/go.mod
             service/go.sum

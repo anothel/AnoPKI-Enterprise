@@ -17,7 +17,7 @@ from typing import Any, Iterable
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_OUTPUT = ROOT / ".tmp" / "status-outage-evidence"
-MINIMUM_GO_VERSION = (1, 25, 11)
+MINIMUM_GO_VERSION = (1, 26, 11)
 COMMIT_RE = re.compile(r"^[0-9a-f]{40}$")
 PRIVATE_KEY_MARKERS = (
     "-----BEGIN " + "PRIVATE KEY-----",
@@ -139,7 +139,7 @@ def evidence_template(commit: str, started_at: str) -> dict[str, Any]:
         "edition": "community",
         "product_profile": "community-openssl",
         "commit": commit,
-        "minimum_go_version": "1.25.11",
+        "minimum_go_version": "1.26.11",
         "started_at": started_at,
         "completed_at": started_at,
         "result": "failed",
@@ -233,7 +233,7 @@ def run_drill(root: Path, output_dir: Path, go_command: str, commit: str) -> dic
         return evidence
     if version < MINIMUM_GO_VERSION:
         evidence["blocker"] = (
-            f"unsupported Go version {version[0]}.{version[1]}.{version[2]}; minimum is 1.25.11"
+            f"unsupported Go version {version[0]}.{version[1]}.{version[2]}; minimum is 1.26.11"
         )
         write_evidence(output_dir, evidence)
         return evidence

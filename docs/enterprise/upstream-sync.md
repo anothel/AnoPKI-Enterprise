@@ -7,6 +7,47 @@ one exact target tree. Git histories remain unrelated and are never joined.
 Current synchronized baseline:
 `ab9d76597df93ac1ac8b7938f4d25ba64f59f8dc`.
 
+## Reviewed Enterprise Fixes Against The Frozen Baseline
+
+Community is frozen at `49142ff50f5b37ba142d18cf61b60d8b287bdb49`;
+Enterprise continues to consume the pinned baseline above. The later
+`5348a47` failover tests and `49142ff` closeout/runner changes have not been
+bulk synchronized. Community source and history remain read-only.
+
+The initial validation fixes apply four explicit Enterprise patches to shared files:
+
+| File | Verified reason |
+| --- | --- |
+| `scripts/acme-smoke/test-run-certbot-smoke.ps1` | Linux rejects `-WindowStyle`; the child runner must use the active PowerShell executable. Paths with spaces exercise subprocess quoting. |
+| `service/cmd/anopki-service/main_test.go` | Remove the unused helper rejected by pinned staticcheck 2026.1 (`U1000`). |
+| `service/internal/store/sqlstore_outbox.go` | Use a typed, NULL-safe deadline comparison; PostgreSQL rejects the original untyped `$14 IS NULL` expression. |
+| `service/internal/store/migrate.go` | Preserve row-close errors alongside audit-backfill read/parse errors; pinned gosec reports unchecked close calls. |
+
+`validate-community-baseline.py` pins the normalized upstream and patched
+SHA-256 for each file. These four initial fixes are a subset of the 24 reviewed
+patches listed below. Shared files outside the complete exception set still
+match the baseline exactly;
+unlisted changes and further changes to these files fail validation. These
+exceptions require review with their diffs and regression results, and must be
+reconciled explicitly if a later sync is selected. They do not advance the
+Community pin or claim that Community contains the fixes.
+
+## Go Security Qualification Follow-up
+
+The security update on PR #1 retains the same Community pin and adds exact
+normalized upstream/patched digests for `service/go.mod`, `service/go.sum`,
+`CONTRIBUTING.md`, the backup/restore runbook, and the eight drill runners and
+corresponding synthetic toolchain fixtures. All executable qualification
+minimums are Go 1.26.11; the baseline matrix covers 1.26.11 and 1.27.4. Unsupported
+Go 1.25 qualification is retired rather than producing artifacts with its
+vulnerable standard library. The module directive also rejects older compilers.
+
+There are now 24 explicitly pinned shared-file patches and 175 unchanged exact
+shared files, with 29 mixed-ownership files. `x/text` v0.41.0 and its selected
+transitive versions have matching checksums, license evidence and package
+allow-lists. No exception permits arbitrary changes to those files. Historical
+Community, hosted, and SDK evidence is not rewritten as new qualification.
+
 ## Remote And Target Verification
 
 Use a remote named `community`:
@@ -116,6 +157,7 @@ then run:
 python scripts\test_validate_enterprise_boundary.py
 python scripts\validate-enterprise-boundary.py
 python scripts\test_sync_community_upstream.py
+python scripts\test_validate_community_baseline.py
 python scripts\validate-community-baseline.py
 python scripts\test_validate_key_provider_boundary.py
 python scripts\validate-key-provider-boundary.py

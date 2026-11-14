@@ -21,7 +21,7 @@ sys.modules[SPEC.name] = MODULE
 SPEC.loader.exec_module(MODULE)
 
 
-def fake_go(path: Path, *, version: str = "go1.25.12", fail_test: str = "", omit_test: str = "") -> Path:
+def fake_go(path: Path, *, version: str = "go1.26.11", fail_test: str = "", omit_test: str = "") -> Path:
     events = []
     for package, test in MODULE.EXPECTED_TESTS:
         if test == omit_test:
@@ -69,7 +69,7 @@ def test_unsupported_go_fails_before_tests() -> None:
         out = root / "out"
         evidence = MODULE.run_drill(ROOT, out, str(go), "b" * 40)
     assert evidence["result"] == "failed"
-    assert "minimum is 1.25.11" in evidence["blocker"]
+    assert "minimum is 1.26.11" in evidence["blocker"]
     assert evidence["tests"] == []
 
 

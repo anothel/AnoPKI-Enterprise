@@ -171,11 +171,11 @@ def require_go_evidence_archive(dist: Path) -> tuple[Path, dict[str, object]]:
         or evidence["kcmvp_status"] != "not_validated"
     ):
         fail("Enterprise Go verification boundary claims are invalid")
-    if evidence["minimum_go_version"] != "1.25.11":
+    if evidence["minimum_go_version"] != "1.26.11":
         fail("Enterprise Go verification minimum version is invalid")
     if not isinstance(evidence["go_version"], str) or "go version go" not in evidence["go_version"]:
         fail("Enterprise Go verification toolchain identity is invalid")
-    if parse_go_version(evidence["go_version"]) < (1, 25, 11):
+    if parse_go_version(evidence["go_version"]) < (1, 26, 11):
         fail("Enterprise Go verification used an unsupported toolchain")
 
     go_environment = evidence["go_environment"]
@@ -449,13 +449,13 @@ def require_status_outage_evidence_archive(dist: Path) -> tuple[Path, dict[str, 
         fail("status outage verification evidence profile is invalid")
     if evidence["result"] != "passed" or evidence["blocker"] != "":
         fail("status outage verification drill did not pass")
-    if evidence["minimum_go_version"] != "1.25.11":
+    if evidence["minimum_go_version"] != "1.26.11":
         fail("status outage verification minimum Go version is invalid")
     if not isinstance(evidence["commit"], str) or not re.fullmatch(r"[0-9a-f]{40}", evidence["commit"]):
         fail("status outage verification commit is invalid")
     if not isinstance(evidence["go_version"], str) or "go version go" not in evidence["go_version"]:
         fail("status outage verification Go identity is invalid")
-    if parse_go_version(evidence["go_version"]) < (1, 25, 11):
+    if parse_go_version(evidence["go_version"]) < (1, 26, 11):
         fail("status outage verification used an unsupported Go toolchain")
 
     expected_tests = [
@@ -586,13 +586,13 @@ def require_audit_replay_evidence_archive(dist: Path) -> tuple[Path, dict[str, o
         fail("audit/replay verification evidence profile is invalid")
     if evidence["result"] != "passed" or evidence["blocker"] != "":
         fail("audit/replay verification drill did not pass")
-    if evidence["minimum_go_version"] != "1.25.11":
+    if evidence["minimum_go_version"] != "1.26.11":
         fail("audit/replay verification minimum Go version is invalid")
     if not isinstance(evidence["commit"], str) or not re.fullmatch(r"[0-9a-f]{40}", evidence["commit"]):
         fail("audit/replay verification commit is invalid")
     if not isinstance(evidence["go_version"], str) or "go version go" not in evidence["go_version"]:
         fail("audit/replay verification Go identity is invalid")
-    if parse_go_version(evidence["go_version"]) < (1, 25, 11):
+    if parse_go_version(evidence["go_version"]) < (1, 26, 11):
         fail("audit/replay verification used an unsupported Go toolchain")
 
     expected_tests = [
@@ -748,13 +748,13 @@ def require_audit_integrity_evidence_archive(dist: Path) -> tuple[Path, dict[str
         fail("Audit integrity verification drill did not pass")
     if evidence["postgres_required"] is not True:
         fail("Audit integrity verification release evidence must require PostgreSQL")
-    if evidence["minimum_go_version"] != "1.25.11":
+    if evidence["minimum_go_version"] != "1.26.11":
         fail("Audit integrity verification minimum Go version is invalid")
     if not isinstance(evidence["commit"], str) or not re.fullmatch(r"[0-9a-f]{40}", evidence["commit"]):
         fail("Audit integrity verification commit is invalid")
     if not isinstance(evidence["go_version"], str) or "go version go" not in evidence["go_version"]:
         fail("Audit integrity verification Go identity is invalid")
-    if parse_go_version(evidence["go_version"]) < (1, 25, 11):
+    if parse_go_version(evidence["go_version"]) < (1, 26, 11):
         fail("Audit integrity verification used an unsupported Go toolchain")
 
     expected_tests = [
@@ -935,7 +935,7 @@ def require_authorization_boundary_evidence_archive(dist: Path) -> tuple[Path, d
         fail("authorization boundary verification evidence profile is invalid")
     if evidence["result"] != "passed" or evidence["blocker"] != "":
         fail("authorization boundary verification drill did not pass")
-    if evidence["minimum_go_version"] != "1.25.11":
+    if evidence["minimum_go_version"] != "1.26.11":
         fail("authorization boundary verification minimum Go version is invalid")
     if (
         not isinstance(evidence["commit"], str)
@@ -945,7 +945,7 @@ def require_authorization_boundary_evidence_archive(dist: Path) -> tuple[Path, d
         fail("authorization boundary verification commit is invalid")
     if not isinstance(evidence["go_version"], str) or "go version go" not in evidence["go_version"]:
         fail("authorization boundary verification Go identity is invalid")
-    if parse_go_version(evidence["go_version"]) < (1, 25, 11):
+    if parse_go_version(evidence["go_version"]) < (1, 26, 11):
         fail("authorization boundary verification used an unsupported Go toolchain")
 
     expected_names = [
@@ -1115,13 +1115,13 @@ def require_issuer_rollover_evidence_archive(dist: Path) -> tuple[Path, dict[str
         fail("issuer rollover verification evidence profile is invalid")
     if evidence["result"] != "passed" or evidence["blocker"] != "":
         fail("issuer rollover verification drill did not pass")
-    if evidence["minimum_go_version"] != "1.25.11":
+    if evidence["minimum_go_version"] != "1.26.11":
         fail("issuer rollover verification minimum Go version is invalid")
     if not isinstance(evidence["commit"], str) or not re.fullmatch(r"[0-9a-f]{40}", evidence["commit"]):
         fail("issuer rollover verification commit is invalid")
     if not isinstance(evidence["go_version"], str) or "go version go" not in evidence["go_version"]:
         fail("issuer rollover verification Go identity is invalid")
-    if parse_go_version(evidence["go_version"]) < (1, 25, 11):
+    if parse_go_version(evidence["go_version"]) < (1, 26, 11):
         fail("issuer rollover verification used an unsupported Go toolchain")
 
     expected_tests = [
@@ -1263,13 +1263,13 @@ def require_multi_node_evidence_archive(dist: Path) -> tuple[Path, dict[str, obj
         fail("multi-node verification evidence profile is invalid")
     if evidence["result"] != "passed" or evidence["blocker"] != "":
         fail("multi-node verification drill did not pass")
-    if evidence["minimum_go_version"] != "1.25.11":
+    if evidence["minimum_go_version"] != "1.26.11":
         fail("multi-node verification minimum Go version is invalid")
     if not isinstance(evidence["commit"], str) or not re.fullmatch(r"[0-9a-f]{40}", evidence["commit"]):
         fail("multi-node verification commit is invalid")
     if not isinstance(evidence["go_version"], str) or "go version go" not in evidence["go_version"]:
         fail("multi-node verification Go identity is invalid")
-    if parse_go_version(evidence["go_version"]) < (1, 25, 11):
+    if parse_go_version(evidence["go_version"]) < (1, 26, 11):
         fail("multi-node verification used an unsupported Go toolchain")
 
     expected_tests = [
@@ -1414,13 +1414,13 @@ def require_postgres_recovery_evidence_archive(dist: Path) -> tuple[Path, dict[s
         fail("PostgreSQL recovery verification evidence profile is invalid")
     if evidence["result"] != "passed" or evidence["blocker"] != "":
         fail("PostgreSQL recovery verification drill did not pass")
-    if evidence["minimum_go_version"] != "1.25.11" or evidence["required_postgres_major"] != 16:
+    if evidence["minimum_go_version"] != "1.26.11" or evidence["required_postgres_major"] != 16:
         fail("PostgreSQL recovery verification version policy is invalid")
     if not isinstance(evidence["commit"], str) or not re.fullmatch(r"[0-9a-f]{40}", evidence["commit"]):
         fail("PostgreSQL recovery verification commit is invalid")
     if not isinstance(evidence["go_version"], str) or "go version go" not in evidence["go_version"]:
         fail("PostgreSQL recovery verification Go identity is invalid")
-    if parse_go_version(evidence["go_version"]) < (1, 25, 11):
+    if parse_go_version(evidence["go_version"]) < (1, 26, 11):
         fail("PostgreSQL recovery verification used an unsupported Go toolchain")
     if not isinstance(evidence["postgres_server_version"], str):
         fail("PostgreSQL recovery verification server version is invalid")

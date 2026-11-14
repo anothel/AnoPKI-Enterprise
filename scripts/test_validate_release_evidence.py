@@ -28,7 +28,7 @@ def require_release_workflow() -> None:
         "contents: read",
         "contents: write",
         "id-token: write",
-        'go-version: "1.25.12"',
+        'go-version: "1.26.11"',
         "python scripts/verify-go-release.py",
         "--profile full",
         "anopki-enterprise-go-verification.tar.gz",
@@ -143,7 +143,7 @@ def test_compatibility_matrix_row_detail_drift_fails(tmp_path: Path) -> None:
     evidence = tmp_path / "docs" / "reference" / "release-evidence.md"
     evidence.write_text(
         evidence.read_text(encoding="utf-8").replace(
-            "The maintained floor is Go 1.25.11",
+            "The maintained floor is Go 1.26.11",
             "The maintained floor is Go 1.25",
             1,
         ),
@@ -216,12 +216,12 @@ def test_missing_ci_go_evidence_upload_fails(tmp_path: Path) -> None:
     copy_release_evidence_inputs(tmp_path)
     ci = tmp_path / ".github" / "workflows" / "ci.yml"
     ci.write_text(
-        ci.read_text(encoding="utf-8").replace("anopki-enterprise-go-analysis-1.26.5", "", 1),
+        ci.read_text(encoding="utf-8").replace("anopki-enterprise-go-analysis-1.26.11", "", 1),
         encoding="utf-8",
     )
     result = run_validator(tmp_path)
     assert result.returncode == 1
-    assert "anopki-enterprise-go-analysis-1.26.5" in result.stderr
+    assert "anopki-enterprise-go-analysis-1.26.11" in result.stderr
 
 
 def test_missing_ci_fuzz_smoke_fails(tmp_path: Path) -> None:
@@ -387,12 +387,12 @@ def test_audit_replay_minimum_go_version_format_drift_fails(tmp_path: Path) -> N
     copy_release_evidence_inputs(tmp_path)
     mutate(
         tmp_path / "scripts/verify-audit-replay-drill.py",
-        "MINIMUM_GO_VERSION = (1, 25, 11)",
-        "MINIMUM_GO_VERSION=(1,25,11)",
+        "MINIMUM_GO_VERSION = (1, 26, 11)",
+        "MINIMUM_GO_VERSION=(1,26,11)",
     )
     result = run_validator(tmp_path)
     assert result.returncode == 1
-    assert "MINIMUM_GO_VERSION = (1, 25, 11)" in result.stderr
+    assert "MINIMUM_GO_VERSION = (1, 26, 11)" in result.stderr
 
 
 def test_missing_audit_replay_runner_fails(tmp_path: Path) -> None:

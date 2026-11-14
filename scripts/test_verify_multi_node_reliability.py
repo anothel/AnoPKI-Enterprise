@@ -21,7 +21,7 @@ sys.modules[SPEC.name] = MODULE
 SPEC.loader.exec_module(MODULE)
 
 
-def fake_go(path: Path, *, version: str = "go1.25.12", failing_test: str = "", omitted_test: str = "") -> Path:
+def fake_go(path: Path, *, version: str = "go1.26.11", failing_test: str = "", omitted_test: str = "") -> Path:
     events = []
     for package, test in MODULE.EXPECTED_TESTS:
         if test == omitted_test:

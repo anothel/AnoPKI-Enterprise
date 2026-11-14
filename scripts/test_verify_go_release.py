@@ -23,7 +23,7 @@ import pathlib
 import sys
 
 args = sys.argv[1:]
-version = os.environ.get("FAKE_GO_VERSION", "go1.25.12")
+version = os.environ.get("FAKE_GO_VERSION", "go1.26.11")
 if args == ["version"]:
     print(f"go version {version} linux/amd64")
     raise SystemExit(0)
@@ -74,7 +74,7 @@ def make_fake_go(root: Path) -> Path:
     return wrapper_path
 
 
-def run(profile: str, *, version: str = "go1.25.12", fail: str = ""):
+def run(profile: str, *, version: str = "go1.26.11", fail: str = ""):
     temp = tempfile.TemporaryDirectory(prefix="AnoPKI fake go ")
     root = Path(temp.name)
     fake_go = make_fake_go(root)
@@ -130,7 +130,7 @@ def test_full_profile_passes() -> None:
         assert payload["anocrypto_sdk_status"] == "not_run"
         assert payload["pki_parity_status"] == "unsupported_pending"
         assert payload["kcmvp_status"] == "not_validated"
-        assert payload["minimum_go_version"] == "1.25.11"
+        assert payload["minimum_go_version"] == "1.26.11"
         assert payload["tool_versions"] == {
             "staticcheck": "2026.1",
             "gosec": "v2.25.0",
@@ -163,8 +163,34 @@ def test_full_profile_passes() -> None:
         temp.cleanup()
 
 
+def test_vulnerable_go_fails_closed() -> None:
+    temp, result, payload, _, _ = run("baseline", version="go1.26.5")
+    try:
+        assert result.returncode == 1, "vulnerable production compiler was accepted"
+        assert payload["result"] == "failed"
+        assert payload["steps"] == []
+        assert "unsupported Go version" in payload["blocker"]
+    finally:
+        temp.cleanup()
+
+
+def test_minimum_override_cannot_downgrade_security_floor() -> None:
+    with tempfile.TemporaryDirectory() as dirname:
+        root = Path(dirname)
+        fake_go = make_fake_go(root)
+        output = root / "evidence"
+        result = subprocess.run(
+            [sys.executable, str(SCRIPT), "--profile", "baseline", "--go", str(fake_go),
+             "--minimum-go", "1.26.5", "--out-dir", str(output)],
+            cwd=ROOT, text=True, capture_output=True, check=False,
+        )
+        assert result.returncode == 2, "security floor downgrade was accepted"
+        assert "cannot be below" in result.stderr
+        assert not output.exists()
+
+
 def test_minimum_go_passes() -> None:
-    temp, result, payload, _, _ = run("baseline", version="go1.25.11")
+    temp, result, payload, _, _ = run("baseline", version="go1.26.11")
     try:
         assert result.returncode == 0, result.stderr or result.stdout
         assert payload["result"] == "passed"
@@ -249,6 +275,8 @@ def test_list_is_deterministic_and_side_effect_free() -> None:
 
 
 def main() -> None:
+    test_vulnerable_go_fails_closed()
+    test_minimum_override_cannot_downgrade_security_floor()
     test_full_profile_passes()
     test_minimum_go_passes()
     test_old_go_fails_closed()

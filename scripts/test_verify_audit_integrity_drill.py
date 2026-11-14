@@ -24,7 +24,7 @@ SPEC.loader.exec_module(MODULE)
 def fake_go(
     path: Path,
     *,
-    version: str = "go1.25.12",
+    version: str = "go1.26.11",
     failing_test: str = "",
     omitted_test: str = "",
     postgres_status: str = "pass",

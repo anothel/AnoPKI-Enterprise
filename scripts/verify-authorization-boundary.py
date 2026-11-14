@@ -17,7 +17,7 @@ from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_OUTPUT = ROOT / ".tmp" / "authorization-boundary-evidence"
-MINIMUM_GO_VERSION = (1, 25, 11)
+MINIMUM_GO_VERSION = (1, 26, 11)
 COMMIT_RE = re.compile(r"^[0-9a-f]{40}$")
 PACKAGE = "github.com/anothel/anopki/service/internal/httpapi"
 BASELINE_LOG_NAME = "authorization-boundary-baseline.log"
@@ -180,7 +180,7 @@ def evidence_template(commit: str) -> dict[str, Any]:
         "edition": "community",
         "product_profile": "community-openssl",
         "commit": commit,
-        "minimum_go_version": "1.25.11",
+        "minimum_go_version": "1.26.11",
         "started_at": utc_now(),
         "completed_at": utc_now(),
         "result": "failed",
@@ -270,7 +270,7 @@ def run_drill(root: Path, output_dir: Path, go_executable: str, commit: str) -> 
         if version_result.returncode != 0:
             raise DrillFailure("Go executable failed")
         if parse_go_version(version_result.stdout) < MINIMUM_GO_VERSION:
-            raise DrillFailure("Go 1.25.11 or newer is required")
+            raise DrillFailure("Go 1.26.11 or newer is required")
         if evidence["commit"] == "unavailable":
             raise DrillFailure("exact Community commit is required")
 

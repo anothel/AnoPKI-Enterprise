@@ -65,7 +65,7 @@ REQUIRED_COMPATIBILITY_ROWS = [
 
 REQUIRED_COMPATIBILITY_ROW_TEXT = {
     "OS": ["GitHub Actions Ubuntu", "Windows local verification"],
-    "Go": ["go version", "Go 1.25.11"],
+    "Go": ["go version", "The maintained floor is Go 1.26.11"],
     "OpenSSL": ["CMake configure"],
     "SQLite": ["Go test", "SQLite"],
     "PostgreSQL": ["PostgreSQL integration", "DSN major version"],
@@ -127,14 +127,14 @@ REQUIRED_CI_TEXT = [
     "python scripts/validate-package-boundary.py",
     "python scripts/test_validate_release_evidence.py",
     "python scripts/validate-release-evidence.py",
-    'go: ["1.25.12", "1.26.5"]',
-    'go-version: "1.26.5"',
-    'go-version: "1.25.12"',
+    'go: ["1.26.11", "1.27.4"]',
+    'go-version: "1.26.11"',
+    'go-version: "1.26.11"',
     "python ../scripts/verify-go-release.py",
     "--profile baseline",
     "--profile analysis",
     "anopki-enterprise-go-baseline-${{ matrix.go }}",
-    "anopki-enterprise-go-analysis-1.26.5",
+    "anopki-enterprise-go-analysis-1.26.11",
     '--commit "${GITHUB_SHA}"',
     "ANOPKI_ENABLE_FUZZING=ON",
     "anopki_core_csr_fuzz",
@@ -151,7 +151,7 @@ REQUIRED_CI_TEXT = [
 ]
 
 REQUIRED_GO_RUNNER_TEXT = [
-    "MINIMUM_GO_VERSION = (1, 25, 11)",
+    "MINIMUM_GO_VERSION = (1, 26, 11)",
     '"baseline"',
     '"analysis"',
     '"full"',
@@ -193,7 +193,7 @@ REQUIRED_RECOVERY_RUNNER_TEXT = [
 ]
 
 REQUIRED_STATUS_OUTAGE_RUNNER_TEXT = [
-    "MINIMUM_GO_VERSION = (1, 25, 11)",
+    "MINIMUM_GO_VERSION = (1, 26, 11)",
     "community_status_outage_drill",
     "TestPublishCRLOutageRecoversWithoutPhantomPublication",
     "TestRespondOCSPOutageRecoversWithoutSuccessAudit",
@@ -207,7 +207,7 @@ REQUIRED_STATUS_OUTAGE_RUNNER_TEXT = [
 ]
 
 REQUIRED_AUDIT_REPLAY_RUNNER_TEXT = [
-    "MINIMUM_GO_VERSION = (1, 25, 11)",
+    "MINIMUM_GO_VERSION = (1, 26, 11)",
     "community_audit_replay_drill",
     "TestRepairMissingIssuanceAuditEventsPreservesCurrentEvidenceAndIsIdempotent",
     "TestReplayDeadLetterOutboxMessagesPreservesHistoryAndCompletesAfterRecovery",
@@ -220,7 +220,7 @@ REQUIRED_AUDIT_REPLAY_RUNNER_TEXT = [
 
 
 REQUIRED_AUDIT_INTEGRITY_RUNNER_TEXT = [
-    "MINIMUM_GO_VERSION = (1, 25, 11)",
+    "MINIMUM_GO_VERSION = (1, 26, 11)",
     "community_audit_integrity_drill",
     'POSTGRES_DSN_ENV = "ANOPKI_POSTGRES_TEST_DSN"',
     "require_postgres",
@@ -244,7 +244,7 @@ REQUIRED_AUDIT_INTEGRITY_RUNNER_TEXT = [
 
 
 REQUIRED_AUTHORIZATION_BOUNDARY_RUNNER_TEXT = [
-    "MINIMUM_GO_VERSION = (1, 25, 11)",
+    "MINIMUM_GO_VERSION = (1, 26, 11)",
     "community_authorization_boundary_drill",
     "TestRequestAuthorizerRunsAfterAuthenticationAndScopeAndSkipsPublicRoutes",
     "TestRequestAuthorizerTimeoutFailsClosed",
@@ -264,7 +264,7 @@ REQUIRED_AUTHORIZATION_BOUNDARY_RUNNER_TEXT = [
 
 
 REQUIRED_ISSUER_ROLLOVER_RUNNER_TEXT = [
-    "MINIMUM_GO_VERSION = (1, 25, 11)",
+    "MINIMUM_GO_VERSION = (1, 26, 11)",
     "community_issuer_rollover_drill",
     "TestCertificateProfileIssuerRolloverAndRollbackPreservesOverlap",
     "TestCertificateProfileIssuerRolloverRejectsDifferentParentAndStaleRetry",
@@ -279,7 +279,7 @@ REQUIRED_ISSUER_ROLLOVER_RUNNER_TEXT = [
 
 
 REQUIRED_POSTGRES_RECOVERY_RUNNER_TEXT = [
-    "MINIMUM_GO_VERSION = (1, 25, 11)",
+    "MINIMUM_GO_VERSION = (1, 26, 11)",
     "REQUIRED_POSTGRES_MAJOR = 16",
     "client_version = result.stdout.strip()",
     "parse_postgres_major(client_version) != REQUIRED_POSTGRES_MAJOR",
@@ -299,7 +299,7 @@ REQUIRED_POSTGRES_RECOVERY_RUNNER_TEXT = [
 
 
 REQUIRED_MULTI_NODE_RUNNER_TEXT = [
-    "MINIMUM_GO_VERSION = (1, 25, 11)",
+    "MINIMUM_GO_VERSION = (1, 26, 11)",
     "community_multi_node_reliability_drill",
     "TestIssueCertificateActiveClaimPreventsSecondServiceSigning",
     "TestPublishCRLActiveClaimPreventsSecondServiceSigning",
@@ -321,7 +321,7 @@ REQUIRED_RELEASE_TEXT = [
     "contents: read",
     "contents: write",
     "id-token: write",
-    'go-version: "1.25.12"',
+    'go-version: "1.26.11"',
     "python scripts/verify-go-release.py",
     "--profile full",
     "anopki-enterprise-go-verification.tar.gz",
