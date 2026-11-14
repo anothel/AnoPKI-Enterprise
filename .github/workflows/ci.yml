@@ -310,6 +310,7 @@ jobs:
           --out-dir ../.tmp/go-evidence/enterprise-baseline-${{ matrix.go }}
           --commit "${GITHUB_SHA}"
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: anopki-enterprise-go-baseline-${{ matrix.go }}
           path: .tmp/go-evidence/enterprise-baseline-${{ matrix.go }}/
@@ -339,6 +340,7 @@ jobs:
           --out-dir ../.tmp/go-evidence/enterprise-analysis-1.26.5
           --commit "${GITHUB_SHA}"
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: anopki-enterprise-go-analysis-1.26.5
           path: .tmp/go-evidence/enterprise-analysis-1.26.5/

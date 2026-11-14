@@ -108,6 +108,18 @@ CI job and release-build job are pinned to Ubuntu 24.04; the version guard is
 unchanged and the release workflow was not executed. The newer review commit
 must complete its own hosted checks; results are not inherited from this run.
 
+The subsequent
+[CI run 43623547792](https://github.com/anothel/AnoPKI-Enterprise/actions/runs/43623547792),
+for runner-correction commit `6de6a4eba6f41e4288672befab7cf29b399f66f3`,
+passed PostgreSQL backup/restore, confirming the environment correction.
+The first run's Go analysis failure is narrowed to govulncheck, but its runner
+captures detailed diagnostics in files and the upload was skipped on failure.
+The cause of the hosted govulncheck failure is therefore unresolved; the local
+`Forbidden` result must not be assumed to explain the hosted failure. Go
+baseline/analysis artifacts now upload even after failure, while preserving
+the failing check and missing-evidence errors. Qualification of the final
+revision remains required.
+
 | Completed change and files | Reproduction / validation | Remaining risk |
 | --- | --- | --- |
 | ACME portability: `scripts/acme-smoke/test-run-certbot-smoke.ps1` | Linux PowerShell 7.4.13 rejected unconditional `-WindowStyle Hidden`; use `-NoNewWindow` and the active host executable. Full self-test passes, now with spaces in stub/project paths and existing exit-code assertions. | Windows PowerShell was not available for a fresh run. No live ACME-client claim. |
@@ -116,6 +128,7 @@ must complete its own hosted checks; results are not inherited from this run.
 | Audit error handling: `service/internal/store/migrate.go`, `service/internal/store/audit_backfill_close_test.go` | Pinned gosec v2.25.0 reported three unchecked closes. Preserve explicit close errors with `errors.Join`. Driver-level regressions fail before and pass after the fix while retaining primary scan/parse errors. Migration/backfill tests pass; gosec reports zero issues. | Rare failure diagnostics can now include both errors; public API/CLI schemas are unchanged. `database/sql` may suppress a secondary driver error when it automatically closes rows after an iteration failure; regressions establish the explicit scan/parse close paths. |
 | Sync guard: `scripts/validate-community-baseline.py`, new `scripts/test_validate_community_baseline.py`, `.github/workflows/ci.yml`, `docs/enterprise/upstream-sync.md` | Four exact upstream/patched hash pairs allow only these reviewed fixes. Real-Git fixture tests cover patched acceptance, CRLF normalization, unrelated drift, upstream mismatch, missing files and unknown exception paths. Added CI execution for the regression script. | Future shared edits must explicitly reconcile patch hashes; this is not a bulk baseline sync. |
 | Recovery runner: `.github/workflows/ci.yml`, `.github/workflows/release.yml` | Hosted run `43623291642` proves the `ubuntu-latest` PostgreSQL 18 client mismatch. Pin only jobs that execute the version-16 recovery drill to Ubuntu 24.04. Existing workflow/release validators remain applicable. | Final hosted rerun is required; no release dry-run or publishing workflow was invoked. |
+| Failed-check diagnostics: `.github/workflows/ci.yml` | First hosted analysis reached govulncheck but skipped uploading its captured failure log. Go baseline/analysis uploads now run with `always()`, preserving the actual failed result and strict missing-file handling. | The next failed hosted run must supply its diagnostic artifact before root cause can be established. |
 | Recovery context: `docs/PROJECT_STATUS.md`, `docs/INDEX.md` | Maintained status, source SHAs, architecture, results, limitations and priorities; documentation validation checks links and repository conventions. | Historical readiness metadata elsewhere remains conservative and must not be upgraded without new evidence. |
 
 ## Verification Record
