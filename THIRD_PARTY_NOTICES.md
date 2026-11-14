@@ -5,7 +5,7 @@ It is evidence metadata, not legal advice or a replacement for the included lice
 
 - Product: AnoPKI Enterprise
 - Edition: enterprise
-- Enterprise commit: `48247e9d27fc4a9ced7542f2581e6e9a30763883`
+- Enterprise commit: `7c04e4afd45f8a73941589f5e9639b43dc9c68e9`
 - Community baseline: `ab9d76597df93ac1ac8b7938f4d25ba64f59f8dc`
 - Unresolved dependencies: 0
 - Customer distribution ready: false

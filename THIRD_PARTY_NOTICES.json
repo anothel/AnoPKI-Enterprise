@@ -1132,7 +1132,7 @@
     }
   ],
   "edition": "enterprise",
-  "enterprise_commit": "48247e9d27fc4a9ced7542f2581e6e9a30763883",
+  "enterprise_commit": "7c04e4afd45f8a73941589f5e9639b43dc9c68e9",
   "generated_from": [
     "service/go.mod",
     "service/go.sum",
