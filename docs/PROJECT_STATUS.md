@@ -5,6 +5,70 @@ UTC during verification. This is an engineering recovery record,
 not production qualification, release authorization, or a cryptographic
 certification claim. Historical evidence remains bound to its original commits.
 
+## Go Security Qualification Follow-up — 2026-11-15
+
+Current security work continues from PR #1 commit
+`4a8d4d6f573bf5beb9d74a01a9beece56be74b38`. Hosted run
+[43623921554](https://github.com/anothel/AnoPKI-Enterprise/actions/runs/43623921554)
+completed 24 jobs successfully; Go analysis failed because govulncheck reported
+19 reachable vulnerabilities. The supplied analysis artifact identifies the
+Go 1.26.5 standard library (fixed through 1.26.11) and `x/text` v0.29.0
+(fixed in v0.41.0). This supersedes the earlier uncertainty about that hosted
+failure: it was a positive security finding, not a scanner outage.
+
+### Patch And Compatibility Boundary
+
+- Production, release, analysis and operational validation use Go **1.26.11**.
+  The module directive and maintained runner minimums enforce that floor.
+  `--minimum-go` may raise it but cannot downgrade it. Regression tests observed
+  both vulnerable-compiler acceptance and floor-downgrade acceptance before
+  their fixes, then rejected both after the fixes.
+- The supported compatibility matrix is **1.26.11 / 1.27.4**, confirmed against
+  Go's current release metadata. Go 1.25 executable qualification is retired.
+  Older versions in dated evidence below remain historical observations.
+- `x/text` is **v0.41.0**. Selected transitive updates are `x/sync` v0.22.0,
+  `x/mod` v0.38.0 and `x/tools` v0.48.0. Each dependency declares a Go 1.25.0
+  module minimum; the stricter project floor comes from the security policy.
+  The selected graph contains 34 non-main modules, with exact module checksums,
+  zip hashes and discovered license/patent texts recorded. Three additional
+  test/support modules receive matching evidence as part of the full snapshot.
+- The production x/text path is pgx SCRAM authentication:
+  `main.go` selects the pgx driver; `pgconn/auth_scram.go` normalizes the configured
+  database password with `secure/precis.OpaqueString.String`. Existing SQL and
+  HTTP contracts are unchanged. No bespoke input filter or scanner suppression
+  replaces the dependency fix.
+- Frozen Community stays at its recorded `ab9d765` pin. There are now 175
+  unchanged exact files, 24 exact reviewed patches and 29 mixed files. The new
+  exceptions bind only the updated module files, prerequisites, drill minimums
+  and synthetic fixtures. The AnoCrypto-C source pin and all SDK, KCMVP,
+  commercial authorization and production-provider claims remain unchanged.
+
+### Changed Files And Validation
+
+| Change | Files | Validation / remaining limits |
+| --- | --- | --- |
+| Patched compiler and floor | `.github/workflows/ci.yml`, `.github/workflows/release.yml`, `service/go.mod`, `scripts/verify-go-release.py`, eight `scripts/verify-*-drill.py` / reliability / hash-chain / authorization runners | Local Go test, vet, build, race and staticcheck pass on 1.26.11. Existing floor and evidence tests are updated; old compilers and explicit floor downgrades fail closed. Hosted qualification of the pushed commit remains required. |
+| Dependency closure | `service/go.mod`, `service/go.sum` | `go mod verify` passes. PostgreSQL integration, outbox CAS and audit-close regressions pass on both the normal disposable DB and a SCRAM-authenticated PostgreSQL 16 DB with a generated non-ASCII password. Credentials are neither committed nor logged. |
+| License/package provenance | `packaging/dependency-license-inventory.json`, both internal package manifests, both `THIRD_PARTY_NOTICES` outputs, exact versioned texts under `LICENSES/third-party/go/` | License validator passes. All immutable package self-tests pass against snapshot `82067e8` containing the new texts; the HEAD/index guard is preserved. Customer distribution is still prohibited. |
+| Verification contracts | `scripts/validate-release-evidence.py`, `scripts/validate-release-artifacts.py`, matching tests and drill fixtures, `scripts/validate-community-baseline.py` | Security-floor and release-artifact tests pass. Hash pairs retain exact frozen-upstream bytes and reject unreviewed drift. The documented minimum check now requires the floor label rather than accepting an unrelated compiler pin elsewhere in the row. |
+| Current instructions and evidence | `README.md`, `CONTRIBUTING.md`, `docs/operations/backup-restore-runbook.md`, `docs/reference/release-evidence.md`, `docs/enterprise/upstream-sync.md`, this status file | Current prerequisites are consistent. Dated past results are retained as history. No merge, tag, release workflow execution or publishing is authorized by this update. |
+
+Local full verification completed: test, vet, build, race, staticcheck and
+gosec passed; govulncheck failed because the cloud network denies
+`https://vuln.go.dev/index/modules.json.gz`. The full local gate therefore
+remains **failed**, not vulnerability-clean. All 37 Python self-test scripts
+pass on the immutable candidate snapshot `82067e8` (which changes no branch
+refs), including the four package tests that correctly required new evidence
+files to exist in HEAD. PostgreSQL regressions pass using both the ordinary
+disposable database and SCRAM authentication with a generated non-ASCII
+password. Module verification, license and exact-baseline checks pass. CTest passes
+15/15 and the full ACME harness self-test passes with Go 1.26.11. The actual
+Go 1.25.12 compiler also rejects the new module directive before compilation. Hosted govulncheck on the exact pushed commit is required;
+any remaining findings must be investigated without weakening the gate.
+
+The following sections preserve the original architecture recovery and its
+historical test results. They do not describe the new Go qualification state.
+
 ## Source And Synchronization
 
 | Source | Verified revision and meaning |

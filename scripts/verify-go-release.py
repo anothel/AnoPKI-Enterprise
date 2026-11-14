@@ -22,7 +22,7 @@ ROOT = Path(__file__).resolve().parents[1]
 SERVICE = ROOT / "service"
 DEFAULT_OUTPUT = ROOT / ".tmp" / "go-release-evidence"
 EDITION_FILE = ROOT / ".edition" / "edition.json"
-MINIMUM_GO_VERSION = (1, 25, 11)
+MINIMUM_GO_VERSION = (1, 26, 11)
 STATICCHECK_VERSION = "2026.1"
 GOSEC_VERSION = "v2.25.0"
 GOVULNCHECK_VERSION = "v1.1.4"
@@ -266,6 +266,8 @@ def main() -> int:
         minimum = parse_go_version("go" + args.minimum_go)
     except ValueError as exc:
         parser.error(str(exc))
+    if minimum < MINIMUM_GO_VERSION:
+        parser.error(f"minimum Go cannot be below the security floor {version_text(MINIMUM_GO_VERSION)}")
 
     output_dir = args.out_dir.resolve()
     binary_suffix = ".exe" if os.name == "nt" else ""

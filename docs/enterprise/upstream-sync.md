@@ -14,7 +14,7 @@ Enterprise continues to consume the pinned baseline above. The later
 `5348a47` failover tests and `49142ff` closeout/runner changes have not been
 bulk synchronized. Community source and history remain read-only.
 
-Four explicit Enterprise patches are applied to shared files:
+The initial validation fixes apply four explicit Enterprise patches to shared files:
 
 | File | Verified reason |
 | --- | --- |
@@ -29,6 +29,22 @@ unlisted changes and further changes to these files fail validation. These
 exceptions require review with their diffs and regression results, and must be
 reconciled explicitly if a later sync is selected. They do not advance the
 Community pin or claim that Community contains the fixes.
+
+## Go Security Qualification Follow-up
+
+The security update on PR #1 retains the same Community pin and adds exact
+normalized upstream/patched digests for `service/go.mod`, `service/go.sum`,
+`CONTRIBUTING.md`, the backup/restore runbook, and the eight drill runners and
+corresponding synthetic toolchain fixtures. All executable qualification
+minimums are Go 1.26.11; the baseline matrix covers 1.26.11 and 1.27.4. Unsupported
+Go 1.25 qualification is retired rather than producing artifacts with its
+vulnerable standard library. The module directive also rejects older compilers.
+
+There are now 24 explicitly pinned shared-file patches and 175 unchanged exact
+shared files, with 29 mixed-ownership files. `x/text` v0.41.0 and its selected
+transitive versions have matching checksums, license evidence and package
+allow-lists. No exception permits arbitrary changes to those files. Historical
+Community, hosted, and SDK evidence is not rewritten as new qualification.
 
 ## Remote And Target Verification
 

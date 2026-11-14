@@ -40,7 +40,7 @@ for the current execution order derived from the uploaded analysis reports.
 
 ## Prerequisites
 
-- Go 1.25.11+
+- Go 1.26.11+
 - CMake 3.20+
 - C++20 toolchain
 - OpenSSL development libraries
@@ -123,7 +123,7 @@ python scripts\test_verify_go_release.py
 # Go release verification runner tests ok
 
 python scripts\verify-go-release.py --profile baseline --out-dir .tmp\go-evidence\enterprise-verify-local
-# requires Go 1.25.11+; records Enterprise commit and Community baseline separately
+# requires Go 1.26.11+; records Enterprise commit and Community baseline separately
 
 python scripts\test_verify_recovery_drill.py
 # recovery drill tests passed: 5
@@ -135,37 +135,37 @@ python scripts\test_verify_status_outage_drill.py
 # status outage drill tests passed: 5
 
 python scripts\verify-status-outage-drill.py --out-dir .tmp\status-outage-evidence\verify-local
-# requires Go 1.25.11+ and proves CRL/OCSP failure and recovery semantics
+# requires Go 1.26.11+ and proves CRL/OCSP failure and recovery semantics
 
 python scripts\test_verify_audit_replay_drill.py
 # audit/replay drill tests passed: 5
 
 python scripts\verify-audit-replay-drill.py --out-dir .tmp\audit-replay-evidence\verify-local
-# requires Go 1.25.11+ and proves idempotent audit repair and scoped dead-letter recovery
+# requires Go 1.26.11+ and proves idempotent audit repair and scoped dead-letter recovery
 
 python scripts\test_verify_audit_integrity_drill.py
 # Audit integrity drill tests passed: 8
 
 python scripts\verify-audit-integrity-drill.py --out-dir .tmp\audit-integrity-evidence\verify-local
-# requires Go 1.25.11+; local run proves Memory/SQLite/API integrity and release CI additionally requires PostgreSQL parity
+# requires Go 1.26.11+; local run proves Memory/SQLite/API integrity and release CI additionally requires PostgreSQL parity
 
 python scripts\test_verify_authorization_boundary.py
 # authorization boundary drill tests passed: 7
 
 python scripts\verify-authorization-boundary.py --out-dir .tmp\authorization-boundary-evidence\verify-local
-# requires Go 1.25.11+ and proves authentication/scope ordering, timeout, redaction, Audit correlation and race-clean behavior
+# requires Go 1.26.11+ and proves authentication/scope ordering, timeout, redaction, Audit correlation and race-clean behavior
 
 python scripts\test_verify_issuer_rollover_drill.py
 # issuer rollover drill tests passed: 5
 
 python scripts\verify-issuer-rollover-drill.py --out-dir .tmp\issuer-rollover-evidence\verify-local
-# requires Go 1.25.11+ and proves atomic same-root rollover and rollback semantics
+# requires Go 1.26.11+ and proves atomic same-root rollover and rollback semantics
 
 python scripts\test_verify_multi_node_reliability.py
 # multi-node reliability drill tests passed: 5
 
 python scripts\verify-multi-node-reliability.py --out-dir .tmp\multi-node-evidence\verify-local
-# requires Go 1.25.11+ and proves single-writer issuance, CRL and Outbox lease semantics
+# requires Go 1.26.11+ and proves single-writer issuance, CRL and Outbox lease semantics
 
 python scripts\test_verify_postgres_recovery_drill.py
 # PostgreSQL recovery drill tests passed: 5
@@ -173,7 +173,7 @@ python scripts\test_verify_postgres_recovery_drill.py
 # Optional full PostgreSQL 16 drill; requires psql, pg_dump, pg_restore and a disposable DSN.
 $env:ANOPKI_POSTGRES_RECOVERY_DSN = "postgres://anopki:anopki@localhost:5432/anopki_recovery_control?sslmode=disable"
 python scripts\verify-postgres-recovery-drill.py --out-dir .tmp\postgres-recovery-evidence\verify-local
-# requires Go 1.25.11+ and proves transaction rollback plus pg_dump/pg_restore state preservation
+# requires Go 1.26.11+ and proves transaction rollback plus pg_dump/pg_restore state preservation
 
 python scripts\test_validate_release_artifacts.py
 # release artifact tests ok

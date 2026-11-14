@@ -20,7 +20,7 @@ MODULE = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(MODULE)
 
 
-def fake_go(root: Path, *, version: str = "go1.25.12", fail: str = "", omit: str = "", race_fail: bool = False, sensitive: str = "") -> Path:
+def fake_go(root: Path, *, version: str = "go1.26.11", fail: str = "", omit: str = "", race_fail: bool = False, sensitive: str = "") -> Path:
     root.mkdir(parents=True, exist_ok=True)
     script = root / "fake-go.py"
     payload = {

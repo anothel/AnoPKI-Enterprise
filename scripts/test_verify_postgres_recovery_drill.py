@@ -29,7 +29,7 @@ def main() -> None:
     assert "secret" not in public_uri
     assert "secret" in private_uri
 
-    assert MODULE.parse_go_version("go version go1.25.12 linux/amd64") == (1, 25, 12)
+    assert MODULE.parse_go_version("go version go1.26.11 linux/amd64") == (1, 26, 11)
     assert MODULE.parse_postgres_major("psql (PostgreSQL) 16.9") == 16
     assert MODULE.parse_postgres_major("pg_dump (PostgreSQL) 17.1") == 17
 

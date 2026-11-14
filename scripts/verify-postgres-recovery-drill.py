@@ -22,7 +22,7 @@ from urllib.parse import quote, urlsplit, urlunsplit
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_OUTPUT = ROOT / ".tmp" / "postgres-recovery-evidence"
-MINIMUM_GO_VERSION = (1, 25, 11)
+MINIMUM_GO_VERSION = (1, 26, 11)
 REQUIRED_POSTGRES_MAJOR = 16
 COMMIT_RE = re.compile(r"^[0-9a-f]{40}$")
 HEX64_RE = re.compile(r"^[0-9a-f]{64}$")
@@ -576,7 +576,7 @@ def evidence_template(commit: str) -> dict[str, Any]:
         "edition": "community",
         "product_profile": "community-openssl",
         "commit": commit,
-        "minimum_go_version": "1.25.11",
+        "minimum_go_version": "1.26.11",
         "required_postgres_major": REQUIRED_POSTGRES_MAJOR,
         "started_at": utc_now(),
         "completed_at": utc_now(),
@@ -664,7 +664,7 @@ def run_drill(
         version = parse_go_version(version_result.stdout)
         if version < MINIMUM_GO_VERSION:
             raise DrillFailure(
-                f"unsupported Go version {version[0]}.{version[1]}.{version[2]}; minimum is 1.25.11"
+                f"unsupported Go version {version[0]}.{version[1]}.{version[2]}; minimum is 1.26.11"
             )
 
         for name in ("psql", "pg_dump", "pg_restore"):

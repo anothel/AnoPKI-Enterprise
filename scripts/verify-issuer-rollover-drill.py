@@ -17,7 +17,7 @@ from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_OUTPUT = ROOT / ".tmp" / "issuer-rollover-evidence"
-MINIMUM_GO_VERSION = (1, 25, 11)
+MINIMUM_GO_VERSION = (1, 26, 11)
 COMMIT_RE = re.compile(r"^[0-9a-f]{40}$")
 
 EXPECTED_TESTS = (
@@ -139,7 +139,7 @@ def evidence_template(commit: str) -> dict[str, Any]:
         "edition": "community",
         "product_profile": "community-openssl",
         "commit": commit,
-        "minimum_go_version": "1.25.11",
+        "minimum_go_version": "1.26.11",
         "started_at": utc_now(),
         "completed_at": utc_now(),
         "result": "failed",
@@ -211,7 +211,7 @@ def run_drill(root: Path, output_dir: Path, go_executable: str, commit: str) -> 
         write_evidence(output_dir, evidence)
         return evidence
     if version < MINIMUM_GO_VERSION:
-        evidence["blocker"] = f"unsupported Go version {version[0]}.{version[1]}.{version[2]}; minimum is 1.25.11"
+        evidence["blocker"] = f"unsupported Go version {version[0]}.{version[1]}.{version[2]}; minimum is 1.26.11"
         write_evidence(output_dir, evidence)
         return evidence
 

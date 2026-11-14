@@ -23,7 +23,7 @@ Run `python scripts/verify-recovery-drill.py --out-dir .tmp/recovery-evidence/ma
 - `psql`, `pg_dump`, and `pg_restore` from a PostgreSQL 16 client package
 - a role allowed to create and drop isolated recovery databases
 - a disposable control DSN, never a production database
-- Go 1.25.11 or newer
+- Go 1.26.11 or newer
 
 The drill uses a custom-format dump, intentionally damages the source database,
 restores into a separate fresh database, and deletes the temporary databases and

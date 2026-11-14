@@ -9,7 +9,7 @@ Current draft: [v0.1.0-alpha.0 candidate evidence](release-candidate-v0.1.0-alph
 
 | Area | Selected tool | Evidence hook |
 | --- | --- | --- |
-| Go baseline | Maintained floor Go 1.25.11; CI lanes Go 1.25.12 and Go 1.26.5 | Enterprise `verify-go-release.py --profile baseline` in the CI matrix. |
+| Go baseline | Maintained floor Go 1.26.11; CI lanes Go 1.26.11 and Go 1.27.4 | Enterprise `verify-go-release.py --profile baseline` in the CI matrix. |
 | Go staticcheck | `staticcheck` 2026.1 | Enterprise `verify-go-release.py --profile analysis` in CI. |
 | Go security scan | `gosec` v2.25.0 | Enterprise `verify-go-release.py --profile analysis` in CI. |
 | Go race detector | `go test -race ./...` | Enterprise `verify-go-release.py --profile analysis` in CI. |
@@ -85,7 +85,7 @@ Each release candidate records this matrix in release notes:
 | Area | Required evidence |
 | --- | --- |
 | OS | GitHub Actions Ubuntu result plus any Windows local verification used for release. |
-| Go | `go version` from CI and release host; The maintained floor is Go 1.25.11; CI pins Go 1.25.12 and Go 1.26.5 and uploads Enterprise runner evidence. |
+| Go | `go version` from CI and release host; The maintained floor is Go 1.26.11; CI pins Go 1.26.11 and Go 1.27.4 and uploads Enterprise runner evidence. |
 | OpenSSL | CMake configure output or package version used by C++ build. |
 | SQLite | Go test result for memory/SQLite stores. |
 | PostgreSQL | PostgreSQL integration and recovery-drill result plus DSN major version. |
@@ -111,7 +111,7 @@ Copy this table into release notes for each release candidate and replace
 ## Supported-Go Evidence Runner
 
 `scripts/verify-go-release.py` is the Enterprise entry point for shared Go
-release checks. It sets `GOTOOLCHAIN=local`, requires Go 1.25.11 or newer,
+release checks. It sets `GOTOOLCHAIN=local`, requires Go 1.26.11 or newer,
 keeps build/module caches and output under `.tmp`, stops at the first failure,
 and writes redacted JSON, Markdown, and command logs.
 
@@ -130,7 +130,13 @@ Profiles are explicit:
   and govulncheck v1.1.4.
 - `full`: baseline followed by analysis.
 
-CI uses exact Go 1.25.12 and Go 1.26.5 lanes. A future release artifact must
+Go 1.26.11 is the module, verification and production/release security floor.
+Analysis uses the same 1.26.11 compiler as shipped binaries; 1.27.4 is a supported
+forward-compatibility baseline. Unsupported Go 1.25 lanes are retired. An
+explicit `--minimum-go` can raise this floor but cannot lower it. Older versions
+in dated evidence below describe those original runs only.
+
+CI uses exact Go 1.26.11 and Go 1.27.4 lanes. A future release artifact must
 contain passing full-profile `anopki-enterprise-go-verification.tar.gz` bound
 to the Enterprise release metadata commit and synchronized Community baseline.
 Missing, failed, incomplete, or mismatched evidence blocks artifact validation;
@@ -148,7 +154,7 @@ sensitive values are excluded.
 
 ## PostgreSQL Recovery Evidence Runner
 
-`scripts/verify-postgres-recovery-drill.py` requires Go 1.25.11+, PostgreSQL 16,
+`scripts/verify-postgres-recovery-drill.py` requires Go 1.26.11+, PostgreSQL 16,
 `psql`, `pg_dump`, and `pg_restore`. It proves migration rollback, rejects dirty
 migration state, backs up representative PKI/audit/outbox state, detects source
 damage, and restores the same state digest into an isolated database. Strict

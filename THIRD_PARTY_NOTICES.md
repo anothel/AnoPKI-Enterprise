@@ -5,7 +5,7 @@ It is evidence metadata, not legal advice or a replacement for the included lice
 
 - Product: AnoPKI Enterprise
 - Edition: enterprise
-- Enterprise commit: `68b379e7684c9d8b44c53728949774088352a9d9`
+- Enterprise commit: `4a8d4d6f573bf5beb9d74a01a9beece56be74b38`
 - Community baseline: `ab9d76597df93ac1ac8b7938f4d25ba64f59f8dc`
 - Unresolved dependencies: 0
 - Customer distribution ready: false
@@ -122,6 +122,20 @@ It is evidence metadata, not legal advice or a replacement for the included lice
   - None
 - Redistribution review status: required; customer package blocked
 
+## github.com/kr/pretty
+
+- Component: `github.com/kr/pretty` (`go-module`)
+- Version: `v0.3.0`
+- Direct/Indirect: Indirect
+- License expression: `MIT`
+- Evidence status: `verified`
+- Source/provenance: `go-module-zip:github.com/kr/pretty@v0.3.0`; `{"go_mod":"service/go.mod","go_mod_sum":"h1:640gp4NfQd8pI5XOwp5fnNeVWj67G7CFk/SaSQn7NBk=","go_sum":"service/go.sum","go_sum_present":true,"module":"github.com/kr/pretty","module_directory":"github.com/kr/pretty@v0.3.0","module_sum":"h1:WgNl7dwNpEZ6jJ9k1snq4pZsg7DOEN8hP9Xw0Tsjwk0=","replacement":null,"version":"v0.3.0"}`
+- Included license files:
+  - [LICENSES/third-party/go/github.com_kr_pretty/v0.3.0/License](LICENSES/third-party/go/github.com_kr_pretty/v0.3.0/License) - SHA-256 `283c28b781bc7487bd7bcaf453cbd811f5ee8d7ce625cfcf8dcacae6ba1f4bb5`
+- Included notices:
+  - None
+- Redistribution review status: required; customer package blocked
+
 ## github.com/mattn/go-isatty
 
 - Component: `github.com/mattn/go-isatty` (`go-module`)
@@ -178,6 +192,20 @@ It is evidence metadata, not legal advice or a replacement for the included lice
   - None
 - Redistribution review status: required; customer package blocked
 
+## github.com/stretchr/objx
+
+- Component: `github.com/stretchr/objx` (`go-module`)
+- Version: `v0.1.0`
+- Direct/Indirect: Indirect
+- License expression: `MIT`
+- Evidence status: `verified`
+- Source/provenance: `go-module-zip:github.com/stretchr/objx@v0.1.0`; `{"go_mod":"service/go.mod","go_mod_sum":"h1:HFkY916IF+rwdDfMAkV7OtwuqBVzrE8GR6GFx+wExME=","go_sum":"service/go.sum","go_sum_present":true,"module":"github.com/stretchr/objx","module_directory":"github.com/stretchr/objx@v0.1.0","module_sum":"h1:4G4v2dO3VZwixGIRoQ5Lfboy6nUhCyYzaqnIAPPhYs4=","replacement":null,"version":"v0.1.0"}`
+- Included license files:
+  - [LICENSES/third-party/go/github.com_stretchr_objx/v0.1.0/LICENSE](LICENSES/third-party/go/github.com_stretchr_objx/v0.1.0/LICENSE) - SHA-256 `b2663894033a05fd80261176cd8da1d72546e25842d5c1abcc852ca23b6b61b0`
+- Included notices:
+  - None
+- Redistribution review status: required; customer package blocked
+
 ## github.com/stretchr/testify
 
 - Component: `github.com/stretchr/testify` (`go-module`)
@@ -195,29 +223,29 @@ It is evidence metadata, not legal advice or a replacement for the included lice
 ## golang.org/x/mod
 
 - Component: `golang.org/x/mod` (`go-module`)
-- Version: `v0.27.0`
+- Version: `v0.38.0`
 - Direct/Indirect: Indirect
 - License expression: `BSD-3-Clause`
 - Evidence status: `verified`
-- Source/provenance: `go-module-zip:golang.org/x/mod@v0.27.0`; `{"go_mod":"service/go.mod","go_mod_sum":"h1:rWI627Fq0DEoudcK+MBkNkCe0EetEaDSwJJkCcjpazc=","go_sum":"service/go.sum","go_sum_present":true,"module":"golang.org/x/mod","module_directory":"golang.org/x/mod@v0.27.0","module_sum":"h1:kb+q2PyFnEADO2IEF935ehFUXlWiNjJWtRNgBLSfbxQ=","replacement":null,"version":"v0.27.0"}`
+- Source/provenance: `go-module-zip:golang.org/x/mod@v0.38.0`; `{"go_mod":"service/go.mod","go_mod_sum":"h1:V6Xz0pq8TQ3dGqVQ1FVHuelZpAL0uNhSkk9ogYP3c40=","go_sum":"service/go.sum","go_sum_present":true,"module":"golang.org/x/mod","module_directory":"golang.org/x/mod@v0.38.0","module_sum":"h1:MECBjubtXD7yj4HrhIUcywNaGeNVUdfVnxmPajOk4yk=","replacement":null,"version":"v0.38.0"}`
 - Included license files:
-  - [LICENSES/third-party/go/golang.org_x_mod/v0.27.0/LICENSE](LICENSES/third-party/go/golang.org_x_mod/v0.27.0/LICENSE) - SHA-256 `911f8f5782931320f5b8d1160a76365b83aea6447ee6c04fa6d5591467db9dad`
+  - [LICENSES/third-party/go/golang.org_x_mod/v0.38.0/LICENSE](LICENSES/third-party/go/golang.org_x_mod/v0.38.0/LICENSE) - SHA-256 `911f8f5782931320f5b8d1160a76365b83aea6447ee6c04fa6d5591467db9dad`
 - Included notices:
-  - [LICENSES/third-party/go/golang.org_x_mod/v0.27.0/PATENTS](LICENSES/third-party/go/golang.org_x_mod/v0.27.0/PATENTS) - SHA-256 `96f408bfae65bf137fc2525d3ecb030271c50c1e90799f87abf8846d8dd505cc`
+  - [LICENSES/third-party/go/golang.org_x_mod/v0.38.0/PATENTS](LICENSES/third-party/go/golang.org_x_mod/v0.38.0/PATENTS) - SHA-256 `96f408bfae65bf137fc2525d3ecb030271c50c1e90799f87abf8846d8dd505cc`
 - Redistribution review status: required; customer package blocked
 
 ## golang.org/x/sync
 
 - Component: `golang.org/x/sync` (`go-module`)
-- Version: `v0.17.0`
+- Version: `v0.22.0`
 - Direct/Indirect: Indirect
 - License expression: `BSD-3-Clause`
 - Evidence status: `verified`
-- Source/provenance: `go-module-zip:golang.org/x/sync@v0.17.0`; `{"go_mod":"service/go.mod","go_mod_sum":"h1:9KTHXmSnoGruLpwFjVSX0lNNA75CykiMECbovNTZqGI=","go_sum":"service/go.sum","go_sum_present":true,"module":"golang.org/x/sync","module_directory":"golang.org/x/sync@v0.17.0","module_sum":"h1:l60nONMj9l5drqw6jlhIELNv9I0A4OFgRsG9k2oT9Ug=","replacement":null,"version":"v0.17.0"}`
+- Source/provenance: `go-module-zip:golang.org/x/sync@v0.22.0`; `{"go_mod":"service/go.mod","go_mod_sum":"h1:9xrNwdLfx4jkKbNva9FpL6vEN7evnE43NNNJQ2LF3+0=","go_sum":"service/go.sum","go_sum_present":true,"module":"golang.org/x/sync","module_directory":"golang.org/x/sync@v0.22.0","module_sum":"h1:SZjpbeLmrCk4xhRSZFNZW5gFUeCeFgjekvI/+gfScek=","replacement":null,"version":"v0.22.0"}`
 - Included license files:
-  - [LICENSES/third-party/go/golang.org_x_sync/v0.17.0/LICENSE](LICENSES/third-party/go/golang.org_x_sync/v0.17.0/LICENSE) - SHA-256 `911f8f5782931320f5b8d1160a76365b83aea6447ee6c04fa6d5591467db9dad`
+  - [LICENSES/third-party/go/golang.org_x_sync/v0.22.0/LICENSE](LICENSES/third-party/go/golang.org_x_sync/v0.22.0/LICENSE) - SHA-256 `911f8f5782931320f5b8d1160a76365b83aea6447ee6c04fa6d5591467db9dad`
 - Included notices:
-  - [LICENSES/third-party/go/golang.org_x_sync/v0.17.0/PATENTS](LICENSES/third-party/go/golang.org_x_sync/v0.17.0/PATENTS) - SHA-256 `96f408bfae65bf137fc2525d3ecb030271c50c1e90799f87abf8846d8dd505cc`
+  - [LICENSES/third-party/go/golang.org_x_sync/v0.22.0/PATENTS](LICENSES/third-party/go/golang.org_x_sync/v0.22.0/PATENTS) - SHA-256 `96f408bfae65bf137fc2525d3ecb030271c50c1e90799f87abf8846d8dd505cc`
 - Redistribution review status: required; customer package blocked
 
 ## golang.org/x/sys
@@ -237,29 +265,43 @@ It is evidence metadata, not legal advice or a replacement for the included lice
 ## golang.org/x/text
 
 - Component: `golang.org/x/text` (`go-module`)
-- Version: `v0.29.0`
+- Version: `v0.41.0`
 - Direct/Indirect: Indirect
 - License expression: `BSD-3-Clause`
 - Evidence status: `verified`
-- Source/provenance: `go-module-zip:golang.org/x/text@v0.29.0`; `{"go_mod":"service/go.mod","go_mod_sum":"h1:7MhJOA9CD2qZyOKYazxdYMF85OwPdEr9jTtBpO7ydH4=","go_sum":"service/go.sum","go_sum_present":true,"module":"golang.org/x/text","module_directory":"golang.org/x/text@v0.29.0","module_sum":"h1:1neNs90w9YzJ9BocxfsQNHKuAT4pkghyXc4nhZ6sJvk=","replacement":null,"version":"v0.29.0"}`
+- Source/provenance: `go-module-zip:golang.org/x/text@v0.41.0`; `{"go_mod":"service/go.mod","go_mod_sum":"h1:jvf1O8ajNzZqhSrQBPbutR/EB83Cc0CFrezNQIwbb5M=","go_sum":"service/go.sum","go_sum_present":true,"module":"golang.org/x/text","module_directory":"golang.org/x/text@v0.41.0","module_sum":"h1:vz/seA0lnX87Othu2f/0L24RcgrXD9/YFTSuGjj3rH8=","replacement":null,"version":"v0.41.0"}`
 - Included license files:
-  - [LICENSES/third-party/go/golang.org_x_text/v0.29.0/LICENSE](LICENSES/third-party/go/golang.org_x_text/v0.29.0/LICENSE) - SHA-256 `911f8f5782931320f5b8d1160a76365b83aea6447ee6c04fa6d5591467db9dad`
+  - [LICENSES/third-party/go/golang.org_x_text/v0.41.0/LICENSE](LICENSES/third-party/go/golang.org_x_text/v0.41.0/LICENSE) - SHA-256 `911f8f5782931320f5b8d1160a76365b83aea6447ee6c04fa6d5591467db9dad`
 - Included notices:
-  - [LICENSES/third-party/go/golang.org_x_text/v0.29.0/PATENTS](LICENSES/third-party/go/golang.org_x_text/v0.29.0/PATENTS) - SHA-256 `96f408bfae65bf137fc2525d3ecb030271c50c1e90799f87abf8846d8dd505cc`
+  - [LICENSES/third-party/go/golang.org_x_text/v0.41.0/PATENTS](LICENSES/third-party/go/golang.org_x_text/v0.41.0/PATENTS) - SHA-256 `96f408bfae65bf137fc2525d3ecb030271c50c1e90799f87abf8846d8dd505cc`
 - Redistribution review status: required; customer package blocked
 
 ## golang.org/x/tools
 
 - Component: `golang.org/x/tools` (`go-module`)
-- Version: `v0.36.0`
+- Version: `v0.48.0`
 - Direct/Indirect: Indirect
 - License expression: `BSD-3-Clause`
 - Evidence status: `verified`
-- Source/provenance: `go-module-zip:golang.org/x/tools@v0.36.0`; `{"go_mod":"service/go.mod","go_mod_sum":"h1:WBDiHKJK8YgLHlcQPYQzNCkUxUypCaa5ZegCVutKm+s=","go_sum":"service/go.sum","go_sum_present":true,"module":"golang.org/x/tools","module_directory":"golang.org/x/tools@v0.36.0","module_sum":"h1:kWS0uv/zsvHEle1LbV5LE8QujrxB3wfQyxHfhOk0Qkg=","replacement":null,"version":"v0.36.0"}`
+- Source/provenance: `go-module-zip:golang.org/x/tools@v0.48.0`; `{"go_mod":"service/go.mod","go_mod_sum":"h1:08xX0orndb/F7jJxGDicx061tyd5pcMto75YMAXr6lk=","go_sum":"service/go.sum","go_sum_present":true,"module":"golang.org/x/tools","module_directory":"golang.org/x/tools@v0.48.0","module_sum":"h1:3+hClM1aLL5mjMKm5ovokw9epgRXPuu2tILgismM6RE=","replacement":null,"version":"v0.48.0"}`
 - Included license files:
-  - [LICENSES/third-party/go/golang.org_x_tools/v0.36.0/LICENSE](LICENSES/third-party/go/golang.org_x_tools/v0.36.0/LICENSE) - SHA-256 `911f8f5782931320f5b8d1160a76365b83aea6447ee6c04fa6d5591467db9dad`
+  - [LICENSES/third-party/go/golang.org_x_tools/v0.48.0/LICENSE](LICENSES/third-party/go/golang.org_x_tools/v0.48.0/LICENSE) - SHA-256 `911f8f5782931320f5b8d1160a76365b83aea6447ee6c04fa6d5591467db9dad`
 - Included notices:
-  - [LICENSES/third-party/go/golang.org_x_tools/v0.36.0/PATENTS](LICENSES/third-party/go/golang.org_x_tools/v0.36.0/PATENTS) - SHA-256 `96f408bfae65bf137fc2525d3ecb030271c50c1e90799f87abf8846d8dd505cc`
+  - [LICENSES/third-party/go/golang.org_x_tools/v0.48.0/PATENTS](LICENSES/third-party/go/golang.org_x_tools/v0.48.0/PATENTS) - SHA-256 `96f408bfae65bf137fc2525d3ecb030271c50c1e90799f87abf8846d8dd505cc`
+- Redistribution review status: required; customer package blocked
+
+## gopkg.in/check.v1
+
+- Component: `gopkg.in/check.v1` (`go-module`)
+- Version: `v1.0.0-20201130134442-10cb98267c6c`
+- Direct/Indirect: Indirect
+- License expression: `BSD-2-Clause`
+- Evidence status: `verified`
+- Source/provenance: `go-module-zip:gopkg.in/check.v1@v1.0.0-20201130134442-10cb98267c6c`; `{"go_mod":"service/go.mod","go_mod_sum":"h1:JHkPIbrfpd72SG/EVd6muEfDQjcINNoR0C8j2r3qZ4Q=","go_sum":"service/go.sum","go_sum_present":true,"module":"gopkg.in/check.v1","module_directory":"gopkg.in/check.v1@v1.0.0-20201130134442-10cb98267c6c","module_sum":"h1:Hei/4ADfdWqJk1ZMxUNpqntNwaWcugrBjAiHlqqRiVk=","replacement":null,"version":"v1.0.0-20201130134442-10cb98267c6c"}`
+- Included license files:
+  - [LICENSES/third-party/go/gopkg.in_check.v1/v1.0.0-20201130134442-10cb98267c6c/LICENSE](LICENSES/third-party/go/gopkg.in_check.v1/v1.0.0-20201130134442-10cb98267c6c/LICENSE) - SHA-256 `69ce77f2b1c9c608d27f2d749b0e7d0c13960ed3b0dc07b973ac940e362e5d9c`
+- Included notices:
+  - None
 - Redistribution review status: required; customer package blocked
 
 ## gopkg.in/yaml.v3
