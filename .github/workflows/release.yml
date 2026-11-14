@@ -12,7 +12,8 @@ permissions:
 jobs:
   build-artifacts:
     name: Build release artifacts
-    runs-on: ubuntu-latest
+    # Keep the required PostgreSQL 16 recovery client/server major aligned.
+    runs-on: ubuntu-24.04
     services:
       postgres:
         image: postgres:16

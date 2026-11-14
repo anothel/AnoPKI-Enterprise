@@ -95,6 +95,19 @@ successful qualification of this branch. The connector's commit-run lookup
 filters PR events; an empty response does not prove there were no push runs.
 No hosted run was manually triggered in this review.
 
+Opening draft PR #1 automatically started
+[CI run 43623291642](https://github.com/anothel/AnoPKI-Enterprise/actions/runs/43623291642)
+for implementation commit `d1e2e9cc81800e2fa09e9488fae5ef6c9a412fd4`.
+Runners were allocated and the ACME harness, PostgreSQL integration, Go 1.25.12
+baseline, C++ core, audit-integrity/replay and multiple operational drills
+passed. Thus the historical runner-allocation blocker is not a current blocker
+for this run. Full hosted qualification is still pending. Its backup/restore
+job failed before tests because Ubuntu's unversioned client package installed
+PostgreSQL 18 while the drill requires 16 (`psql major must be 16`). The affected
+CI job and release-build job are pinned to Ubuntu 24.04; the version guard is
+unchanged and the release workflow was not executed. The newer review commit
+must complete its own hosted checks; results are not inherited from this run.
+
 | Completed change and files | Reproduction / validation | Remaining risk |
 | --- | --- | --- |
 | ACME portability: `scripts/acme-smoke/test-run-certbot-smoke.ps1` | Linux PowerShell 7.4.13 rejected unconditional `-WindowStyle Hidden`; use `-NoNewWindow` and the active host executable. Full self-test passes, now with spaces in stub/project paths and existing exit-code assertions. | Windows PowerShell was not available for a fresh run. No live ACME-client claim. |
@@ -102,6 +115,7 @@ No hosted run was manually triggered in this review.
 | PostgreSQL outbox: `service/internal/store/sqlstore_outbox.go`, `service/internal/store/outbox_cas_regression_test.go` | New test reproduces SQLSTATE `42P08` at `$14 IS NULL`. `IS NOT DISTINCT FROM $14` provides typed NULL-safe equality. PostgreSQL 16 and SQLite regressions pass, including wrong/stale deadline rejection; PostgreSQL integration passes. | Full primary-election/network-partition testing is outside this local DB test. |
 | Audit error handling: `service/internal/store/migrate.go`, `service/internal/store/audit_backfill_close_test.go` | Pinned gosec v2.25.0 reported three unchecked closes. Preserve explicit close errors with `errors.Join`. Driver-level regressions fail before and pass after the fix while retaining primary scan/parse errors. Migration/backfill tests pass; gosec reports zero issues. | Rare failure diagnostics can now include both errors; public API/CLI schemas are unchanged. `database/sql` may suppress a secondary driver error when it automatically closes rows after an iteration failure; regressions establish the explicit scan/parse close paths. |
 | Sync guard: `scripts/validate-community-baseline.py`, new `scripts/test_validate_community_baseline.py`, `.github/workflows/ci.yml`, `docs/enterprise/upstream-sync.md` | Four exact upstream/patched hash pairs allow only these reviewed fixes. Real-Git fixture tests cover patched acceptance, CRLF normalization, unrelated drift, upstream mismatch, missing files and unknown exception paths. Added CI execution for the regression script. | Future shared edits must explicitly reconcile patch hashes; this is not a bulk baseline sync. |
+| Recovery runner: `.github/workflows/ci.yml`, `.github/workflows/release.yml` | Hosted run `43623291642` proves the `ubuntu-latest` PostgreSQL 18 client mismatch. Pin only jobs that execute the version-16 recovery drill to Ubuntu 24.04. Existing workflow/release validators remain applicable. | Final hosted rerun is required; no release dry-run or publishing workflow was invoked. |
 | Recovery context: `docs/PROJECT_STATUS.md`, `docs/INDEX.md` | Maintained status, source SHAs, architecture, results, limitations and priorities; documentation validation checks links and repository conventions. | Historical readiness metadata elsewhere remains conservative and must not be upgraded without new evidence. |
 
 ## Verification Record
@@ -142,7 +156,7 @@ scratch; only safe findings are recorded here.
    parity/no-fallback/purity tests and review the custom ASN.1/PKI codec before
    accepting new parity claims. Do not silently choose current SDK HEAD.
 2. **Close CI blockers on an exact review commit.** Allow `vuln.go.dev` in the
-   cloud network configuration, restore GitHub runner capacity, and rerun the
+   cloud network configuration, verify the recovery-runner correction, and complete the
    supported Go matrix plus ACME/PostgreSQL checks. Restore CLI API credentials
    if `gh` is needed; the connected provider and Git transport can read the
    repositories despite the CLI reporting invalid authentication.

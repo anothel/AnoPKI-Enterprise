@@ -384,7 +384,8 @@ jobs:
 
   postgres-recovery-drill:
     name: PostgreSQL 16 backup and restore drill
-    runs-on: ubuntu-latest
+    # The drill requires PostgreSQL 16 clients; ubuntu-latest now defaults to 18.
+    runs-on: ubuntu-24.04
     services:
       postgres:
         image: postgres:16
