@@ -16,6 +16,36 @@ Go 1.26.5 standard library (fixed through 1.26.11) and `x/text` v0.29.0
 (fixed in v0.41.0). This supersedes the earlier uncertainty about that hosted
 failure: it was a positive security finding, not a scanner outage.
 
+### Exact Hosted Evidence
+
+| Evidence | Verified value |
+| --- | --- |
+| Prior PR head | `4a8d4d6f573bf5beb9d74a01a9beece56be74b38` |
+| Prior scanned PR integration commit | `b8c3c608b52b90b0d5bba169d53a6dcbff42fe52` (the artifact's `enterprise_commit`, from `GITHUB_SHA`) |
+| Security implementation commit | `15f165bc9d5d1631fde3f475503d6f08693d34d8` |
+| Qualified PR head | `ecaa1d7dfac8ca4d510142918977b0627aec8dae` |
+| Qualified PR integration commit | `f5b7c15bb43a6c1dd45996ad73f01dd87e774aed` (from retained analysis evidence) |
+| Hosted run | [43650942193](https://github.com/anothel/AnoPKI-Enterprise/actions/runs/43650942193), **25/25 jobs passed** |
+| Compiler / scanner | Go 1.26.11 / govulncheck v1.1.4; race, staticcheck and gosec also passed |
+| Analysis artifact | `14136341300`, `anopki-enterprise-go-analysis-1.26.11` |
+| Artifact SHA-256 | `d61fef57be1ddd60114404037be74c01f9dbc7f2e84ad2cd458416ecfa45fa36` (downloaded ZIP independently hashed) |
+| Reachable findings | **0**, down from 19 (17 standard-library and two x/text advisories) |
+| Imported-package findings not reached | **0**, down from three |
+| Required-module findings not reached | **1**, down from four; identification pending verbose follow-up |
+
+Pull-request workflows scan GitHub's integration commit, not the branch HEAD.
+Both are recorded to avoid relabeling evidence. The original reachable x/text
+advisories are `GO-2026-6629` (PRECIS parsing panic) and `GO-2026-5970`
+(normalization infinite loop); v0.41.0 covers both. The highest required
+standard-library patch in the original report is `GO-2026-6859` (1.26.11).
+
+The first patched scan completed normally and left the security gate intact.
+One module-only advisory still needs identification; govulncheck now retains
+verbose details without changing scan level, scope, exit handling or tool pin.
+The subsequent commit must complete its own CI qualification. PR #1 remains
+draft; Go security qualification does not qualify the missing SDK, commercial
+release, production key provider or KCMVP.
+
 ### Patch And Compatibility Boundary
 
 - Production, release, analysis and operational validation use Go **1.26.11**.
@@ -63,8 +93,9 @@ files to exist in HEAD. PostgreSQL regressions pass using both the ordinary
 disposable database and SCRAM authentication with a generated non-ASCII
 password. Module verification, license and exact-baseline checks pass. CTest passes
 15/15 and the full ACME harness self-test passes with Go 1.26.11. The actual
-Go 1.25.12 compiler also rejects the new module directive before compilation. Hosted govulncheck on the exact pushed commit is required;
-any remaining findings must be investigated without weakening the gate.
+Go 1.25.12 compiler also rejects the new module directive before compilation. The exact-commit hosted result above supplies the remote vulnerability check
+that the cloud network blocked locally; the remaining module-only advisory
+will be investigated without weakening the gate.
 
 The following sections preserve the original architecture recovery and its
 historical test results. They do not describe the new Go qualification state.

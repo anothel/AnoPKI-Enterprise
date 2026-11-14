@@ -125,7 +125,7 @@ def step_definitions(go_command: str, profile: str, binary_path: Path) -> list[S
         ),
         StepDefinition(
             "govulncheck",
-            (go_command, "run", f"golang.org/x/vuln/cmd/govulncheck@{GOVULNCHECK_VERSION}", "./..."),
+            (go_command, "run", f"golang.org/x/vuln/cmd/govulncheck@{GOVULNCHECK_VERSION}", "-show=verbose", "./..."),
         ),
     ]
     if profile == "baseline":
