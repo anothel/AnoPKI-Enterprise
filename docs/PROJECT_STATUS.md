@@ -40,8 +40,28 @@ advisories are `GO-2026-6629` (PRECIS parsing panic) and `GO-2026-5970`
 standard-library patch in the original report is `GO-2026-6859` (1.26.11).
 
 The first patched scan completed normally and left the security gate intact.
-One module-only advisory still needs identification; govulncheck now retains
-verbose details without changing scan level, scope, exit handling or tool pin.
+Verbose follow-up run
+[43651575364](https://github.com/anothel/AnoPKI-Enterprise/actions/runs/43651575364)
+also passed 25/25 jobs for PR head
+`48247e9d27fc4a9ced7542f2581e6e9a30763883`, tested as integration commit
+`796d9e03fffa5865f67c2ad29be02011a3c81597`. Its analysis artifact
+`14136034225` has independently verified SHA-256
+`4c998696346e668231f2fe8c7c3ffb8e0a9eec652bcf0308d5182d129ff699f4`.
+
+That report identifies the remaining module-only advisory as `GO-2026-5024`:
+an integer overflow in `golang.org/x/sys/windows.NewNTUnicodeString`, affecting
+x/sys v0.28.0 and fixed in v0.44.0. It is Windows-specific and was not present
+in the imported package set or reachable symbol set of the Linux scan. The
+follow-up dependency update selects **x/sys v0.44.0**, whose declared module
+minimum is Go 1.25.0, without changing other selected versions. Exact sums,
+zip/license provenance, internal allow-lists and reviewed sync hashes are
+refreshed. The library fix adds an explicit UTF-16 length bound before the
+16-bit byte-length conversion. Linux tests and Windows cross-compilation check
+compatibility; they do not establish live Windows runtime qualification.
+
+Govulncheck retains verbose details without changing scan level, scope, exit
+handling or tool pin. The x/sys follow-up must complete hosted qualification
+before any claim that the remaining module advisory is cleared.
 The subsequent commit must complete its own CI qualification. PR #1 remains
 draft; Go security qualification does not qualify the missing SDK, commercial
 release, production key provider or KCMVP.
@@ -57,7 +77,8 @@ release, production key provider or KCMVP.
   Go's current release metadata. Go 1.25 executable qualification is retired.
   Older versions in dated evidence below remain historical observations.
 - `x/text` is **v0.41.0**. Selected transitive updates are `x/sync` v0.22.0,
-  `x/mod` v0.38.0 and `x/tools` v0.48.0. Each dependency declares a Go 1.25.0
+  `x/mod` v0.38.0 and `x/tools` v0.48.0; the remaining-advisory follow-up
+  also selects `x/sys` v0.44.0. Each dependency declares a Go 1.25.0
   module minimum; the stricter project floor comes from the security policy.
   The selected graph contains 34 non-main modules, with exact module checksums,
   zip hashes and discovered license/patent texts recorded. Three additional
@@ -94,8 +115,8 @@ disposable database and SCRAM authentication with a generated non-ASCII
 password. Module verification, license and exact-baseline checks pass. CTest passes
 15/15 and the full ACME harness self-test passes with Go 1.26.11. The actual
 Go 1.25.12 compiler also rejects the new module directive before compilation. The exact-commit hosted result above supplies the remote vulnerability check
-that the cloud network blocked locally; the remaining module-only advisory
-will be investigated without weakening the gate.
+that the cloud network blocked locally; the identified Windows-only module advisory
+is addressed by the x/sys follow-up and awaits its own hosted verification.
 
 The following sections preserve the original architecture recovery and its
 historical test results. They do not describe the new Go qualification state.

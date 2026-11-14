@@ -5,7 +5,7 @@ It is evidence metadata, not legal advice or a replacement for the included lice
 
 - Product: AnoPKI Enterprise
 - Edition: enterprise
-- Enterprise commit: `15f165bc9d5d1631fde3f475503d6f08693d34d8`
+- Enterprise commit: `48247e9d27fc4a9ced7542f2581e6e9a30763883`
 - Community baseline: `ab9d76597df93ac1ac8b7938f4d25ba64f59f8dc`
 - Unresolved dependencies: 0
 - Customer distribution ready: false
@@ -251,15 +251,15 @@ It is evidence metadata, not legal advice or a replacement for the included lice
 ## golang.org/x/sys
 
 - Component: `golang.org/x/sys` (`go-module`)
-- Version: `v0.28.0`
+- Version: `v0.44.0`
 - Direct/Indirect: Indirect
 - License expression: `BSD-3-Clause`
 - Evidence status: `verified`
-- Source/provenance: `go-module-zip:golang.org/x/sys@v0.28.0`; `{"go_mod":"service/go.mod","go_mod_sum":"h1:/VUhepiaJMQUp4+oa/7Zr1D23ma6VTLIYjOOTFZPUcA=","go_sum":"service/go.sum","go_sum_present":true,"module":"golang.org/x/sys","module_directory":"golang.org/x/sys@v0.28.0","module_sum":"h1:Fksou7UEQUWlKvIdsqzJmUmCX3cZuD2+P3XyyzwMhlA=","replacement":null,"version":"v0.28.0"}`
+- Source/provenance: `go-module-zip:golang.org/x/sys@v0.44.0`; `{"go_mod":"service/go.mod","go_mod_sum":"h1:4GL1E5IUh+htKOUEOaiffhrAeqysfVGipDYzABqnCmw=","go_sum":"service/go.sum","go_sum_present":true,"module":"golang.org/x/sys","module_directory":"golang.org/x/sys@v0.44.0","module_sum":"h1:ildZl3J4uzeKP07r2F++Op7E9B29JRUy+a27EibtBTQ=","replacement":null,"version":"v0.44.0"}`
 - Included license files:
-  - [LICENSES/third-party/go/golang.org_x_sys/v0.28.0/LICENSE](LICENSES/third-party/go/golang.org_x_sys/v0.28.0/LICENSE) - SHA-256 `911f8f5782931320f5b8d1160a76365b83aea6447ee6c04fa6d5591467db9dad`
+  - [LICENSES/third-party/go/golang.org_x_sys/v0.44.0/LICENSE](LICENSES/third-party/go/golang.org_x_sys/v0.44.0/LICENSE) - SHA-256 `911f8f5782931320f5b8d1160a76365b83aea6447ee6c04fa6d5591467db9dad`
 - Included notices:
-  - [LICENSES/third-party/go/golang.org_x_sys/v0.28.0/PATENTS](LICENSES/third-party/go/golang.org_x_sys/v0.28.0/PATENTS) - SHA-256 `96f408bfae65bf137fc2525d3ecb030271c50c1e90799f87abf8846d8dd505cc`
+  - [LICENSES/third-party/go/golang.org_x_sys/v0.44.0/PATENTS](LICENSES/third-party/go/golang.org_x_sys/v0.44.0/PATENTS) - SHA-256 `96f408bfae65bf137fc2525d3ecb030271c50c1e90799f87abf8846d8dd505cc`
 - Redistribution review status: required; customer package blocked
 
 ## golang.org/x/text

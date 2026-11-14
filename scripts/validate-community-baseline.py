@@ -102,11 +102,11 @@ REVIEWED_ENTERPRISE_PATCHES = {
     ),
     "service/go.mod": (
         "eb867a231ce77fdb953e9c135da82c7e0b669988e7d64d8993756ecd11ea9353",
-        "c35e60073cd52286434d4cbe528d045b63834b625647c53789858297c1b19ad3",
+        "e41096f807f6cbea257abc9087c556bea44bcea3338a13bf1e12138f1652df69",
     ),
     "service/go.sum": (
         "c5047eb2164657a02f1caf91143645a4d9c67c61ee7de61fb57f0ed90a80fdc1",
-        "2418eaeb89ddd7118f59bf22b17ce20f9f35388231a9062d32cd26138ca02d81",
+        "a3e51fbb8518b0a307d213d3a5cb949d3fd744b07ab74636bd50f2a5beb30209",
     ),
     "service/internal/store/migrate.go": (
         "780ef32d30d68d0c864be22bd953b620d34733e4c6cb69dca0ea88b7a47dbc6f",
