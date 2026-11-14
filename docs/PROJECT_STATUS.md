@@ -1,13 +1,13 @@
 # AnoPKI Project Status
 
-Verified on 2026-11-15 (Asia/Seoul) in Codex Cloud, corresponding to 2026-11-14
-UTC during verification. This is an engineering recovery record,
+Initial architecture recovery was verified on 2026-11-15 (Asia/Seoul) in
+Codex Cloud, corresponding to 2026-11-14 UTC during that verification. This is an engineering recovery record,
 not production qualification, release authorization, or a cryptographic
 certification claim. Historical evidence remains bound to its original commits.
 
 ## Go Security Qualification Follow-up — 2026-11-15
 
-Current security work continues from PR #1 commit
+The Go security follow-up began from PR #1 commit
 `4a8d4d6f573bf5beb9d74a01a9beece56be74b38`. Hosted run
 [43623921554](https://github.com/anothel/AnoPKI-Enterprise/actions/runs/43623921554)
 completed 24 jobs successfully; Go analysis failed because govulncheck reported
@@ -16,9 +16,27 @@ Go 1.26.5 standard library (fixed through 1.26.11) and `x/text` v0.29.0
 (fixed in v0.41.0). This supersedes the earlier uncertainty about that hosted
 failure: it was a positive security finding, not a scanner outage.
 
+### Final Independent Review
+
+An independent read-only review of `c1e0bbb…89099ae` found no blocking
+correctness or security issues. It separately verified all 34 module ZIP
+hashes and license texts, the four original validation exceptions and 20
+security-floor/module/fixture exceptions, focused CAS/audit-error and
+verification regressions, package/release gates, and the retained hosted
+artifact. The integration commit `270db73f913ca80d0d6a369c66bf3df7c060b894`
+has parents `c1e0bbb` and `89099ae` and the same tree as the reviewed PR head.
+No external approval or production qualification is implied by this review.
+
+Repository settings allow merge commits, squash and rebase. No narrower
+method policy is documented and no earlier merge history establishes one.
+The selected normal GitHub merge-commit path preserves qualified source and
+evidence commits; GitHub's merge checks and an exact-head precondition remain
+in force. The user separately authorized readiness and merge after the final
+review and required CI; no tag, release, deployment or certification follows.
+
 ### Current Qualification Result
 
-[CI run 43652297975](https://github.com/anothel/AnoPKI-Enterprise/actions/runs/43652297975)
+[CI run 43652946102](https://github.com/anothel/AnoPKI-Enterprise/actions/runs/43652946102)
 passed **25/25 jobs**, including both supported Go baseline lanes, race,
 staticcheck, gosec, govulncheck, PostgreSQL integration/recovery, ACME and all
 operational drills. Its verbose scanner reports **`No vulnerabilities found.`**
@@ -28,12 +46,12 @@ exit failure, scope, advisory or suppression was disabled.
 
 | Final source evidence | Verified value |
 | --- | --- |
-| PR head | `b4a802e8700d7cc867871732c08f0b618a9878da` |
-| Scanned PR integration commit | `c63b794a71530a51928c26f2847db19d728a1f1a` |
+| PR head | `89099aee56ee552632ae749b8db10274f7be927e` |
+| Scanned PR integration commit | `270db73f913ca80d0d6a369c66bf3df7c060b894` |
 | x/sys implementation commit | `7c04e4a` (full source revision available in Git history) |
 | Compiler / scanner | Go 1.26.11 / govulncheck v1.1.4 with `-show=verbose` |
-| Analysis artifact | `14136194054`, `anopki-enterprise-go-analysis-1.26.11` |
-| Downloaded ZIP SHA-256 | `4f9c4b1848fed119c81f90505110209db5c7fbac1304c46d8c85a90d6b43ece9` |
+| Analysis artifact | `14137550016`, `anopki-enterprise-go-analysis-1.26.11` |
+| Downloaded ZIP SHA-256 | `584ea0bbc330fe70071f4437816d09c3af147d688f9381c153ea350ccda4567a` |
 | Selected patched dependencies | x/text v0.41.0, x/sys v0.44.0, x/sync v0.22.0, x/mod v0.38.0, x/tools v0.48.0 |
 
 The exact committed source also passes all 37 Python self-test scripts,
@@ -47,12 +65,25 @@ To reuse the prepared cloud compiler, activate the environment and prepend
 
 The record intentionally names the qualified source head and its tested merge
 commit; a later documentation-only evidence commit is checked separately by
-PR CI and must not be substituted into this artifact. PR #1 remains draft for
-review. Production-provider, missing exact SDK, commercial distribution and
+PR CI and must not be substituted into this artifact. PR #1 was still draft when this qualification was recorded. Readiness and
+merge require the separate final review and its current CI checks. Production-provider, missing exact SDK, commercial distribution and
 KCMVP blockers below are unchanged; Go security qualification is not a
 production-readiness or release-authorization claim.
 
 ### Earlier Qualification Evidence
+
+The first completely clean source scan, before the final status-only commit,
+was run 43652297975. Its original identities and artifact remain:
+
+| Final source evidence | Verified value |
+| --- | --- |
+| PR head | `b4a802e8700d7cc867871732c08f0b618a9878da` |
+| Scanned PR integration commit | `c63b794a71530a51928c26f2847db19d728a1f1a` |
+| x/sys implementation commit | `7c04e4a` (full source revision available in Git history) |
+| Compiler / scanner | Go 1.26.11 / govulncheck v1.1.4 with `-show=verbose` |
+| Analysis artifact | `14136194054`, `anopki-enterprise-go-analysis-1.26.11` |
+| Downloaded ZIP SHA-256 | `4f9c4b1848fed119c81f90505110209db5c7fbac1304c46d8c85a90d6b43ece9` |
+| Selected patched dependencies | x/text v0.41.0, x/sys v0.44.0, x/sync v0.22.0, x/mod v0.38.0, x/tools v0.48.0 |
 
 | Evidence | Verified value |
 | --- | --- |
@@ -98,8 +129,8 @@ compatibility; they do not establish live Windows runtime qualification.
 Govulncheck retains verbose details without changing scan level, scope, exit
 handling or tool pin. The x/sys follow-up completed the final source qualification above, which
 no longer reports that module advisory.
-Subsequent commits retain their own CI qualification requirement. PR #1 remains
-draft; Go security qualification does not qualify the missing SDK, commercial
+Subsequent commits retain their own CI qualification requirement. PR #1 was
+draft at these earlier snapshots; Go security qualification does not qualify the missing SDK, commercial
 release, production key provider or KCMVP.
 
 ### Patch And Compatibility Boundary
@@ -134,11 +165,11 @@ release, production key provider or KCMVP.
 
 | Change | Files | Validation / remaining limits |
 | --- | --- | --- |
-| Patched compiler and floor | `.github/workflows/ci.yml`, `.github/workflows/release.yml`, `service/go.mod`, `scripts/verify-go-release.py`, eight `scripts/verify-*-drill.py` / reliability / hash-chain / authorization runners | Local Go test, vet, build, race and staticcheck pass on 1.26.11. Existing floor and evidence tests are updated; old compilers and explicit floor downgrades fail closed. Hosted qualification of the pushed commit remains required. |
+| Patched compiler and floor | `.github/workflows/ci.yml`, `.github/workflows/release.yml`, `service/go.mod`, `scripts/verify-go-release.py`, eight `scripts/verify-*-drill.py` / reliability / hash-chain / authorization runners | Local Go test, vet, build, race and staticcheck pass on 1.26.11. Existing floor and evidence tests are updated; old compilers and explicit floor downgrades fail closed. Hosted qualification of the recorded source head passed; later revisions retain their own checks. |
 | Dependency closure | `service/go.mod`, `service/go.sum` | `go mod verify` passes. PostgreSQL integration, outbox CAS and audit-close regressions pass on both the normal disposable DB and a SCRAM-authenticated PostgreSQL 16 DB with a generated non-ASCII password. Credentials are neither committed nor logged. |
 | License/package provenance | `packaging/dependency-license-inventory.json`, both internal package manifests, both `THIRD_PARTY_NOTICES` outputs, exact versioned texts under `LICENSES/third-party/go/` | License validator passes. All immutable package self-tests pass against snapshot `82067e8` containing the new texts; the HEAD/index guard is preserved. Customer distribution is still prohibited. |
 | Verification contracts | `scripts/validate-release-evidence.py`, `scripts/validate-release-artifacts.py`, matching tests and drill fixtures, `scripts/validate-community-baseline.py` | Security-floor and release-artifact tests pass. Hash pairs retain exact frozen-upstream bytes and reject unreviewed drift. The documented minimum check now requires the floor label rather than accepting an unrelated compiler pin elsewhere in the row. |
-| Current instructions and evidence | `README.md`, `CONTRIBUTING.md`, `docs/operations/backup-restore-runbook.md`, `docs/reference/release-evidence.md`, `docs/enterprise/upstream-sync.md`, this status file | Current prerequisites are consistent. Dated past results are retained as history. No merge, tag, release workflow execution or publishing is authorized by this update. |
+| Current instructions and evidence | `README.md`, `CONTRIBUTING.md`, `docs/operations/backup-restore-runbook.md`, `docs/reference/release-evidence.md`, `docs/enterprise/upstream-sync.md`, this status file | Current prerequisites are consistent. Dated past results are retained as history. These Go qualification results authorize no release, deployment or certification; the separately requested merge follows its own final review. |
 
 Local full verification completed: test, vet, build, race, staticcheck and
 gosec passed; govulncheck failed because the cloud network denies

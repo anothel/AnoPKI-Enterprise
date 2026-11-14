@@ -24,7 +24,9 @@ The initial validation fixes apply four explicit Enterprise patches to shared fi
 | `service/internal/store/migrate.go` | Preserve row-close errors alongside audit-backfill read/parse errors; pinned gosec reports unchecked close calls. |
 
 `validate-community-baseline.py` pins the normalized upstream and patched
-SHA-256 for each file. All other shared bytes still match the baseline exactly;
+SHA-256 for each file. These four initial fixes are a subset of the 24 reviewed
+patches listed below. Shared files outside the complete exception set still
+match the baseline exactly;
 unlisted changes and further changes to these files fail validation. These
 exceptions require review with their diffs and regression results, and must be
 reconciled explicitly if a later sync is selected. They do not advance the
