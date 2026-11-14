@@ -16,7 +16,43 @@ Go 1.26.5 standard library (fixed through 1.26.11) and `x/text` v0.29.0
 (fixed in v0.41.0). This supersedes the earlier uncertainty about that hosted
 failure: it was a positive security finding, not a scanner outage.
 
-### Exact Hosted Evidence
+### Current Qualification Result
+
+[CI run 43652297975](https://github.com/anothel/AnoPKI-Enterprise/actions/runs/43652297975)
+passed **25/25 jobs**, including both supported Go baseline lanes, race,
+staticcheck, gosec, govulncheck, PostgreSQL integration/recovery, ACME and all
+operational drills. Its verbose scanner reports **`No vulnerabilities found.`**
+The original 19 reachable findings and the additional Windows-only module
+advisory are no longer reported by the configured Linux/source scan. No check,
+exit failure, scope, advisory or suppression was disabled.
+
+| Final source evidence | Verified value |
+| --- | --- |
+| PR head | `b4a802e8700d7cc867871732c08f0b618a9878da` |
+| Scanned PR integration commit | `c63b794a71530a51928c26f2847db19d728a1f1a` |
+| x/sys implementation commit | `7c04e4a` (full source revision available in Git history) |
+| Compiler / scanner | Go 1.26.11 / govulncheck v1.1.4 with `-show=verbose` |
+| Analysis artifact | `14136194054`, `anopki-enterprise-go-analysis-1.26.11` |
+| Downloaded ZIP SHA-256 | `4f9c4b1848fed119c81f90505110209db5c7fbac1304c46d8c85a90d6b43ece9` |
+| Selected patched dependencies | x/text v0.41.0, x/sys v0.44.0, x/sync v0.22.0, x/mod v0.38.0, x/tools v0.48.0 |
+
+The exact committed source also passes all 37 Python self-test scripts,
+including immutable package/license checks. Local Linux test/vet and Windows
+amd64 cross-compilation pass after the x/sys update; local race/staticcheck/
+gosec pass too. Windows runtime execution was not performed. Local govulncheck
+continues to fail on network access to `vuln.go.dev`; that local failure is
+preserved, and the successful hosted scan supplies vulnerability qualification.
+To reuse the prepared cloud compiler, activate the environment and prepend
+`/workspace/scratch/go-security-toolchain/go/bin` to `PATH`.
+
+The record intentionally names the qualified source head and its tested merge
+commit; a later documentation-only evidence commit is checked separately by
+PR CI and must not be substituted into this artifact. PR #1 remains draft for
+review. Production-provider, missing exact SDK, commercial distribution and
+KCMVP blockers below are unchanged; Go security qualification is not a
+production-readiness or release-authorization claim.
+
+### Earlier Qualification Evidence
 
 | Evidence | Verified value |
 | --- | --- |
@@ -60,9 +96,9 @@ refreshed. The library fix adds an explicit UTF-16 length bound before the
 compatibility; they do not establish live Windows runtime qualification.
 
 Govulncheck retains verbose details without changing scan level, scope, exit
-handling or tool pin. The x/sys follow-up must complete hosted qualification
-before any claim that the remaining module advisory is cleared.
-The subsequent commit must complete its own CI qualification. PR #1 remains
+handling or tool pin. The x/sys follow-up completed the final source qualification above, which
+no longer reports that module advisory.
+Subsequent commits retain their own CI qualification requirement. PR #1 remains
 draft; Go security qualification does not qualify the missing SDK, commercial
 release, production key provider or KCMVP.
 
@@ -116,7 +152,7 @@ password. Module verification, license and exact-baseline checks pass. CTest pas
 15/15 and the full ACME harness self-test passes with Go 1.26.11. The actual
 Go 1.25.12 compiler also rejects the new module directive before compilation. The exact-commit hosted result above supplies the remote vulnerability check
 that the cloud network blocked locally; the identified Windows-only module advisory
-is addressed by the x/sys follow-up and awaits its own hosted verification.
+is addressed by the x/sys follow-up and cleared by its exact hosted scan.
 
 The following sections preserve the original architecture recovery and its
 historical test results. They do not describe the new Go qualification state.
@@ -244,7 +280,7 @@ revision remains required.
 | Audit error handling: `service/internal/store/migrate.go`, `service/internal/store/audit_backfill_close_test.go` | Pinned gosec v2.25.0 reported three unchecked closes. Preserve explicit close errors with `errors.Join`. Driver-level regressions fail before and pass after the fix while retaining primary scan/parse errors. Migration/backfill tests pass; gosec reports zero issues. | Rare failure diagnostics can now include both errors; public API/CLI schemas are unchanged. `database/sql` may suppress a secondary driver error when it automatically closes rows after an iteration failure; regressions establish the explicit scan/parse close paths. |
 | Sync guard: `scripts/validate-community-baseline.py`, new `scripts/test_validate_community_baseline.py`, `.github/workflows/ci.yml`, `docs/enterprise/upstream-sync.md` | Four exact upstream/patched hash pairs allow only these reviewed fixes. Real-Git fixture tests cover patched acceptance, CRLF normalization, unrelated drift, upstream mismatch, missing files and unknown exception paths. Added CI execution for the regression script. | Future shared edits must explicitly reconcile patch hashes; this is not a bulk baseline sync. |
 | Recovery runner: `.github/workflows/ci.yml`, `.github/workflows/release.yml` | Hosted run `43623291642` proves the `ubuntu-latest` PostgreSQL 18 client mismatch. Pin only jobs that execute the version-16 recovery drill to Ubuntu 24.04. Existing workflow/release validators remain applicable. | Final hosted rerun is required; no release dry-run or publishing workflow was invoked. |
-| Failed-check diagnostics: `.github/workflows/ci.yml` | First hosted analysis reached govulncheck but skipped uploading its captured failure log. Go baseline/analysis uploads now run with `always()`, preserving the actual failed result and strict missing-file handling. | The next failed hosted run must supply its diagnostic artifact before root cause can be established. |
+| Failed-check diagnostics: `.github/workflows/ci.yml` | First hosted analysis reached govulncheck but skipped uploading its captured failure log. Go baseline/analysis uploads now run with `always()`, preserving the actual failed result and strict missing-file handling. | The artifact retention enabled the security follow-up above to identify and remediate the findings; future failed runs retain the same diagnostics. |
 | Recovery context: `docs/PROJECT_STATUS.md`, `docs/INDEX.md` | Maintained status, source SHAs, architecture, results, limitations and priorities; documentation validation checks links and repository conventions. | Historical readiness metadata elsewhere remains conservative and must not be upgraded without new evidence. |
 
 ## Verification Record
