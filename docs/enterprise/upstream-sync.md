@@ -12,7 +12,11 @@ Current synchronized baseline:
 Community is frozen at `49142ff50f5b37ba142d18cf61b60d8b287bdb49`;
 Enterprise continues to consume the pinned baseline above. The later
 `5348a47` failover tests and `49142ff` closeout/runner changes have not been
-bulk synchronized. Community source and history remain read-only.
+bulk synchronized. Community source and history remain read-only. Phase 2
+explicitly adapts the three PostgreSQL application-node tests and runner
+from frozen `49142ff` into new Enterprise files; see
+[qualification provenance](postgres-failover-qualification.md). This does not
+advance the consumed baseline or add shared-file exceptions.
 
 The initial validation fixes apply four explicit Enterprise patches to shared files:
 

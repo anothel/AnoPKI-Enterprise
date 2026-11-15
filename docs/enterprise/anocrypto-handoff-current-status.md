@@ -4,7 +4,11 @@ Recorded baselines: Enterprise `c3f7b679782f52c90311b7b7670b577ee972c1f6`,
 Community `ab9d76597df93ac1ac8b7938f4d25ba64f59f8dc`, and AnoCrypto-C
 `98f544a574f70b387c300f171243b4e87174937a`.
 
-## Current State
+This is a retained P3-11 historical snapshot, not a claim of current hosted
+SDK qualification. See [project status](../PROJECT_STATUS.md) and
+[exact SDK recovery](sdk-pin-recovery.md) for current verification and blockers.
+
+## Recorded P3-11 State
 
 | Field | Value |
 | --- | --- |

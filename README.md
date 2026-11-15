@@ -167,6 +167,11 @@ python scripts\test_verify_multi_node_reliability.py
 python scripts\verify-multi-node-reliability.py --out-dir .tmp\multi-node-evidence\verify-local
 # requires Go 1.26.11+ and proves single-writer issuance, CRL and Outbox lease semantics
 
+python scripts\test_verify_enterprise_postgres_failover.py
+# Requires a disposable PostgreSQL 16 DSN in ANOPKI_POSTGRES_FAILOVER_DSN.
+python scripts\verify-enterprise-postgres-failover.py --out-dir .tmp\enterprise-postgres-failover\local
+# Application-node lease recovery under race instrumentation; see docs/enterprise/postgres-failover-qualification.md.
+
 python scripts\test_verify_postgres_recovery_drill.py
 # PostgreSQL recovery drill tests passed: 5
 

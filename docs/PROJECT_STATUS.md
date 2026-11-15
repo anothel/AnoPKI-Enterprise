@@ -5,6 +5,133 @@ Codex Cloud, corresponding to 2026-11-14 UTC during that verification. This is a
 not production qualification, release authorization, or a cryptographic
 certification claim. Historical evidence remains bound to its original commits.
 
+## Final PR #2 Review Follow-up — 2026-11-15 UTC
+
+An independent review of `6166195…e518aa0` found three verified diagnostic
+redaction defects: sensitive fields inside a Go JSON event's nested output,
+password backslashes interpreted differently by pgx and libpq, and passwords
+split across `test2json` output events. Synthetic reproductions retained those
+values while reporting successful exclusion. A separate reuse test found that
+a preflight failure could leave an earlier successful evidence document/log.
+
+The runner now examines decoded diagnostic fields and reconstructed output
+streams, covers both pgx and libpq password interpretations, and omits sensitive
+output while failing qualification. It writes fresh failed/incomplete evidence
+before preflight and replaces logs on failure. Thirty-three runner regression
+scenarios cover these cases and the prior gates. No production SQL, lifecycle
+behavior, dependency, Community baseline or SDK pin changes are required.
+
+The independent reviewer found no additional lease or stale-writer blocker.
+All three live PostgreSQL tests passed three repetitions under `-race`; owned
+schemas were removed. These deterministic application-node simulations exercise
+lease takeover and stale completion against one database. Race instrumentation
+and separate connection pools do not establish all contention schedules, clock
+skew behavior or database-primary failover. Promotion/fencing, replication,
+partitions and real signer crash recovery remain separate qualification work.
+
+The full Go race suite and vet passed with a live PostgreSQL DSN before the
+final diagnostic-stream addition; that addition changes only Python evidence
+handling. All 33 runner scenarios, all 38 Python self-test scripts, and the
+real PostgreSQL runner pass after that addition. Baseline, docs, secret, package
+and expected-blocked release checks also pass. Hosted CI must
+qualify the new commit, with its exact head/integration identities and retained
+artifacts recorded in PR #2. Earlier green evidence below remains historical.
+PR #2 stays draft and unmerged pending explicit owner approval; no release,
+tag, publication or deployment is authorized by this review.
+
+## Retained Phase 2 Qualification Before Final Review — 2026-11-15 UTC
+
+PR [#1](https://github.com/anothel/AnoPKI-Enterprise/pull/1) completed independent
+review with no blocking correctness/security findings and was marked ready and
+merged using the allowed normal merge-commit method. The reviewed documentation
+head `f4af664ab5f9db4635961141d80ff50f82d7072e` passed 25/25 jobs in
+[43654875647](https://github.com/anothel/AnoPKI-Enterprise/actions/runs/43654875647),
+tested as `f8df173976c4a83a202c4849b925b5e3f41e7bcd`.
+
+| Post-merge main evidence | Verified value |
+| --- | --- |
+| Main merge commit | `6166195cf8f887d7a7dc7426be8c71b6250e0109` |
+| Parents | `c1e0bbbefa2003657c7fefdf5924f964c4bab3ec`, `f4af664ab5f9db4635961141d80ff50f82d7072e` |
+| Source tree | `54d42c05f2bdcac243d0fe75015b7d5f9e66cca5`, identical to reviewed head |
+| Main push CI | [43655389069](https://github.com/anothel/AnoPKI-Enterprise/actions/runs/43655389069), **25/25 successful jobs** |
+| Go analysis artifact | `14137473213`, `anopki-enterprise-go-analysis-1.26.11` |
+| Downloaded ZIP SHA-256 | `436bc2653a248dfecb16ea5ceaf22f3054bbaf15bbbac94852ac61313193e8f6` |
+| Analysis source attribution | `enterprise_commit` equals the main merge commit above |
+| Analysis result | Race/staticcheck/gosec/govulncheck exit 0; retained verbose log: **No vulnerabilities found.** |
+
+Phase 2 starts separately on `codex/phase2-multi-node-qualification` from this
+verified main. Its first scope is [PostgreSQL application-node failover](enterprise/postgres-failover-qualification.md)
+with separate existing PostgreSQL backup/restore qualification. Three adapted
+live PostgreSQL 16.16 tests pass under race instrumentation locally; the evidence
+runner passes 14 assertions and its self-tests cover 23 scenarios. Local evidence
+records a dirty working tree and source hashes; it is not exact committed-source
+hosted qualification. The first Phase 2 candidate `7ae05e5cb211997c0ddc562538e44b4de3e854a9` passed
+26/26 hosted jobs in [43656543262](https://github.com/anothel/AnoPKI-Enterprise/actions/runs/43656543262).
+Independent review then identified two qualification defects: JSON-escaped or
+spaced-keyword password diagnostics could evade redaction, and the outbox
+stale-owner assertion ran only after new-owner completion. Both are corrected
+with regressions: decoded JSON/libpq URI/keyword password sanitization, and
+stale completion attempted during the new processing lease with unchanged
+lease and rolled-back-attempt assertions. Mutation validation demonstrated
+that the original test accepted status-only CAS, the strengthened test rejected
+it, and the restored correct production CAS passed. No production SQL changed.
+The follow-up changes now have their own successful hosted qualification below;
+the first candidate's green run is not relabeled as evidence for them. Full local `go test -p 1 ./...`,
+`go test -race -p 1 ./...` (with the live failover DSN) and `go vet ./...`
+pass. All 38 Python self-test scripts pass: the first suite attempt lacked
+PowerShell on PATH for `test_verify_local.py`; rerunning that script with the
+installed PowerShell passed. Baseline, docs, package, KeyProvider and expected-
+blocked release validators pass. No PostgreSQL-primary or live SDK result is
+inferred from these tests.
+
+### Phase 2 Exact-Commit Qualification
+
+[PR #2](https://github.com/anothel/AnoPKI-Enterprise/pull/2) remains draft on
+`codex/phase2-multi-node-qualification`. Review fixes at source head
+`1355c1ea446410c2b6a137026c65f4411d776bd9` passed **26/26 jobs** in
+[43679528705](https://github.com/anothel/AnoPKI-Enterprise/actions/runs/43679528705).
+The tested integration commit is `0168f50a342488e0f10189b5335ec78724201155`,
+whose parents are main `6166195` and that source head, and whose tree
+`53e69f6f47ffce587ff33a70e345c492ffa30633` matches the source head exactly.
+
+| Retained artifact | ID / independently downloaded ZIP SHA-256 | Verified result |
+| --- | --- | --- |
+| Enterprise PostgreSQL failover | `14148280075` / `e76e4c5c9b6c89c75b46643deef3b3b2246e2247dbd6f29f06c0eb5449c83cae` | All three required tests pass under race, 14 checks, clean worktree, explicit baseline/adaptation provenance. |
+| Shared PostgreSQL backup/restore | `14147422897` / `7263d06b4f14db6315b156bab6112ed1b60768afea608bb365d7893060ed09b3` | 12 checks pass on PostgreSQL 16.16; both recovery tests pass. |
+| Enterprise Go analysis | `14148450022` / `48d1e1e01c2638da5890bcb762812a98a08c4d1af77bd29fe724e9c4d98337e9` | Race/staticcheck/gosec/govulncheck exit 0; verbose scanner: **No vulnerabilities found.** |
+
+All three artifacts name integration commit `0168f50…`. The shared restore
+runner retains its inherited `community_postgres_recovery_drill` / `community`
+metadata, even though its exact commit binds execution to this Enterprise tree.
+It is consumed common operational evidence, not Enterprise release attestation.
+A separately reviewed Enterprise recovery evidence envelope remains a next
+priority; no existing metadata contract or frozen-baseline exception is changed
+here. No primary-election, replication, partition or provider recovery follows.
+
+The subsequent documentation-only evidence record is validated separately;
+its commit must not be substituted into the artifacts above. PR #2 is not
+merged or a release candidate. Remaining priorities are database-topology/fault
+harness selection, the exact SDK recovery inputs below, and an explicit
+production provider recovery/idempotency contract.
+
+| Completed change / files | Validation and result | Remaining limits |
+| --- | --- | --- |
+| Live regression adaptation: `service/internal/lifecycle/enterprise_postgres_failover_test.go` | Three live PostgreSQL tests, full Go test/race/vet and status-only CAS mutation proof pass; unrelated public sentinel survives and owned schemas are removed. | Deterministic application nodes on one database; fixture signing only. |
+| Evidence/CI: `scripts/verify-enterprise-postgres-failover.py`, `scripts/test_verify_enterprise_postgres_failover.py`, `.github/workflows/ci.yml` | 23 runner scenarios, all 38 Python self-test scripts and 26 hosted jobs pass; redaction and missing/skip/failure/conflict gates retained. | Shared restore artifact still has inherited Community labels; local scanner access remains network-blocked, covered by exact hosted scan. |
+| Context/status: `README.md`, `docs/INDEX.md`, `docs/PROJECT_STATUS.md`, `docs/enterprise/anocrypto-handoff-current-status.md`, `docs/enterprise/upstream-sync.md`, `docs/enterprise/postgres-failover-qualification.md`, `docs/enterprise/sdk-pin-recovery.md` | Docs, exact baseline (175 shared / 24 pinned patches / 29 mixed), secret, package/provider and expected-blocked release checks pass. Historical identities are preserved. | SDK object/original inputs, real provider, commercial distribution and KCMVP remain blocked. |
+
+The frozen Community checkout remains unchanged at `49142ff`; the consumed
+baseline remains `ab9d76597df93ac1ac8b7938f4d25ba64f59f8dc`. Only selected tests
+are explicitly adapted; no bulk sync or pin change is implied. Recovery of
+[the exact historical SDK](enterprise/sdk-pin-recovery.md) is blocked by a
+missing Git object/source archive and trusted original install inputs, not by
+repository access. No SDK replacement was selected.
+
+Production key-provider, real SDK hosted parity, database-primary failover,
+commercial distribution and KCMVP qualification remain open. No release,
+tag, publication or deployment was performed. The evidence below remains
+historical and keeps its original commit identities.
+
 ## Go Security Qualification Follow-up — 2026-11-15
 
 The Go security follow-up began from PR #1 commit
@@ -34,7 +161,7 @@ evidence commits; GitHub's merge checks and an exact-head precondition remain
 in force. The user separately authorized readiness and merge after the final
 review and required CI; no tag, release, deployment or certification follows.
 
-### Current Qualification Result
+### PR #1 Source Qualification Before Final Documentation Review
 
 [CI run 43652946102](https://github.com/anothel/AnoPKI-Enterprise/actions/runs/43652946102)
 passed **25/25 jobs**, including both supported Go baseline lanes, race,
@@ -344,7 +471,7 @@ of a later review commit. Review the branch diff and rerun qualification on the
 exact final commit before release. Raw disposable test logs stay in cloud
 scratch; only safe findings are recorded here.
 
-## Next Development Phase
+## Initial Recovery Priorities (Historical)
 
 1. **Restore reproducible validation inputs.** Recover the exact `98f544a` SDK
    source/artifact and reconcile the historical pre-change Enterprise baseline
