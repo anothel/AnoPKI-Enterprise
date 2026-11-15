@@ -5,6 +5,35 @@ Codex Cloud, corresponding to 2026-11-14 UTC during that verification. This is a
 not production qualification, release authorization, or a cryptographic
 certification claim. Historical evidence remains bound to its original commits.
 
+## Phase 3 Primary Qualification — 2026-11-15 UTC
+
+Phase 3 starts from latest main `4941f0a20ad0bf41c62a73d822fa51cc08531e68`,
+the merge of Phase 2 PR #2. Historical pre-merge statements below retain their
+original context. The bounded topology, assertions and limitations are in
+[PostgreSQL primary qualification](enterprise/postgres-primary-qualification.md).
+
+The implementation adds disposable physical replication, explicit primary-kill
+fencing, manual promotion, retained pgx multi-host client recovery and an
+intentional asynchronous loss scenario. Production code and all pins remain
+unchanged. Local diagnostics observed three synchronous recovery writes in
+0.57–0.62 seconds and one induced async acknowledged-marker loss with recovery
+in 1.06 seconds; those working-tree runs are not immutable source qualification.
+Exact committed results are recorded separately below after rerun.
+
+Independent source review reproduced inherited `PGOPTIONS` weakening application
+commit durability. The runner now strips PostgreSQL overrides, and each
+application session must report `remote_apply`. Review also prompted priming
+both application pools and the infrastructure pool, verifying the audit chain,
+neutralizing Go build/workspace overrides, waiting for baseline replay LSN,
+ordering receiver isolation before replay pause, and terminating subprocess
+groups before label-scoped timeout cleanup. These are test/evidence changes.
+
+The full Go race suite and vet pass with required local socket permissions;
+the initial sandbox-only suite failed when existing HTTP tests could not bind
+loopback sockets. The unchanged baseline validator passes after fetching its
+historical Community objects; docs/package checks and expected-blocked release
+checks pass. Primary scenarios require their separate live committed rerun.
+
 ## Final PR #2 Review Follow-up — 2026-11-15 UTC
 
 An independent review of `6166195…e518aa0` found three verified diagnostic
