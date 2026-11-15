@@ -117,5 +117,3 @@ This index is the public entry point for repository documentation. Keep it short
 Implementation plans, generated analysis packs, AI-assistant scratch notes, and dated planning artifacts do not belong in the public documentation index unless they are promoted into one of the stable documents above.
 
 The previous `docs/superpowers/` planning tree is treated as internal project-source material. Keep it outside the committed public docs tree unless a specific plan is still active and has been converted into a maintained roadmap item or ADR.
-
-- [PostgreSQL primary qualification](enterprise/postgres-primary-qualification.md) — Phase 3 disposable replication and promotion evidence.

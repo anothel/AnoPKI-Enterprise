@@ -34,6 +34,36 @@ loopback sockets. The unchanged baseline validator passes after fetching its
 historical Community objects; docs/package checks and expected-blocked release
 checks pass. Primary scenarios require their separate live committed rerun.
 
+### Phase 3 Exact Local Qualification
+
+All four required scenarios passed under race instrumentation on clean source
+commit `5a78265e39cf4e70aeb382552db88973e58eaa9d`, tree
+`1fcbb949bfbc25d3abf39afe354f68c6d2768c73`, using Go 1.26.11. The
+[retained allowlisted evidence](enterprise/evidence/postgres-primary-5a78265.json)
+includes source hashes and successful owned-resource cleanup.
+
+| Scenario | Fenced (s) | Promoted/configured (s) | First recovered write (s) | Acknowledged loss observed |
+| --- | --- | --- | --- | --- |
+| Issuance | 0.129 | 0.532 | 0.537 | 0; application digest preserved |
+| CRL | 0.131 | 0.543 | 0.548 | 0; application digest preserved |
+| Outbox | 0.135 | 0.566 | 0.571 | 0; application digest preserved |
+| Induced async lag | 0.140 | 1.030 | 1.130 | 1 committed probe marker |
+
+These are four local observations, not recovery bounds. The measurements omit
+failure detection/election and real lease expiry; application clocks advance
+in fixtures. The async test deliberately stops WAL receipt before the marker.
+The independent review's remaining cold-pool and subprocess-descendant findings
+are fixed: the async pool is primed before failure, and timeout handling kills
+and reaps the process group before Docker enumeration. A mutation substituting
+parent-only timeout handling failed the survivor-marker regression; the restored
+implementation passes all seven runner tests. No production runtime changes.
+
+Draft [PR #3](https://github.com/anothel/AnoPKI-Enterprise/pull/3) contains this
+work. Hosted [CI 43758987904](https://github.com/anothel/AnoPKI-Enterprise/actions/runs/43758987904)
+was queued for the implementation head when recorded; it is not claimed passed.
+This evidence-document commit must not replace the implementation identity
+inside the retained local artifact. No merge, release or deployment is authorized.
+
 ## Final PR #2 Review Follow-up — 2026-11-15 UTC
 
 An independent review of `6166195…e518aa0` found three verified diagnostic

@@ -22,19 +22,24 @@ No merge, tag, release, publication or deployment.
 
 ### Task 1: Infrastructure and application regressions
 
-- [ ] Add Phase 3 lifecycle tests with a missing topology helper; confirm compile failure.
-- [ ] Add minimal Docker topology helper and implement kill/promote/reconnect.
-- [ ] Run all scenarios live with race; inspect measurements and cleanup.
+- [x] Add Phase 3 lifecycle tests with a missing topology helper; confirm compile failure.
+- [x] Add minimal Docker topology helper and implement kill/promote/reconnect.
+- [x] Run all scenarios live with race; inspect measurements and cleanup.
 
 ### Task 2: Evidence and CI
 
-- [ ] Add evidence parser rejection tests first; confirm failure without implementation.
-- [ ] Implement allowlisted measurements, clean commit attribution, fail-closed reports.
-- [ ] Add a separate CI job, preserving existing jobs and checks.
-- [ ] Run runner regressions, Go suite/vet and baseline/docs checks.
+- [x] Add evidence parser rejection tests first; confirm failure without implementation.
+- [x] Implement allowlisted measurements, clean commit attribution, fail-closed reports.
+- [x] Add a separate CI job, preserving existing jobs and checks.
+- [x] Run runner regressions, Go suite/vet and baseline/docs checks.
 
 ### Task 3: Review and draft handoff
 
-- [ ] Commit implementation; rerun qualification on exact clean commit.
-- [ ] Independent security/correctness review; fix material findings and rerun.
-- [ ] Record verified results and explicit untested cases; open draft PR.
+- [x] Commit implementation; rerun qualification on exact clean commit.
+- [x] Independent security/correctness review; fix material findings and rerun.
+- [x] Record verified results and explicit untested cases; open draft PR.
+
+Execution record: clean implementation 5a78265 passed all four live scenarios.
+Independent source review findings were fixed; timeout mutation rejected.
+Ruling: Docker internal bridges suppress host ports on this daemon; use a unique
+bridge and loopback publication. Cost: the disposable Docker host is a trusted boundary.
