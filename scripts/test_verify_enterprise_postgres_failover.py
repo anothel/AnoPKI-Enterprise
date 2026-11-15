@@ -188,7 +188,53 @@ def main() -> None:
             combined = "\n".join(p.read_text(encoding="utf-8") for p in (root / "out").iterdir())
             assert "-----BEGIN " not in combined
 
-    print("Enterprise PostgreSQL failover runner self-tests passed: 23")
+    for field in ("key_ref", "credential", "private_key"):
+        with tempfile.TemporaryDirectory() as dirname, dsn(test_dsn):
+            root = Path(dirname)
+            marker = "synthetic-sensitive-value"
+            diagnostic = json.dumps({"Action": "output", "Output": json.dumps({field: marker}) + "\n"})
+            evidence = MODULE.run_drill(ROOT, root / "out", fake_go(root / "go", sensitive=diagnostic), MODULE.resolve_commit(ROOT, ""))
+            assert evidence["result"] == "failed", "nested sensitive fields accepted"
+            assert marker not in (root / "out" / MODULE.LOG_NAME).read_text(encoding="utf-8")
+
+    for value in (r"escaped\ secret", r"slash\word"):
+        with tempfile.TemporaryDirectory() as dirname, dsn("host=localhost password='" + value + "' dbname=db"):
+            root = Path(dirname)
+            diagnostic = json.dumps({"Action": "output", "Output": value})
+            evidence = MODULE.run_drill(ROOT, root / "out", fake_go(root / "go", sensitive=diagnostic), MODULE.resolve_commit(ROOT, ""))
+            log = (root / "out" / MODULE.LOG_NAME).read_text()
+            assert all(value not in json.loads(line).get("Output", "") for line in log.splitlines()), "pgx-preserved backslash password leaked"
+
+    with tempfile.TemporaryDirectory() as dirname, dsn(test_dsn):
+        root = Path(dirname)
+        split_output = "\n".join(json.dumps({"Action": "output", "Package": MODULE.PACKAGE,
+                                            "Test": MODULE.TESTS[0], "Output": part})
+                                 for part in ("diagnostic: sec", "ret\n"))
+        evidence = MODULE.run_drill(ROOT, root / "out", fake_go(root / "go", sensitive=split_output), MODULE.resolve_commit(ROOT, ""))
+        assert evidence["result"] == "failed", "split credential accepted"
+        assert "omitted" in (root / "out" / MODULE.LOG_NAME).read_text()
+
+    for failure in ("mismatched-commit", "missing-dsn", "unsupported-go", "missing-source"):
+        with tempfile.TemporaryDirectory() as dirname, dsn(test_dsn):
+            root = Path(dirname)
+            out = root / "out"
+            go = fake_go(root / "go")
+            head = MODULE.resolve_commit(ROOT, "")
+            assert MODULE.run_drill(ROOT, out, go, head)["result"] == "passed"
+            target = ROOT
+            if failure == "unsupported-go":
+                go = fake_go(root / "go", version="go1.26.10")
+            if failure == "missing-source":
+                target = root  # no Git metadata or test source here
+            with dsn("" if failure == "missing-dsn" else test_dsn):
+                evidence = MODULE.run_drill(target, out, go, "0" * 40 if failure == "mismatched-commit" else "")
+            assert evidence["result"] == "failed"
+            saved = json.loads((out / "postgres-multi-node-failover-verification.json").read_text())
+            assert saved["result"] == "failed", "previous successful evidence survived preflight failure"
+            assert '"Action": "pass"' not in (out / MODULE.LOG_NAME).read_text(), "previous successful log survived failed rerun"
+            assert "`passed`" not in (out / "postgres-multi-node-failover-verification.md").read_text()
+
+    print("Enterprise PostgreSQL failover runner self-tests passed: 33")
 
 
 if __name__ == "__main__":

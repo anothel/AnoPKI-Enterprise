@@ -5,7 +5,41 @@ Codex Cloud, corresponding to 2026-11-14 UTC during that verification. This is a
 not production qualification, release authorization, or a cryptographic
 certification claim. Historical evidence remains bound to its original commits.
 
-## Current Development State — 2026-11-15 UTC
+## Final PR #2 Review Follow-up — 2026-11-15 UTC
+
+An independent review of `6166195…e518aa0` found three verified diagnostic
+redaction defects: sensitive fields inside a Go JSON event's nested output,
+password backslashes interpreted differently by pgx and libpq, and passwords
+split across `test2json` output events. Synthetic reproductions retained those
+values while reporting successful exclusion. A separate reuse test found that
+a preflight failure could leave an earlier successful evidence document/log.
+
+The runner now examines decoded diagnostic fields and reconstructed output
+streams, covers both pgx and libpq password interpretations, and omits sensitive
+output while failing qualification. It writes fresh failed/incomplete evidence
+before preflight and replaces logs on failure. Thirty-three runner regression
+scenarios cover these cases and the prior gates. No production SQL, lifecycle
+behavior, dependency, Community baseline or SDK pin changes are required.
+
+The independent reviewer found no additional lease or stale-writer blocker.
+All three live PostgreSQL tests passed three repetitions under `-race`; owned
+schemas were removed. These deterministic application-node simulations exercise
+lease takeover and stale completion against one database. Race instrumentation
+and separate connection pools do not establish all contention schedules, clock
+skew behavior or database-primary failover. Promotion/fencing, replication,
+partitions and real signer crash recovery remain separate qualification work.
+
+The full Go race suite and vet passed with a live PostgreSQL DSN before the
+final diagnostic-stream addition; that addition changes only Python evidence
+handling. All 33 runner scenarios, all 38 Python self-test scripts, and the
+real PostgreSQL runner pass after that addition. Baseline, docs, secret, package
+and expected-blocked release checks also pass. Hosted CI must
+qualify the new commit, with its exact head/integration identities and retained
+artifacts recorded in PR #2. Earlier green evidence below remains historical.
+PR #2 stays draft and unmerged pending explicit owner approval; no release,
+tag, publication or deployment is authorized by this review.
+
+## Retained Phase 2 Qualification Before Final Review — 2026-11-15 UTC
 
 PR [#1](https://github.com/anothel/AnoPKI-Enterprise/pull/1) completed independent
 review with no blocking correctness/security findings and was marked ready and

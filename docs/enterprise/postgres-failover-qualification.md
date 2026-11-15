@@ -58,7 +58,13 @@ redacted logs. A dirty local run is diagnostic evidence, not an immutable
 hosted source qualification. Credentials in URI and keyword DSNs, decoded
 passwords (including JSON/HTML escapes and spaced libpq assignments), local
 paths and private-key markers are redacted or cause output
-omission and failure. No DSN is put in command-line arguments or evidence.
+omission and failure. Diagnostics are inspected after JSON decoding and after
+reassembling Go output chunks per package/test, so escaping or chunk boundaries
+cannot conceal known passwords or sensitive fields. Password extraction covers
+the actual pgx backslash interpretation as well as libpq. Each invocation
+replaces prior artifacts with failed/incomplete evidence before preflight;
+failed reruns cannot reuse a previous successful report. Use a distinct output
+directory for each concurrently running invocation. No DSN is put in command-line arguments or evidence.
 
 ```sh
 python scripts/test_verify_enterprise_postgres_failover.py

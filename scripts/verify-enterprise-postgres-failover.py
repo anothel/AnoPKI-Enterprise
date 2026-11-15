@@ -108,7 +108,7 @@ def resolve_commit(root: Path, explicit: str) -> str:
 
 
 def credential_values(dsn: str) -> set[str]:
-    """Parse libpq URI/keyword passwords without retaining diagnostics."""
+    """Collect libpq and pgx password representations for safe diagnostics."""
     values = set()
     try:
         if dsn.lower().startswith(("postgres://", "postgresql://")):
@@ -141,6 +141,7 @@ def credential_values(dsn: str) -> set[str]:
                 if quoted:
                     position += 1
                 value = []
+                raw_value = []
                 closed = not quoted
                 while position < len(dsn):
                     char = dsn[position]
@@ -148,6 +149,7 @@ def credential_values(dsn: str) -> set[str]:
                         position += 1
                         if position == len(dsn):
                             raise ValueError("incomplete connection escape")
+                        raw_value.extend((char, dsn[position]))
                         value.append(dsn[position])
                         position += 1
                     elif quoted and char == "'":
@@ -157,12 +159,16 @@ def credential_values(dsn: str) -> set[str]:
                     elif not quoted and char.isspace():
                         break
                     else:
+                        raw_value.append(char)
                         value.append(char)
                         position += 1
                 if not closed or (quoted and position < len(dsn) and not dsn[position].isspace()):
                     raise ValueError("invalid quoted connection value")
                 if key == "password" and value:
                     values.add("".join(value))
+                    # pgx v5 preserves non-quote/backslash escapes (including
+                    # escaped spaces), unlike libpq. Cover both interpretations.
+                    values.add("".join(raw_value).replace("\\\\", "\\").replace("\\'", "'"))
     except ValueError:
         # The Go helper emits only a stable configuration error for malformed
         # inputs. Previously parsed passwords still require redaction.
@@ -215,13 +221,52 @@ def redact(text: str, output_dir: Path, dsn: str) -> str:
     return "".join(lines)
 
 
+def decoded_diagnostics(text: str) -> str:
+    """Inspect JSON field values before escaping can conceal sensitive markers."""
+    fragments = [text]
+    streams: dict[tuple[str, str], list[str]] = {}
+
+    def visit(value: Any, depth: int) -> None:
+        if depth > 8:
+            raise DrillFailure("diagnostic nesting exceeds safe inspection limit")
+        if isinstance(value, dict):
+            for key, item in value.items():
+                fragments.append(json.dumps(key))
+                visit(item, depth + 1)
+        elif isinstance(value, list):
+            for item in value:
+                visit(item, depth + 1)
+        elif isinstance(value, str):
+            fragments.append(value)
+            try:
+                nested = json.loads(value)
+            except json.JSONDecodeError:
+                return
+            visit(nested, depth + 1)
+
+    for line in text.splitlines():
+        try:
+            event = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        visit(event, 0)
+        if isinstance(event, dict) and isinstance(event.get("Output"), str):
+            stream = (str(event.get("Package", "")), str(event.get("Test", "")))
+            streams.setdefault(stream, []).append(event["Output"])
+    # test2json may split a long diagnostic mid-secret. Inspect the logical
+    # stream as well as individual events before allowing any log to persist.
+    for chunks in streams.values():
+        visit("".join(chunks), 0)
+    return "\n".join(fragments)
+
+
 def sensitivity(texts: tuple[str, ...], dsn: str) -> dict[str, bool]:
-    lowered = "\n".join(texts).lower()
+    lowered = "\n".join(decoded_diagnostics(text) for text in texts).lower()
     return {
         "postgres_dsn_found": bool(dsn and dsn.lower() in lowered) or "postgres://" in lowered or "postgresql://" in lowered,
-        "database_credentials_found": any(value in lowered for value in ("password=", "pgpassword")),
+        "database_credentials_found": any(value in lowered for value in ("password=", "pgpassword", '"credential"')) or any(value.lower() in lowered for value in credential_values(dsn)),
         "raw_key_references_found": "file:local-dev-only" in lowered or '"key_ref"' in lowered,
-        "private_key_markers_found": any(value in lowered for value in FORBIDDEN_TEXT if value.startswith("-----begin")),
+        "private_key_markers_found": '"private_key"' in lowered or any(value in lowered for value in FORBIDDEN_TEXT if value.startswith("-----begin")),
     }
 
 
@@ -319,25 +364,33 @@ def write_evidence(output_dir: Path, evidence: dict[str, Any]) -> None:
 
 def run_drill(root: Path, output_dir: Path, go_executable: str | list[str], commit: str) -> dict[str, Any]:
     output_dir.mkdir(parents=True, exist_ok=True)
-    evidence = evidence_template(resolve_commit(root, commit))
-    status = subprocess.run(["git", "-C", str(root), "status", "--porcelain"], text=True, capture_output=True, check=False, timeout=10)
-    evidence["worktree_dirty"] = status.returncode != 0 or bool(status.stdout.strip())
-    evidence["source_sha256"] = {
-        name: hashlib.sha256((root / name).read_bytes()).hexdigest()
-        for name in (
-            "service/internal/lifecycle/enterprise_postgres_failover_test.go",
-            "scripts/verify-enterprise-postgres-failover.py",
-        )
-    }
-    dsn = os.environ.get(DSN_ENV, "").strip()
-    environment = os.environ.copy()
-    environment["GOTOOLCHAIN"] = "local"
-    environment.setdefault("GOCACHE", str(root / ".tmp" / "go-cache" / "postgres-multi-node-failover-build"))
-    environment.setdefault("GOMODCACHE", str(root / ".tmp" / "go-cache" / "postgres-multi-node-failover-mod"))
-    Path(environment["GOCACHE"]).mkdir(parents=True, exist_ok=True)
-    Path(environment["GOMODCACHE"]).mkdir(parents=True, exist_ok=True)
-
+    # Replace a previous successful run before any fallible preflight work.
+    # A failed/rejected invocation must never leave old success evidence behind.
+    evidence = evidence_template("unavailable")
+    evidence["blocker"] = "drill has not completed"
+    evidence["checks"] = [{"name": name, "status": "failed"} for name in EXPECTED_CHECKS]
+    (output_dir / LOG_NAME).write_text("drill did not execute\n", encoding="utf-8")
+    write_evidence(output_dir, evidence)
     try:
+        evidence["commit"] = resolve_commit(root, commit)
+        evidence["enterprise_commit"] = evidence["commit"]
+        status = subprocess.run(["git", "-C", str(root), "status", "--porcelain"], text=True, capture_output=True, check=False, timeout=10)
+        evidence["worktree_dirty"] = status.returncode != 0 or bool(status.stdout.strip())
+        evidence["source_sha256"] = {
+            name: hashlib.sha256((root / name).read_bytes()).hexdigest()
+            for name in (
+                "service/internal/lifecycle/enterprise_postgres_failover_test.go",
+                "scripts/verify-enterprise-postgres-failover.py",
+            )
+        }
+        dsn = os.environ.get(DSN_ENV, "").strip()
+        environment = os.environ.copy()
+        environment["GOTOOLCHAIN"] = "local"
+        environment.setdefault("GOCACHE", str(root / ".tmp" / "go-cache" / "postgres-multi-node-failover-build"))
+        environment.setdefault("GOMODCACHE", str(root / ".tmp" / "go-cache" / "postgres-multi-node-failover-mod"))
+        Path(environment["GOCACHE"]).mkdir(parents=True, exist_ok=True)
+        Path(environment["GOMODCACHE"]).mkdir(parents=True, exist_ok=True)
+
         if not dsn:
             raise DrillFailure(f"{DSN_ENV} is required")
         if evidence["commit"] == "unavailable":
@@ -392,7 +445,7 @@ def run_drill(root: Path, output_dir: Path, go_executable: str | list[str], comm
         evidence["result"] = "passed" if passed else "failed"
         evidence["blocker"] = "" if passed else "one or more PostgreSQL multi-node failover tests, checks, or redaction rules failed"
         stored_log = redacted_log
-        if any(forbidden in redacted_log.lower() for forbidden in FORBIDDEN_TEXT):
+        if any(evidence["redaction"].values()) or any(forbidden in decoded_diagnostics(redacted_log).lower() for forbidden in FORBIDDEN_TEXT):
             stored_log = "sensitive command output detected and omitted\n"
             evidence["result"] = "failed"
             evidence["blocker"] = "sensitive command output detected"
@@ -403,8 +456,7 @@ def run_drill(root: Path, output_dir: Path, go_executable: str | list[str], comm
         evidence["result"] = "failed"
         evidence["blocker"] = str(exc) if isinstance(exc, DrillFailure) else "command failed or timed out (details omitted)"
         evidence["checks"] = [{"name": name, "status": "failed"} for name in EXPECTED_CHECKS]
-        if not (output_dir / LOG_NAME).exists():
-            (output_dir / LOG_NAME).write_text("drill did not execute\n", encoding="utf-8")
+        (output_dir / LOG_NAME).write_text("drill did not complete; command output omitted\n", encoding="utf-8")
 
     write_evidence(output_dir, evidence)
     return evidence
