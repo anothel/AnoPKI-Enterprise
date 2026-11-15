@@ -71,6 +71,9 @@ The new CI job requires a disposable PostgreSQL 16 service, uploads evidence
 on success or failure and fails on any missing or skipped required test. The
 existing `PostgreSQL 16 backup and restore drill` remains a separate required
 qualification: transaction rollback and `pg_dump`/`pg_restore` state preservation.
+The shared restore runner still emits inherited Community labels; its exact
+commit identifies execution on Enterprise source, not Enterprise release
+attestation. A reviewed Enterprise recovery evidence envelope is a next priority.
 Review both jobs' artifacts for the same integration commit; do not relabel
 these as database HA or reassign their commit identities after documentation
 changes. See [project status](../PROJECT_STATUS.md) for verified run identities.
