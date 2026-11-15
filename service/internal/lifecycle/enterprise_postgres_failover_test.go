@@ -292,7 +292,32 @@ func TestPostgresMultiNodeOutboxTrafficShiftIntegration(t *testing.T) {
 	}
 
 	failoverTime := base.Add(defaultOutboxProcessingLease + time.Minute)
+	staleAttempt := domain.JobAttempt{
+		ID:              "job-stale-node",
+		OutboxMessageID: message.ID,
+		Status:          domain.JobAttemptSucceeded,
+		StartedAt:       base,
+		FinishedAt:      failoverTime.Add(time.Minute),
+		CreatedAt:       failoverTime.Add(time.Minute),
+	}
 	failoverDispatcher := NewOutboxDispatcher(secondRepo, OutboxHandlerFunc(func(context.Context, domain.OutboxMessage) error {
+		// The new owner is still processing here. A status-only CAS would allow
+		// the expired owner to overwrite this lease before normal completion.
+		current, err := secondRepo.GetOutboxMessage(ctx, message.ID)
+		if err != nil || current.Status != domain.OutboxProcessing || !current.ProcessingDeadlineAt.After(firstClaim.ProcessingDeadlineAt) {
+			t.Fatalf("takeover must hold a newer processing lease: %v", err)
+		}
+		if err := firstDispatcher.finish(ctx, firstClaim, domain.OutboxCompleted, staleAttempt); !errors.Is(err, domain.ErrInvalidTransition) {
+			t.Fatalf("stale owner completion during takeover error = %v, want %v", err, domain.ErrInvalidTransition)
+		}
+		after, err := secondRepo.GetOutboxMessage(ctx, message.ID)
+		if err != nil || after.Status != current.Status || !after.ProcessingDeadlineAt.Equal(current.ProcessingDeadlineAt) || !after.UpdatedAt.Equal(current.UpdatedAt) || after.AttemptCount != current.AttemptCount {
+			t.Fatalf("stale completion changed the current owner's lease: %v", err)
+		}
+		attempts, err := secondRepo.ListJobAttemptsByOutboxMessage(ctx, message.ID)
+		if err != nil || len(attempts) != 0 {
+			t.Fatalf("stale completion must roll back its attempt before new completion: %v", err)
+		}
 		handled.Add(1)
 		return nil
 	}), fixedClock{now: failoverTime}, UUIDGenerator{})
@@ -304,14 +329,6 @@ func TestPostgresMultiNodeOutboxTrafficShiftIntegration(t *testing.T) {
 		t.Fatalf("failover handled = %d, want 1", handled.Load())
 	}
 
-	staleAttempt := domain.JobAttempt{
-		ID:              "job-stale-node",
-		OutboxMessageID: message.ID,
-		Status:          domain.JobAttemptSucceeded,
-		StartedAt:       base,
-		FinishedAt:      failoverTime.Add(time.Minute),
-		CreatedAt:       failoverTime.Add(time.Minute),
-	}
 	if err := firstDispatcher.finish(ctx, firstClaim, domain.OutboxCompleted, staleAttempt); !errors.Is(err, domain.ErrInvalidTransition) {
 		t.Fatalf("stale outbox completion error = %v, want %v", err, domain.ErrInvalidTransition)
 	}

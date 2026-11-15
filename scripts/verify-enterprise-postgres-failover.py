@@ -19,7 +19,7 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
-from urllib.parse import quote, unquote, urlsplit
+from urllib.parse import parse_qsl, quote, unquote, urlsplit
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_OUTPUT = ROOT / ".tmp" / "postgres-multi-node-failover-evidence"
@@ -108,21 +108,67 @@ def resolve_commit(root: Path, explicit: str) -> str:
 
 
 def credential_values(dsn: str) -> set[str]:
-    """Find password representations without logging parse errors or userinfo."""
+    """Parse libpq URI/keyword passwords without retaining diagnostics."""
     values = set()
     try:
         if dsn.lower().startswith(("postgres://", "postgresql://")):
-            password = urlsplit(dsn).password
-            if password:
-                values.update((password, unquote(password), quote(unquote(password), safe="")))
+            parsed = urlsplit(dsn)
+            if parsed.password:
+                values.add(unquote(parsed.password))
+            values.update(value for key, value in parse_qsl(parsed.query) if key == "password" and value)
         else:
-            for item in shlex.split(dsn):
-                key, separator, value = item.partition("=")
-                if separator and key.lower() == "password" and value:
-                    values.add(value)
+            # libpq permits whitespace around '=', single quoted values and
+            # backslash escaping in both quoted and unquoted values. shlex has
+            # different quote rules and must not be used for this grammar.
+            position = 0
+            while position < len(dsn):
+                while position < len(dsn) and dsn[position].isspace():
+                    position += 1
+                if position == len(dsn):
+                    break
+                start = position
+                while position < len(dsn) and not dsn[position].isspace() and dsn[position] != "=":
+                    position += 1
+                key = dsn[start:position]
+                while position < len(dsn) and dsn[position].isspace():
+                    position += 1
+                if not key or position == len(dsn) or dsn[position] != "=":
+                    raise ValueError("invalid connection assignment")
+                position += 1
+                while position < len(dsn) and dsn[position].isspace():
+                    position += 1
+                quoted = position < len(dsn) and dsn[position] == "'"
+                if quoted:
+                    position += 1
+                value = []
+                closed = not quoted
+                while position < len(dsn):
+                    char = dsn[position]
+                    if char == "\\":
+                        position += 1
+                        if position == len(dsn):
+                            raise ValueError("incomplete connection escape")
+                        value.append(dsn[position])
+                        position += 1
+                    elif quoted and char == "'":
+                        position += 1
+                        closed = True
+                        break
+                    elif not quoted and char.isspace():
+                        break
+                    else:
+                        value.append(char)
+                        position += 1
+                if not closed or (quoted and position < len(dsn) and not dsn[position].isspace()):
+                    raise ValueError("invalid quoted connection value")
+                if key == "password" and value:
+                    values.add("".join(value))
     except ValueError:
-        # Malformed configuration must fail in Go; never retain its diagnostics.
+        # The Go helper emits only a stable configuration error for malformed
+        # inputs. Previously parsed passwords still require redaction.
         pass
+    if os.environ.get("PGPASSWORD"):
+        values.add(os.environ["PGPASSWORD"])
     return values
 
 
@@ -136,10 +182,37 @@ def redact(text: str, output_dir: Path, dsn: str) -> str:
     }
     if dsn:
         replacements[dsn] = "<postgres-dsn>"
-        replacements.update({value: "<redacted>" for value in credential_values(dsn)})
-    for original, replacement in sorted(replacements.items(), key=lambda item: len(item[0]), reverse=True):
-        text = text.replace(original, replacement)
-    return text
+    for value in credential_values(dsn):
+        # Also protect partial/malformed lines that cannot be JSON-decoded.
+        for representation in (value, quote(value, safe=""), json.dumps(value)[1:-1], json.dumps(value, ensure_ascii=False)[1:-1]):
+            replacements[representation] = "<redacted>"
+    ordered = sorted(replacements.items(), key=lambda item: len(item[0]), reverse=True)
+
+    def plain(value: str) -> str:
+        for original, replacement in ordered:
+            value = value.replace(original, replacement)
+        return value
+
+    def structured(value: Any) -> Any:
+        if isinstance(value, str):
+            return plain(value)
+        if isinstance(value, dict):
+            return {plain(key): structured(item) for key, item in value.items()}
+        if isinstance(value, list):
+            return [structured(item) for item in value]
+        return value
+
+    lines = []
+    for line in text.splitlines(keepends=True):
+        try:
+            event = json.loads(line)
+        except json.JSONDecodeError:
+            lines.append(plain(line))
+        else:
+            # Decode Go JSON/HTML/Unicode escapes before searching secrets;
+            # redact every string field, then serialize the sanitized event.
+            lines.append(json.dumps(structured(event), ensure_ascii=False) + ("\n" if line.endswith("\n") else ""))
+    return "".join(lines)
 
 
 def sensitivity(texts: tuple[str, ...], dsn: str) -> dict[str, bool]:

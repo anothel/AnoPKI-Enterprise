@@ -129,6 +129,31 @@ def main() -> None:
             assert absent not in combined, "decoded credentials leaked into evidence"
             assert secret_dsn not in combined
 
+    # Go emits diagnostic strings as escaped JSON. Check decoded retained fields,
+    # not just raw bytes (which could conceal the same secret behind escapes).
+    escaped_cases = (
+        ("postgres://operator:quote%22secret@localhost/db", 'quote"secret'),
+        ("host=localhost password = 'spaced secret' dbname=db", "spaced secret"),
+        ("host=localhost password='escaped\\' secret' dbname=db", "escaped' secret"),
+        (r"host=localhost password=escaped\ secret dbname=db", "escaped secret"),
+        ("postgres://localhost/db?password=query%22secret", 'query"secret'),
+        ("postgres://operator:html%26secret@localhost/db", "html&secret"),
+    )
+    for secret_dsn, password in escaped_cases:
+        assert password in MODULE.credential_values(secret_dsn), "valid libpq password not parsed"
+        with tempfile.TemporaryDirectory() as dirname, dsn(secret_dsn):
+            root = Path(dirname)
+            diagnostic = json.dumps({"Output": password}).replace("&", r"\u0026")
+            evidence = MODULE.run_drill(ROOT, root / "out", fake_go(root / "go", sensitive=diagnostic), MODULE.resolve_commit(ROOT, ""))
+            retained = (root / "out" / MODULE.LOG_NAME).read_text(encoding="utf-8")
+            decoded = []
+            for line in retained.splitlines():
+                try:
+                    decoded.append(str(json.loads(line)))
+                except json.JSONDecodeError:
+                    decoded.append(line)
+            assert password not in "\n".join(decoded), "JSON diagnostic credential leaked"
+
     with tempfile.TemporaryDirectory() as dirname, dsn(test_dsn):
         root = Path(dirname)
         evidence = MODULE.run_drill(ROOT, root / "out", fake_go(root / "go", version="go1.26.10"), MODULE.resolve_commit(ROOT, ""))
@@ -163,7 +188,7 @@ def main() -> None:
             combined = "\n".join(p.read_text(encoding="utf-8") for p in (root / "out").iterdir())
             assert "-----BEGIN " not in combined
 
-    print("Enterprise PostgreSQL failover runner self-tests passed: 17")
+    print("Enterprise PostgreSQL failover runner self-tests passed: 23")
 
 
 if __name__ == "__main__":

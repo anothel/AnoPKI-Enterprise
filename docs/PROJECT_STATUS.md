@@ -29,9 +29,20 @@ Phase 2 starts separately on `codex/phase2-multi-node-qualification` from this
 verified main. Its first scope is [PostgreSQL application-node failover](enterprise/postgres-failover-qualification.md)
 with separate existing PostgreSQL backup/restore qualification. Three adapted
 live PostgreSQL 16.16 tests pass under race instrumentation locally; the evidence
-runner passes 14 assertions and its self-tests cover 17 scenarios. Local evidence
+runner passes 14 assertions and its self-tests cover 23 scenarios. Local evidence
 records a dirty working tree and source hashes; it is not exact committed-source
-hosted qualification. Current-branch hosted qualification is pending. Full local `go test -p 1 ./...`,
+hosted qualification. The first Phase 2 candidate `7ae05e5cb211997c0ddc562538e44b4de3e854a9` passed
+26/26 hosted jobs in [43656543262](https://github.com/anothel/AnoPKI-Enterprise/actions/runs/43656543262).
+Independent review then identified two qualification defects: JSON-escaped or
+spaced-keyword password diagnostics could evade redaction, and the outbox
+stale-owner assertion ran only after new-owner completion. Both are corrected
+with regressions: decoded JSON/libpq URI/keyword password sanitization, and
+stale completion attempted during the new processing lease with unchanged
+lease and rolled-back-attempt assertions. Mutation validation demonstrated
+that the original test accepted status-only CAS, the strengthened test rejected
+it, and the restored correct production CAS passed. No production SQL changed.
+These follow-up changes require their own hosted qualification; the first
+candidate's green run is not relabeled as evidence for them. Full local `go test -p 1 ./...`,
 `go test -race -p 1 ./...` (with the live failover DSN) and `go vet ./...`
 pass. All 38 Python self-test scripts pass: the first suite attempt lacked
 PowerShell on PATH for `test_verify_local.py`; rerunning that script with the

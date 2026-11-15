@@ -44,8 +44,10 @@ with schema-creation permissions; do not use a production database.
   completion is rejected; publication/claim deletion commit together and the
   next number is contiguous.
 - Outbox: a claim-only simulated crash runs no handler; expiry moves processing
-  to the other node once in this scenario; stale completion rejects and rolls
-  back its attempt, leaving one successful attempt. This is not a general
+  to the other node once in this scenario; stale completion is attempted while
+  the new lease is still processing and again after completion. It rejects
+  without changing the current lease and rolls back its attempt, leaving one
+  successful attempt. This is not a general
   exactly-once external delivery guarantee.
 
 The runner requires `ANOPKI_POSTGRES_FAILOVER_DSN`, Go 1.26.11+, all three exact
@@ -54,7 +56,8 @@ terminal results. A supplied `--commit` must match checkout HEAD. It retains
 Enterprise and Community identities, source hashes, dirty-tree status and
 redacted logs. A dirty local run is diagnostic evidence, not an immutable
 hosted source qualification. Credentials in URI and keyword DSNs, decoded
-passwords, local paths and private-key markers are redacted or cause output
+passwords (including JSON/HTML escapes and spaced libpq assignments), local
+paths and private-key markers are redacted or cause output
 omission and failure. No DSN is put in command-line arguments or evidence.
 
 ```sh
