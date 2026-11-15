@@ -5,6 +5,52 @@ Codex Cloud, corresponding to 2026-11-14 UTC during that verification. This is a
 not production qualification, release authorization, or a cryptographic
 certification claim. Historical evidence remains bound to its original commits.
 
+## Current Development State — 2026-11-15 UTC
+
+PR [#1](https://github.com/anothel/AnoPKI-Enterprise/pull/1) completed independent
+review with no blocking correctness/security findings and was marked ready and
+merged using the allowed normal merge-commit method. The reviewed documentation
+head `f4af664ab5f9db4635961141d80ff50f82d7072e` passed 25/25 jobs in
+[43654875647](https://github.com/anothel/AnoPKI-Enterprise/actions/runs/43654875647),
+tested as `f8df173976c4a83a202c4849b925b5e3f41e7bcd`.
+
+| Post-merge main evidence | Verified value |
+| --- | --- |
+| Main merge commit | `6166195cf8f887d7a7dc7426be8c71b6250e0109` |
+| Parents | `c1e0bbbefa2003657c7fefdf5924f964c4bab3ec`, `f4af664ab5f9db4635961141d80ff50f82d7072e` |
+| Source tree | `54d42c05f2bdcac243d0fe75015b7d5f9e66cca5`, identical to reviewed head |
+| Main push CI | [43655389069](https://github.com/anothel/AnoPKI-Enterprise/actions/runs/43655389069), **25/25 successful jobs** |
+| Go analysis artifact | `14137473213`, `anopki-enterprise-go-analysis-1.26.11` |
+| Downloaded ZIP SHA-256 | `436bc2653a248dfecb16ea5ceaf22f3054bbaf15bbbac94852ac61313193e8f6` |
+| Analysis source attribution | `enterprise_commit` equals the main merge commit above |
+| Analysis result | Race/staticcheck/gosec/govulncheck exit 0; retained verbose log: **No vulnerabilities found.** |
+
+Phase 2 starts separately on `codex/phase2-multi-node-qualification` from this
+verified main. Its first scope is [PostgreSQL application-node failover](enterprise/postgres-failover-qualification.md)
+with separate existing PostgreSQL backup/restore qualification. Three adapted
+live PostgreSQL 16.16 tests pass under race instrumentation locally; the evidence
+runner passes 14 assertions and its self-tests cover 17 scenarios. Local evidence
+records a dirty working tree and source hashes; it is not exact committed-source
+hosted qualification. Current-branch hosted qualification is pending. Full local `go test -p 1 ./...`,
+`go test -race -p 1 ./...` (with the live failover DSN) and `go vet ./...`
+pass. All 38 Python self-test scripts pass: the first suite attempt lacked
+PowerShell on PATH for `test_verify_local.py`; rerunning that script with the
+installed PowerShell passed. Baseline, docs, package, KeyProvider and expected-
+blocked release validators pass. No PostgreSQL-primary or live SDK result is
+inferred from these tests.
+
+The frozen Community checkout remains unchanged at `49142ff`; the consumed
+baseline remains `ab9d76597df93ac1ac8b7938f4d25ba64f59f8dc`. Only selected tests
+are explicitly adapted; no bulk sync or pin change is implied. Recovery of
+[the exact historical SDK](enterprise/sdk-pin-recovery.md) is blocked by a
+missing Git object/source archive and trusted original install inputs, not by
+repository access. No SDK replacement was selected.
+
+Production key-provider, real SDK hosted parity, database-primary failover,
+commercial distribution and KCMVP qualification remain open. No release,
+tag, publication or deployment was performed. The evidence below remains
+historical and keeps its original commit identities.
+
 ## Go Security Qualification Follow-up — 2026-11-15
 
 The Go security follow-up began from PR #1 commit
@@ -34,7 +80,7 @@ evidence commits; GitHub's merge checks and an exact-head precondition remain
 in force. The user separately authorized readiness and merge after the final
 review and required CI; no tag, release, deployment or certification follows.
 
-### Current Qualification Result
+### PR #1 Source Qualification Before Final Documentation Review
 
 [CI run 43652946102](https://github.com/anothel/AnoPKI-Enterprise/actions/runs/43652946102)
 passed **25/25 jobs**, including both supported Go baseline lanes, race,
@@ -344,7 +390,7 @@ of a later review commit. Review the branch diff and rerun qualification on the
 exact final commit before release. Raw disposable test logs stay in cloud
 scratch; only safe findings are recorded here.
 
-## Next Development Phase
+## Initial Recovery Priorities (Historical)
 
 1. **Restore reproducible validation inputs.** Recover the exact `98f544a` SDK
    source/artifact and reconcile the historical pre-change Enterprise baseline
