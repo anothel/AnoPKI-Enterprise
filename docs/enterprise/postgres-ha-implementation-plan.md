@@ -28,6 +28,17 @@
 - A stalled Patroni leaves PostgreSQL writing: Task 2 requires independent reset timing, not test-controller termination.
 - Failed reruns retain stale green artifacts or leak secrets: Task 4 replaces artifacts before preflight and exports only validated fields.
 
+## Implemented Preliminary Slice
+
+A separate required-watchdog bootstrap-refusal fixture now exists in
+`tests/ha/`, `scripts/verify-postgres-ha-prerequisites.py`, its regression script
+and `.github/workflows/postgres-ha-prerequisites.yml`. It exercises the actual
+Patroni refusal against three etcd peers and never marks HA qualified. This
+resolves the executable negative prerequisite only; the tasks below remain
+open. Docker and historical Community-object access now work. Source review
+identified Pacemaker/Corosync/PAF with external Docker fencing as an alternative
+for further evaluation; no positive fencing backend is yet qualified.
+
 ## Task 1: Establish And Pin A Suitable Disposable Backend
 
 Files to create: `tests/ha/README.md`, `tests/ha/artifacts.json`,

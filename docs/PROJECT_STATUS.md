@@ -5,6 +5,25 @@ Codex Cloud, corresponding to 2026-11-14 UTC during that verification. This is a
 not production qualification, release authorization, or a cryptographic
 certification claim. Historical evidence remains bound to its original commits.
 
+## Phase 4 Watchdog Prerequisite Implementation — 2026-11-16
+
+The new [disposable prerequisite fixture](../tests/ha/README.md) runs Patroni
+4.1.5 with PostgreSQL 16.16 and three mutually authenticated etcd 3.5.21 members.
+A live working-tree diagnostic observed required-watchdog bootstrap cancellation,
+stopped PostgreSQL and no leader key in 3.37 seconds. This is not RTO or
+immutable-source evidence; an exact committed rerun remains separate. The result
+always states `ha_qualified: false`.
+
+The fixture adds 11 regressions and a separately named watchdog-refusal CI job.
+Independent review found and prompted fixes for false passed evidence on
+interruption and missing DCS evidence. Full Go race/vet, 40 existing Phase 2/3
+runner scenarios, docs, secret and baseline guards pass locally. The earlier
+Docker access and missing Community Git-object blockers are resolved. No pins
+or gate expectations changed. Full automatic failover, partitions, reliable
+positive fencing, rejoin and application consistency across HA remain pending.
+See the [design](enterprise/postgres-ha-qualification.md) for the remaining
+infrastructure alternatives and limits. The historical SDK blocker is unchanged.
+
 ## Phase 4 HA Qualification Started — 2026-11-16
 
 Phase 4 starts from verified main

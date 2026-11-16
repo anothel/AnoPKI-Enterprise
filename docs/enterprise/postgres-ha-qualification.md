@@ -1,7 +1,7 @@
 # Phase 4 PostgreSQL HA Qualification Design
 
-Status: architecture proposal and implementation contract; **not implemented or
-qualified**. Recorded 2026-11-16. Base main was fetched and verified as
+Status: full HA architecture proposal; a negative watchdog prerequisite fixture
+is implemented. **Full Phase 4 HA is not qualified.** Recorded 2026-11-16. Base main was fetched and verified as
 `6827dbdeca9b6f1136e03c570abdf3d5809a0eb3` (merged Phase 3).
 Branch: `codex/phase4-ha-split-brain-qualification`. No related issue confirmed.
 This design was written before any Phase 4 runtime or harness changes.
@@ -254,3 +254,56 @@ lacks `ab9d76597df93ac1ac8b7938f4d25ba64f59f8dc`. This is an input blocker, not 
 baseline pass; no pin or validator was changed. No live PostgreSQL test, full Go
 suite or hosted CI result is claimed for Phase 4. Documentation-only changes do
 not replace historical runtime evidence.
+
+## Executable First Slice: Missing-Watchdog Refusal
+
+Follow-up capability checks succeeded: Docker is usable and fetching the frozen
+Community history made the unchanged baseline guard pass. No independently timed
+watchdog backend is available yet. Implement a separate disposable **negative
+prerequisite** test using Patroni 4.1.5, PostgreSQL 16.16 and a three-member etcd
+3.5.21 cluster. All network traffic stays on an internal bridge; no host ports,
+host devices, Docker socket mounts or external DSNs are accepted. Use per-run TLS
+and SCRAM, required watchdog mode and strict synchronous settings.
+
+The test observes healthy etcd quorum, a real Patroni bootstrap attempt and its
+explicit watchdog-activation cancellation. Require Patroni to exit, PostgreSQL
+to stop, and no DCS leader key. An unrelated startup failure is not success.
+Patroni's post-bootstrap watchdog check occurs **after** PostgreSQL initialization;
+this test does not assert there was never a writable bootstrap process. Keep
+bootstrap isolated from application clients. It does not qualify promotion of
+an existing replica, successful fencing, partitions, rejoin or RTO/RPO.
+
+Retain a distinct prerequisite evidence type with `ha_qualified: false` even
+when this negative test passes. Its CI job must be named for watchdog refusal,
+not full HA qualification. Pin downloaded package artifacts and all base image
+digests; retain the built image ID and upstream Patroni source identity
+`235fdb3990513c7852da8dc51e9cb92b6d0e4907` (v4.1.5 tag). The remaining plan
+continues to require an independent fencing backend and full live scenarios.
+
+### Prerequisite Implementation Review And Diagnostic Run
+
+The first live working-tree run reached the intended cancellation and passed all
+four prerequisite observations in 3.37 seconds. This is an observation interval,
+not RTO, and is not immutable-source qualification. Exact committed-source
+results must be recorded separately. All 58 Python files in the pinned Patroni
+wheel were compared byte-for-byte with upstream commit
+`235fdb3990513c7852da8dc51e9cb92b6d0e4907`; none differed.
+
+Independent code review reproduced two evidence defects: interruption during
+postflight could save a passed artifact, and a malformed empty etcd response
+could count as proof of no leader. Regressions now reject both, including
+interruption during cleanup. Live diagnosis also corrected configuration transfer
+into a read-only container, inherited external proxies, the private password-file
+location and zombie reaping with Docker init. Docker operations are fixed to the
+local Unix socket; inherited remote contexts cannot redirect destructive cleanup.
+PostgreSQL control connections use verified TLS. Eleven prerequisite tests, the
+40 existing Phase 2/3 runner scenarios, full Go race/vet, docs, baseline and secret
+checks pass. These checks do not qualify positive fencing or automatic recovery.
+
+A separate source review found a possible bounded Docker alternative:
+Pacemaker/Corosync + PAF + upstream `fence_docker`. It also confirmed that QEMU's
+i6300esb uses a virtual clock that stops with the VM, so installing QEMU alone
+would not meet the pause/resume requirement. The external-fencing alternative
+still requires a restricted out-of-band control boundary, durable synchronous
+candidate selection, negative fencing tests and independent implementation
+review. It is not implemented or qualified by this prerequisite fixture.
