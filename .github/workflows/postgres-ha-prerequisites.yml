@@ -1,0 +1,26 @@
+name: PostgreSQL HA watchdog prerequisite
+on:
+  pull_request:
+  push:
+    branches: [main, codex/phase4-ha-split-brain-qualification]
+permissions:
+  contents: read
+jobs:
+  watchdog-refusal:
+    name: Required watchdog bootstrap refusal (not HA qualification)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python scripts/test_verify_postgres_ha_prerequisites.py
+      - name: Observe real Patroni refusal on isolated disposable infrastructure
+        run: python scripts/verify-postgres-ha-prerequisites.py --commit "${GITHUB_SHA}"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: anopki-postgres-ha-watchdog-prerequisite
+          path: .tmp/postgres-ha-prerequisites/
+          if-no-files-found: error
