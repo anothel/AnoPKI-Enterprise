@@ -5,6 +5,28 @@ Codex Cloud, corresponding to 2026-11-14 UTC during that verification. This is a
 not production qualification, release authorization, or a cryptographic
 certification claim. Historical evidence remains bound to its original commits.
 
+## Phase 4 HA Qualification Started — 2026-11-16
+
+Phase 4 starts from verified main
+`6827dbdeca9b6f1136e03c570abdf3d5809a0eb3` on
+`codex/phase4-ha-split-brain-qualification`. The
+[architecture proposal](enterprise/postgres-ha-qualification.md) recommends
+Patroni, a three-member etcd quorum, three PostgreSQL VMs, strict synchronous
+replication and independently timed required watchdog fencing. It records the
+failure assumptions and full acceptance matrix before code changes.
+
+Independent design review identified a watchdog renewal/keepalive timing gap,
+silent-device-failure assumptions and post-reset rejoin quarantine semantics.
+The proposal was corrected; these are design changes, not tested runtime fixes.
+
+This is design work, not completed Phase 4 qualification. No suitable disposable
+VM/watchdog backend is confirmed locally; the Docker capability check was blocked
+by an automatic approval-review usage limit. No Phase 4 topology, runtime code,
+regression suite, CI job or measured RTO/RPO is claimed. The implementation plan
+is linked from the design. Existing Phase 2/3 evidence, security gates and frozen
+Community/SDK pins remain unchanged; the missing historical SDK object remains
+a separate blocker.
+
 ## Phase 3 Primary Qualification — 2026-11-15 UTC
 
 Phase 3 starts from latest main `4941f0a20ad0bf41c62a73d822fa51cc08531e68`,
