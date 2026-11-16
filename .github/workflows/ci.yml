@@ -427,6 +427,31 @@ jobs:
           path: .tmp/enterprise-postgres-failover/ci/
           if-no-files-found: error
 
+  enterprise-postgres-primary:
+    name: Enterprise PostgreSQL 16 primary failover
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.26.11"
+          cache-dependency-path: |
+            service/go.mod
+            service/go.sum
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+      - run: python scripts/test_verify_postgres_primary.py
+      - name: Qualify disposable primary and standby under race instrumentation
+        run: python scripts/verify-postgres-primary.py --commit "${GITHUB_SHA}"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: anopki-enterprise-postgres-primary-verification
+          path: .tmp/postgres-primary/
+          if-no-files-found: error
+
   postgres-recovery-drill:
     name: PostgreSQL 16 backup and restore drill
     # The drill requires PostgreSQL 16 clients; ubuntu-latest now defaults to 18.

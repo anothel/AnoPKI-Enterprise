@@ -1,0 +1,51 @@
+{
+  "blocker": "",
+  "commit": "5a78265e39cf4e70aeb382552db88973e58eaa9d",
+  "completed_at": "2026-11-15T20:36:24.301608+00:00",
+  "cryptographic_backend_executed": false,
+  "evidence_type": "enterprise_postgres_primary_failover",
+  "go_version": "1.26.11",
+  "measurements": [
+    {
+      "acknowledged_lost": 0,
+      "fence_seconds": 0.129416763,
+      "promotion_seconds": 0.531843577,
+      "reconnect_seconds": 0.537041989,
+      "scenario": "TestPostgresPrimaryIssuanceFailoverIntegration",
+      "state_digest": "8a6be083ce136ec495ed32accb46841fc5cbeb21dfead9d3d29d172ea377f576"
+    },
+    {
+      "acknowledged_lost": 0,
+      "fence_seconds": 0.131103433,
+      "promotion_seconds": 0.543458627,
+      "reconnect_seconds": 0.548185104,
+      "scenario": "TestPostgresPrimaryCRLFailoverIntegration",
+      "state_digest": "0fb0d160f50f097d3afade27aef5175d3190fcfc67f32990403c45345193f50b"
+    },
+    {
+      "acknowledged_lost": 0,
+      "fence_seconds": 0.135016126,
+      "promotion_seconds": 0.566062287,
+      "reconnect_seconds": 0.571262382,
+      "scenario": "TestPostgresPrimaryOutboxTrafficShiftIntegration",
+      "state_digest": "ad31ab7001d930e8e0caade4b6640118f4e6cf1da540439675020b7128048f16"
+    },
+    {
+      "acknowledged_lost": 1,
+      "fence_seconds": 0.139880312,
+      "promotion_seconds": 1.030179031,
+      "reconnect_seconds": 1.130343211,
+      "scenario": "TestPostgresPrimaryAsyncLossIntegration",
+      "state_digest": "not-applicable"
+    }
+  ],
+  "owned_resources_removed": true,
+  "result": "passed",
+  "schema_version": 1,
+  "source_sha256": {
+    "scripts/verify-postgres-primary.py": "b45aba1aaf6486786140a0b83c33dd682a08afaee443805961902b3d3dab04da",
+    "service/internal/lifecycle/enterprise_postgres_primary_test.go": "9f7c430ea89760c5eb7b20630adb6a73fa84ef69057ec1d8eedee27a33cfec9b",
+    "service/internal/lifecycle/enterprise_postgres_topology_test.go": "9e5711538f931586007b9c8d7b732b66d059e8f6e50f8c737d5f5c60b2a22483"
+  },
+  "tree": "1fcbb949bfbc25d3abf39afe354f68c6d2768c73"
+}
