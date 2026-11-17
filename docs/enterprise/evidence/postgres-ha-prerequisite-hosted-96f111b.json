@@ -1,0 +1,24 @@
+{
+  "head_commit": "96f111baaf61faada929d95753923fa7f670a887",
+  "tested_integration_commit": "569161f3c57d8981f71c35aeaf6079904b46078c",
+  "main_merge_commit": "dbd1a1e6f5c7c13ee39a50511470b113a8a99ff9",
+  "run_id": 43868795709,
+  "job_id": 133304154107,
+  "artifact_id": 14227050469,
+  "github_reported_artifact_sha256": "933d22dd60a5de4f7d2ee7d11d7ae985230d0acba7022d80fbc08e9960795839",
+  "artifact_contents_independently_inspected": false,
+  "ha_qualified": false,
+  "observed_log_lines": [
+    "2026-11-16T12:41:09.7650057Z HEAD is now at 569161f Merge 96f111baaf61faada929d95753923fa7f670a887 into 6827dbdeca9b6f1136e03c570abdf3d5809a0eb3",
+    "2026-11-16T12:41:13.2298489Z Ran 11 tests in 0.325s",
+    "2026-11-16T12:41:33.0415655Z Watchdog prerequisite: passed; HA remains unqualified",
+    "2026-11-16T12:41:33.5909769Z SHA256 digest of uploaded artifact zip is 933d22dd60a5de4f7d2ee7d11d7ae985230d0acba7022d80fbc08e9960795839",
+    "2026-11-16T12:41:33.9540735Z Artifact anopki-postgres-ha-watchdog-prerequisite has been successfully uploaded! Final size is 1018 bytes. Artifact ID is 14227050469"
+  ],
+  "evidence_type": "hosted_metadata_and_allowlisted_log_record",
+  "existing_ci": {
+    "run_id": 43868795693,
+    "successful_jobs": 27,
+    "total_jobs": 27
+  }
+}
