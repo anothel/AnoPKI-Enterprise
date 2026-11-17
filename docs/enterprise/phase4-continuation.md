@@ -7,6 +7,14 @@ split-brain prevention. Preserve the original
 [implementation plan](postgres-ha-implementation-plan.md), and
 [fixture instructions](../../tests/ha/README.md).
 
+## Fresh Recovery — 2026-11-17
+
+PR #5 has also merged at `c063b7b72da69130e2d248c0ba045b203e88762d`. Continue
+on `codex/phase4-ha-implementation` in a new draft PR, superseding the branch
+instructions below. The [fresh recovery decision](phase4-recovery.md) records
+current capabilities, independent artifact inspection and unresolved fencing
+and durability prerequisites. Earlier unobserved local completion remains unknown.
+
 ## Repository State
 
 GitHub reports [PR #4](https://github.com/anothel/AnoPKI-Enterprise/pull/4)

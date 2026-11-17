@@ -5,6 +5,29 @@ Codex Cloud, corresponding to 2026-11-14 UTC during that verification. This is a
 not production qualification, release authorization, or a cryptographic
 certification claim. Historical evidence remains bound to its original commits.
 
+## Phase 4 Fresh Workspace Recovery — 2026-11-17 UTC
+
+Recovered latest main `c063b7b72da69130e2d248c0ba045b203e88762d`, confirming
+both PR #4 and #5 merged, and started `codex/phase4-ha-implementation` for a
+new draft [PR #6](https://github.com/anothel/AnoPKI-Enterprise/pull/6). No
+uncommitted work from the failed executor is assumed recovered.
+The [recovery decision](enterprise/phase4-recovery.md) updates the architecture
+and failure assumptions before further implementation.
+
+Docker is usable, but no independent watchdog/reset backend or restricted
+external Docker fence service is established. Source review of PAF/fence_docker
+also leaves synchronous candidate eligibility unresolved. Positive failover and
+all associated partition/rejoin/application/RTO/RPO qualification remain blocked;
+full Phase 4 HA is **not qualified**. Independent review supports this decision.
+No production code, Phase 1–3 tests, security/release gates or pins changed.
+
+The historical watchdog artifact was independently downloaded, rehashed and
+unpacked; its source remains integration `569161f`, never this recovery commit.
+The existing negative fixture also passed on exact clean main `c063b7b`, with
+owned cleanup and `ha_qualified: false`; both payloads are retained in the
+recovery evidence links. Neither result proves positive fencing or RTO/RPO.
+The missing historical AnoCrypto-C SDK object remains a separate blocker.
+
 ## Phase 4 Hosted Prerequisite And Continuation
 
 [PR #4](https://github.com/anothel/AnoPKI-Enterprise/pull/4) is now merged at
