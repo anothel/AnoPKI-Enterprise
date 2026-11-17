@@ -1,0 +1,30 @@
+{
+  "blocker": "",
+  "commit": "569161f3c57d8981f71c35aeaf6079904b46078c",
+  "completed_at": "2026-11-16T12:41:33.041039+00:00",
+  "cryptographic_backend_executed": false,
+  "evidence_type": "enterprise_postgres_ha_watchdog_prerequisite",
+  "ha_qualified": false,
+  "image_id": "sha256:7e0fa00643723066bbc7abe2c52dc989fc2bbe410264e80cc4c554ee2577626b",
+  "observation_seconds": 1.6354249490000257,
+  "observations": {
+    "leader_key_absent": true,
+    "postgres_stopped": true,
+    "three_member_quorum": true,
+    "watchdog_bootstrap_refused": true
+  },
+  "owned_resources_removed": true,
+  "patroni_source_commit": "235fdb3990513c7852da8dc51e9cb92b6d0e4907",
+  "result": "passed",
+  "schema_version": 1,
+  "source_sha256": {
+    "scripts/verify-postgres-ha-prerequisites.py": "21c825be535a7ef6275a58dbe69d8b1839663e30c39cbd22740a98bbdabbb343",
+    "scripts/verify-postgres-primary.py": "b45aba1aaf6486786140a0b83c33dd682a08afaee443805961902b3d3dab04da",
+    "tests/ha/Dockerfile": "0b524baa6cc8e59465a51a3a0f1b9f58004e76b7f2d804ef84c1860a7e445e3a",
+    "tests/ha/README.md": "9ade53a357f1c8ef254bc28e48bb35d6284223d27d9ba2553d1fae20b359abca",
+    "tests/ha/build-requirements.txt": "83f111e093bad00e18d8ee645a55359e4a3b9ea26a1b2d8b91776712a0db30fb",
+    "tests/ha/inputs.json": "5d409ca24cfc1a85da7ffaec5d411dcabf624738e2af57a3432ac1796e9d98ce",
+    "tests/ha/requirements.txt": "d3e4eb111266c2af6d4b1ee00f776fff1cd228639b30695e5567f2a186e81831"
+  },
+  "tree": "8d73bcc0fe380adb829d1d8f3f87342dd29bbbf1"
+}

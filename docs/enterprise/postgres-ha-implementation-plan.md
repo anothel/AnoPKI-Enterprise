@@ -10,6 +10,16 @@
 
 **Spec:** [Phase 4 design](postgres-ha-qualification.md).
 
+## Recovery Checkpoint — 2026-11-17
+
+Current base is `c063b7b72da69130e2d248c0ba045b203e88762d`, branch
+`codex/phase4-ha-implementation`; open a new draft PR. The original base/branch
+below are historical. Read the [recovery decision](phase4-recovery.md) before
+Task 1: Docker is available, but the VM watchdog backend and a restricted
+external-fencing/durable-candidate integration remain unestablished. Task 1 is
+blocked; Tasks 2–4 must not proceed by substituting process kills or weakening
+synchronous guarantees. The existing refusal prerequisite remains separate.
+
 ## Global Constraints
 
 - Base: `6827dbdeca9b6f1136e03c570abdf3d5809a0eb3`; branch `codex/phase4-ha-split-brain-qualification`.

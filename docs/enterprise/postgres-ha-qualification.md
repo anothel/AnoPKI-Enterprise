@@ -6,6 +6,15 @@ is implemented. **Full Phase 4 HA is not qualified.** Recorded 2026-11-16. Base 
 Branch: `codex/phase4-ha-split-brain-qualification`. No related issue confirmed.
 This design was written before any Phase 4 runtime or harness changes.
 
+## Fresh Workspace Decision — 2026-11-17
+
+The [recovery decision](phase4-recovery.md) verifies main `c063b7b` and reviews
+both fencing approaches against the available rootless Docker host. Neither has
+a qualified positive-fencing and synchronous-candidate integration. Keep
+automatic promotion blocked. Its revised trusted-host assumptions and explicit
+Pacemaker off-fencing/quarantine requirements apply before any alternative
+implementation; the historical proposal below remains context, not new evidence.
+
 ## Existing Evidence And Boundaries
 
 Read together with [project status](../PROJECT_STATUS.md),
