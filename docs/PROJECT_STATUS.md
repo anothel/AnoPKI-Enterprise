@@ -5,6 +5,27 @@ Codex Cloud, corresponding to 2026-11-14 UTC during that verification. This is a
 not production qualification, release authorization, or a cryptographic
 certification claim. Historical evidence remains bound to its original commits.
 
+## Phase 4 Hosted Prerequisite And Continuation
+
+[PR #4](https://github.com/anothel/AnoPKI-Enterprise/pull/4) is now merged at
+`dbd1a1e6f5c7c13ee39a50511470b113a8a99ff9`; the task agent did not perform
+that merge. Source head `96f111baaf61faada929d95753923fa7f670a887` passed
+27/27 existing CI jobs and the separate watchdog-prerequisite workflow.
+The latter tested PR integration commit
+`569161f3c57d8981f71c35aeaf6079904b46078c` and explicitly reported that HA
+remains unqualified. Artifact identifiers, GitHub-reported hashes and inspection
+limits are retained in the [continuation record](enterprise/phase4-continuation.md)
+and its [allowlisted metadata](enterprise/evidence/postgres-ha-prerequisite-hosted-96f111b.json).
+
+Continue separately on `codex/phase4-ha-qualification-continuation`.
+The execution workspace has failed with a missing workspace GitHub connection;
+a new connected cloud task is required for further implementation and live tests.
+Automatic failover, partition safety, positive fencing, safe rejoin and the full
+application consistency matrix remain incomplete. The Docker/Pacemaker fencing
+alternative needs an explicit architecture update and independent review.
+Frozen Community and historical SDK pins, security gates and release blockers
+remain unchanged. No further merge, release or deployment is authorized.
+
 ## Phase 4 Watchdog Prerequisite Implementation — 2026-11-16
 
 The new [disposable prerequisite fixture](../tests/ha/README.md) runs Patroni
