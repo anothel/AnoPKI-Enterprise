@@ -9,7 +9,8 @@ certification claim. Historical evidence remains bound to its original commits.
 
 Recovered latest main `c063b7b72da69130e2d248c0ba045b203e88762d`, confirming
 both PR #4 and #5 merged, and started `codex/phase4-ha-implementation` for a
-new draft PR. No uncommitted work from the failed executor is assumed recovered.
+new draft [PR #6](https://github.com/anothel/AnoPKI-Enterprise/pull/6). No
+uncommitted work from the failed executor is assumed recovered.
 The [recovery decision](enterprise/phase4-recovery.md) updates the architecture
 and failure assumptions before further implementation.
 

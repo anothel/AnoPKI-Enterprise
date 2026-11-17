@@ -157,7 +157,7 @@ the historical extracted JSON SHA-256 is
 Image identity is recorded per run, not assumed reproducible across builds.
 
 Local 11 watchdog, 7 Phase 3 runner and 33 Phase 2 runner regressions pass.
-Full `go test -race -p 1 ./...` passes using the downloaded pinned Go 1.26.11
+Full `go test -race -p 1 ./...` and `go vet ./...` pass using the downloaded pinned Go 1.26.11
 toolchain. No external/live PostgreSQL DSN was supplied to that suite; its
 optional database tests do not establish fresh live Phase 2/3 results.
 Docs and docs-validator tests, secret scan, package and KeyProvider boundary,
@@ -172,3 +172,17 @@ Independent read-only source review confirmed the off-versus-reboot distinction,
 API compatibility work, restricted management boundary and unresolved durable
 candidate proof. That review does not qualify an implementation that does not
 yet exist. The old failed executor and its resources remain uninspected.
+
+
+The recovery diff received independent read-only security/correctness review
+with no blocking finding. The reviewer independently checked the downloaded
+ZIP, byte-identical historical payload, fresh-main tree and both input-hash
+maps. Its evidence-link suggestion is included above. The reviewed scope is
+documentation/evidence only; no unimplemented HA behavior is approved.
+
+New draft [PR #6](https://github.com/anothel/AnoPKI-Enterprise/pull/6) carries
+current hosted check results and exact tested identities. Its initial source
+`542652929e7a33face329a814ed42bd069064799` triggered CI `44193076759` and watchdog
+`44193076764`, observed queued. These are not recorded as passes here. Required
+checks on subsequent documentation heads must pass separately; use the PR's
+exact-head record rather than treating historical green jobs as current evidence.
