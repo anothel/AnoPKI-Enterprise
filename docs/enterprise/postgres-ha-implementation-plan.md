@@ -10,6 +10,16 @@
 
 **Spec:** [Phase 4 design](postgres-ha-qualification.md).
 
+## Fencing Feasibility Checkpoint — 2026-11-18 UTC
+
+Current base is `11049521d4f4f7daad45a6a2481d8b003c788d67`, branch
+`codex/phase4-fencing-feasibility`. PRs #4–#6 are merged. Read the
+[feasibility decision](phase4-fencing-feasibility.md): Task 1 remains blocked
+without independent reset infrastructure, or restricted external fencing plus
+a supported durable-candidate integration. Tasks 2–4 remain blocked. Additional
+negative-fixture regressions and evidence do not complete those tasks. Obtain
+the missing boundary/proofs before adding any positive promotion scenario.
+
 ## Recovery Checkpoint — 2026-11-17
 
 Current base is `c063b7b72da69130e2d248c0ba045b203e88762d`, branch

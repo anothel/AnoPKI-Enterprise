@@ -7,6 +7,14 @@ split-brain prevention. Preserve the original
 [implementation plan](postgres-ha-implementation-plan.md), and
 [fixture instructions](../../tests/ha/README.md).
 
+## Current Checkpoint — 2026-11-18 UTC
+
+PRs #4, #5 and #6 are merged; current base is `1104952` on
+`codex/phase4-fencing-feasibility`. Read the
+[current feasibility decision](phase4-fencing-feasibility.md) before proceeding.
+It supersedes earlier branch instructions, preserves the negative fixture and
+keeps positive HA blocked pending independent fencing and durable eligibility.
+
 ## Fresh Recovery — 2026-11-17
 
 PR #5 has also merged at `c063b7b72da69130e2d248c0ba045b203e88762d`. Continue

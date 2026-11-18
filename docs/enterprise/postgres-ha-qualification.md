@@ -6,6 +6,14 @@ is implemented. **Full Phase 4 HA is not qualified.** Recorded 2026-11-16. Base 
 Branch: `codex/phase4-ha-split-brain-qualification`. No related issue confirmed.
 This design was written before any Phase 4 runtime or harness changes.
 
+## Current Feasibility Decision — 2026-11-18 UTC
+
+The [current feasibility decision](phase4-fencing-feasibility.md) starts from
+main `1104952` after PRs #4–#6. It records fresh capability checks, a safety
+requirements matrix, additional prerequisite regressions and the exact missing
+fencing/eligibility proofs. Neither candidate can safely run positive HA on the
+currently established infrastructure. Earlier decisions remain historical.
+
 ## Fresh Workspace Decision — 2026-11-17
 
 The [recovery decision](phase4-recovery.md) verifies main `c063b7b` and reviews

@@ -5,6 +5,27 @@ Codex Cloud, corresponding to 2026-11-14 UTC during that verification. This is a
 not production qualification, release authorization, or a cryptographic
 certification claim. Historical evidence remains bound to its original commits.
 
+## Phase 4 Fencing Feasibility — 2026-11-18 UTC
+
+Latest main `11049521d4f4f7daad45a6a2481d8b003c788d67` includes merged PRs
+#4, #5 and #6. Continue on `codex/phase4-fencing-feasibility` for a new draft PR.
+The [current decision](enterprise/phase4-fencing-feasibility.md) compares both
+supported architectures and separates executable prerequisites from missing proofs.
+
+Patroni + etcd is the preferred conditional target, but no independently timed
+watchdog/reset service is established in this disposable Cloud environment.
+Rootless Docker works; restricted external fencing and PAF synchronous candidate
+eligibility remain unproved. **Positive automatic failover stays blocked; full
+Phase 4 HA is not qualified.** No promotion logic or production code is added.
+
+The unchanged live watchdog-refusal fixture passed on clean exact main above,
+with owned cleanup and `ha_qualified: false`; its verbatim payload is linked
+from the decision. Four new prerequisite regressions pass (15 total), and reject
+six unsafe mutations. Existing Phase 2/3 runner regressions pass. Full validation,
+hosted CI and independent review results must be attributed to the new PR's
+specific source/integration identities. No RTO/RPO guarantee follows. Community
+and SDK pins, existing gates and the historical SDK blocker remain unchanged.
+
 ## Phase 4 Fresh Workspace Recovery — 2026-11-17 UTC
 
 Recovered latest main `c063b7b72da69130e2d248c0ba045b203e88762d`, confirming
