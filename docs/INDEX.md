@@ -9,6 +9,7 @@ This index is the public entry point for repository documentation. Keep it short
 | [Project status](PROJECT_STATUS.md) | You need the verified Enterprise baseline, architecture, CI findings, blockers and next development priorities. |
 | [Phase 2 PostgreSQL qualification](enterprise/postgres-failover-qualification.md) | You need application-node failover scope, provenance, evidence and recovery limits. |
 | [Phase 4 PostgreSQL HA design](enterprise/postgres-ha-qualification.md) | You need the proposed quorum/fencing architecture, acceptance matrix and current implementation blockers. |
+| [Phase 4 fencing feasibility](enterprise/phase4-fencing-feasibility.md) | You need the current architecture decision, verified negative prerequisites and missing infrastructure/proofs after PRs #4–#6. |
 | [Phase 4 fresh recovery](enterprise/phase4-recovery.md) | You need current fencing blockers, failure assumptions and recovered exact-source evidence. |
 | [Exact SDK recovery](enterprise/sdk-pin-recovery.md) | You need the historical AnoCrypto-C pin and missing recovery inputs. |
 | [Project scope](reference/project-scope.md) | You need to understand what AnoPKI is, what it is not, and where the current service boundaries are. |

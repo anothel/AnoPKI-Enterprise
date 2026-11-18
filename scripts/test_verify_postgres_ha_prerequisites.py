@@ -105,6 +105,73 @@ class PrerequisiteTests(unittest.TestCase):
         self.assertEqual(c['etcd3']['protocol'], 'https')
         self.assertEqual(c['postgresql']['pgpass'], '/run/ha/pgpass')
 
+    def test_durability_cannot_be_weakened_by_local_bootstrap_override(self):
+        c = self.m.patroni_config('fixture-password')
+        dcs = c['bootstrap']['dcs']
+        self.assertIs(dcs['failsafe_mode'], False)
+        self.assertIs(type(dcs['synchronous_node_count']), int)
+        self.assertEqual(dcs['synchronous_node_count'], 1)
+        # Both layers reach Patroni: a local override must not undo DCS durability.
+        for parameters in (dcs['postgresql']['parameters'], c['postgresql']['parameters']):
+            with self.subTest(parameters=parameters):
+                self.assertEqual(parameters['synchronous_commit'], 'remote_apply')
+                self.assertEqual(parameters['fsync'], 'on')
+                self.assertEqual(parameters['full_page_writes'], 'on')
+
+    def test_watchdog_timing_inputs_leave_half_ttl_slack(self):
+        c = self.m.patroni_config('fixture-password')
+        dcs = c['bootstrap']['dcs']
+        self.assertEqual(c['watchdog']['safety_margin'], -1)
+        for key in ('ttl', 'loop_wait', 'retry_timeout'):
+            self.assertIs(type(dcs[key]), int)
+            self.assertGreater(dcs[key], 0)
+        self.assertLessEqual(dcs['loop_wait'] + 2 * dcs['retry_timeout'], dcs['ttl'])
+        self.assertLess(dcs['loop_wait'] + dcs['retry_timeout'], dcs['ttl'] // 2)
+        # Config arithmetic is not proof of actual reset timing or timer independence.
+
+    def test_bootstrap_database_and_rest_api_are_loopback_only(self):
+        c = self.m.patroni_config('fixture-password')
+        self.assertEqual(c['postgresql']['listen'], '127.0.0.1:5432')
+        self.assertEqual(c['restapi']['listen'], '127.0.0.1:8008')
+        for rule in c['postgresql']['pg_hba'][1:]:
+            fields = rule.split()
+            self.assertEqual(fields[0], 'hostssl')
+            self.assertEqual(fields[-2:], ['127.0.0.1/32', 'scram-sha-256'])
+
+    def test_disposable_guest_commands_do_not_cross_host_boundary(self):
+        calls = []
+        class SetupObserved(Exception):
+            pass
+        def capture(args, **kwargs):
+            calls.append(args)
+            if args[:3] == ['docker', 'exec', '-d']:
+                raise SetupObserved()  # Stop before starting etcd or Patroni.
+            return ''
+        with tempfile.TemporaryDirectory() as directory:
+            work = Path(directory)
+            for node in ('e1', 'e2', 'e3', 'pg1'):
+                (work / node).mkdir()
+            with patch.object(self.m, 'build_image', return_value='sha256:fixture'), \
+                 patch.object(self.m, 'certificates'), patch.object(self.m, 'copy_config'), \
+                 patch.object(self.m, 'command', side_effect=capture):
+                with self.assertRaises(SetupObserved):
+                    self.m.live(work, 'owned-run')
+        network = next(args for args in calls if args[:3] == ['docker', 'network', 'create'])
+        self.assertIn('--internal', network)
+        guests = [args for args in calls if args[:2] == ['docker', 'run']]
+        self.assertEqual(len(guests), 4)
+        for args in guests:
+            with self.subTest(guest=args[args.index('--name') + 1]):
+                self.assertEqual(args[args.index('--network') + 1], 'owned-run-net')
+                self.assertEqual(args[args.index('--user') + 1], '999:999')
+                self.assertIn('--restart=no', args)
+                self.assertIn('--read-only', args)
+                self.assertIn('--cap-drop=ALL', args)
+                self.assertEqual(args[args.index('--security-opt') + 1], 'no-new-privileges')
+                forbidden = ('--privileged', '--device', '--mount', '--volume', '-v',
+                             '--publish', '--publish-all', '-p', '-P', '--pid', '--cap-add')
+                self.assertFalse(any(arg.split('=', 1)[0] in forbidden for arg in args))
+
     def test_failed_preflight_replaces_success_and_omits_secrets(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory)
