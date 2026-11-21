@@ -199,14 +199,12 @@ if(BUILD_TESTING)
     target_link_libraries(anopki_crypto_backend_interface_test PRIVATE anopki::core)
     add_test(NAME anopki.crypto_backend_interface COMMAND anopki_crypto_backend_interface_test)
 
-    add_executable(anopki_backend_profile_test tests/backend_profile_test.cpp)
+    add_executable(anopki_backend_profile_test tests/backend_validation_checks_test.cpp)
     target_link_libraries(anopki_backend_profile_test PRIVATE anopki::core ${ANOPKI_SELECTED_ADAPTER_TARGET})
     target_compile_definitions(anopki_backend_profile_test PRIVATE
         ANOPKI_EXPECTED_TEST_PROFILE="${ANOPKI_PRODUCT_PROFILE}")
     add_test(NAME anopki.backend_profile COMMAND anopki_backend_profile_test)
-    add_executable(anopki_backend_validation_checks_test tests/backend_validation_checks_test.cpp)
-    target_link_libraries(anopki_backend_validation_checks_test PRIVATE anopki::core)
-    add_test(NAME anopki.backend_validation_checks COMMAND anopki_backend_validation_checks_test)
+    add_test(NAME anopki.backend_validation_checks COMMAND anopki_backend_profile_test --fixtures)
 
     if(ANOPKI_PRODUCT_PROFILE STREQUAL "enterprise-openssl")
         add_executable(anopki_core_cli_contract_test tests/core_cli_contract_test.cpp)

@@ -3,7 +3,9 @@
 
 #include <iostream>
 
-int main()
+namespace {
+
+void run_fixtures()
 {
     using namespace anopki::crypto;
     using anopki::test::validate_backend;
@@ -17,47 +19,67 @@ int main()
     const ProductProfileInfo profile{std::string{expected}, "enterprise", "anocrypto-c", false, capabilities};
     const BackendInfo backend{"anocrypto-c", "AnoCrypto-C", "fixture-version",
                               "sha256:" + std::string(64, 'a'), 1U, BackendReadiness::ready, capabilities};
+    validate_backend(profile, backend, expected);
+    const auto reject = [&](std::string_view why, auto mutate) {
+        auto changed_profile = profile;
+        auto changed_backend = backend;
+        mutate(changed_profile, changed_backend);
+        try
+        {
+            validate_backend(changed_profile, changed_backend, expected);
+        }
+        catch (const std::runtime_error &error)
+        {
+            if (error.what() == why) return;
+            throw;
+        }
+        throw std::runtime_error{"invalid fixture accepted: " + std::string{why}};
+    };
+    reject("product profile mismatch", [](auto &p, auto &) { p.id = "enterprise-openssl"; });
+    reject("product profile mismatch", [](auto &p, auto &) { p.edition.clear(); });
+    reject("product profile mismatch", [](auto &p, auto &) { p.selected_backend = "openssl"; });
+    reject("fallback is enabled", [](auto &p, auto &) { p.fallback_enabled = true; });
+    reject("backend identity mismatch", [](auto &, auto &b) { b.id = "openssl"; });
+    reject("backend identity mismatch", [](auto &, auto &b) { b.dependency = "OpenSSL"; });
+    reject("backend is not ready", [](auto &, auto &b) { b.readiness = BackendReadiness::error; });
+    reject("backend is not ready", [](auto &, auto &b) { b.readiness = BackendReadiness::unavailable; });
+    reject("backend runtime version is unavailable", [](auto &, auto &b) { b.dependency_version.clear(); });
+    reject("backend identity ABI mismatch", [](auto &, auto &b) { b.abi_version = 2U; });
+    reject("invalid backend fingerprint", [](auto &, auto &b) { b.build_fingerprint.erase(0, 7); });
+    reject("invalid backend fingerprint", [](auto &, auto &b) { b.build_fingerprint.pop_back(); });
+    reject("invalid backend fingerprint", [](auto &, auto &b) { b.build_fingerprint.back() = 'z'; });
+    reject("product profile capability set mismatch", [](auto &p, auto &) { p.required_capabilities.pop_back(); });
+    reject("backend capability set mismatch", [](auto &, auto &b) { b.capabilities.pop_back(); });
+    reject("backend capability set mismatch", [](auto &, auto &b) { b.capabilities.back() = b.capabilities.front(); });
+    reject("backend capability set mismatch", [](auto &, auto &b) { b.capabilities.back() = static_cast<BackendCapability>(-1); });
+    std::cout << "Backend validation accepted valid state and rejected all 17 invalid state fixtures\n";
+}
+
+} // namespace
+
+int main(int argc, char **argv)
+{
     try
     {
-        validate_backend(profile, backend, expected);
-        const auto reject = [&](std::string_view why, auto mutate) {
-            auto changed_profile = profile;
-            auto changed_backend = backend;
-            mutate(changed_profile, changed_backend);
-            try
-            {
-                validate_backend(changed_profile, changed_backend, expected);
-            }
-            catch (const std::runtime_error &error)
-            {
-                if (error.what() == why) return;
-                throw;
-            }
-            throw std::runtime_error{"invalid fixture accepted: " + std::string{why}};
-        };
-        reject("product profile mismatch", [](auto &p, auto &) { p.id = "enterprise-openssl"; });
-        reject("product profile mismatch", [](auto &p, auto &) { p.edition.clear(); });
-        reject("product profile mismatch", [](auto &p, auto &) { p.selected_backend = "openssl"; });
-        reject("fallback is enabled", [](auto &p, auto &) { p.fallback_enabled = true; });
-        reject("backend identity mismatch", [](auto &, auto &b) { b.id = "openssl"; });
-        reject("backend identity mismatch", [](auto &, auto &b) { b.dependency = "OpenSSL"; });
-        reject("backend is not ready", [](auto &, auto &b) { b.readiness = BackendReadiness::error; });
-        reject("backend is not ready", [](auto &, auto &b) { b.readiness = BackendReadiness::unavailable; });
-        reject("backend runtime version is unavailable", [](auto &, auto &b) { b.dependency_version.clear(); });
-        reject("backend identity ABI mismatch", [](auto &, auto &b) { b.abi_version = 2U; });
-        reject("invalid backend fingerprint", [](auto &, auto &b) { b.build_fingerprint.erase(0, 7); });
-        reject("invalid backend fingerprint", [](auto &, auto &b) { b.build_fingerprint.pop_back(); });
-        reject("invalid backend fingerprint", [](auto &, auto &b) { b.build_fingerprint.back() = 'z'; });
-        reject("product profile capability set mismatch", [](auto &p, auto &) { p.required_capabilities.pop_back(); });
-        reject("backend capability set mismatch", [](auto &, auto &b) { b.capabilities.pop_back(); });
-        reject("backend capability set mismatch", [](auto &, auto &b) { b.capabilities.back() = b.capabilities.front(); });
-        reject("backend capability set mismatch", [](auto &, auto &b) { b.capabilities.back() = static_cast<BackendCapability>(-1); });
+        if (argc == 1)
+        {
+            const auto &profile = anopki::crypto::selected_product_profile();
+            const auto &info = anopki::crypto::selected_backend().info();
+            anopki::test::validate_backend(profile, info, ANOPKI_EXPECTED_TEST_PROFILE);
+        }
+        else if (argc == 2 && std::string_view{argv[1]} == "--fixtures")
+        {
+            run_fixtures();
+        }
+        else
+        {
+            throw std::runtime_error{"unexpected backend validation test arguments"};
+        }
     }
     catch (const std::exception &error)
     {
-        std::cerr << error.what() << '\n';
+        std::cerr << "Backend profile validation failed: " << error.what() << '\n';
         return 1;
     }
-    std::cout << "Backend validation accepted valid state and rejected all 17 invalid state fixtures\n";
     return 0;
 }
