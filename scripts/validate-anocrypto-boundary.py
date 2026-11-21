@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import os
 import re
 import subprocess
 import sys
@@ -84,9 +85,11 @@ def dependency_command(tool: Path, artifact: Path) -> list[str]:
         return [str(tool), "/dump", "/dependents", str(artifact)]
     if "llvm-readobj" in name:
         return [str(tool), "--coff-imports", str(artifact)]
-    if "readelf" in name:
+    if re.search(r"(?:^|-)readelf(?:-[0-9]+)?(?:\.exe)?$", name):
         return [str(tool), "-d", str(artifact)]
-    return [str(tool), "-p", str(artifact)]
+    if re.search(r"(?:^|-)objdump(?:-[0-9]+)?(?:\.exe)?$", name):
+        return [str(tool), "-p", str(artifact)]
+    fail(f"unsupported dependency reader: {tool}")
 
 
 def inspect_artifact(label: str, artifact: Path, tool: Path) -> None:
@@ -94,10 +97,19 @@ def inspect_artifact(label: str, artifact: Path, tool: Path) -> None:
         fail(f"missing dependency-purity artifact {label}: {artifact}")
     reject_forbidden(artifact.read_bytes().decode("latin-1", errors="ignore"), f"artifact {label}")
     command = dependency_command(tool, artifact)
-    completed = subprocess.run(command, capture_output=True, text=True, errors="replace", check=False)
+    try:
+        completed = subprocess.run(command, capture_output=True, text=True, errors="replace", check=False,
+                                   env={**os.environ, "LC_ALL": "C"})
+    except OSError as error:
+        fail(f"could not execute dependency reader {tool}: {error}")
     output = completed.stdout + completed.stderr
     if completed.returncode != 0:
         fail(f"dependency inspection failed for {label}: {' '.join(command)}\n{output.strip()}")
+    if command[1] == "-d" and (completed.stderr.strip() or not re.search(
+        r"^\s*(?:Dynamic section at offset |There is no dynamic section in this file\.)",
+        completed.stdout, re.MULTILINE
+    )):
+        fail(f"invalid ELF dependency reader output for {label}: {output.strip()}")
     reject_forbidden(output, f"dependency table {label}")
     dependencies = [
         line.strip()
