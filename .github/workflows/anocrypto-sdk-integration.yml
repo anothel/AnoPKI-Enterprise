@@ -147,14 +147,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          if ldd .tmp/anopki-enterprise-anocrypto/anopki-core | grep -Eiq 'libssl|libcrypto'; then
-            echo 'Enterprise/AnoCrypto-C unexpectedly links OpenSSL' >&2
-            exit 1
-          fi
-          if nm -u .tmp/anopki-enterprise-anocrypto/anopki-core | grep -Eiq 'OPENSSL_|EVP_|X509_|OCSP_'; then
-            echo 'Enterprise/AnoCrypto-C contains unresolved OpenSSL symbols' >&2
-            exit 1
-          fi
+          python anopki-enterprise/scripts/check-anocrypto-sdk-linkage.py .tmp/anopki-enterprise-anocrypto/anopki-core
 
       - name: Compose and validate SDK evidence
         shell: bash
