@@ -287,12 +287,35 @@ if(BUILD_TESTING)
         set_tests_properties(anocrypto.pki_algorithms PROPERTIES LABELS "anocrypto_parity;anocrypto_algorithms")
         set_tests_properties(anocrypto.no_fallback PROPERTIES DEPENDS anocrypto.pki_algorithms)
 
+        set(ANOPKI_DEPENDENCY_TOOL "${CMAKE_LINKER}")
+        set(ANOPKI_BOUNDARY_FIXTURE_ARGS)
+        set(ANOPKI_MISSING_SDK_ARGS --executable $<TARGET_FILE:anopki_backend_profile_test>)
+        if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+            if(NOT CMAKE_READELF OR NOT EXISTS "${CMAKE_READELF}")
+                message(FATAL_ERROR "AnoCrypto dependency purity requires a supported ELF reader (readelf)")
+            endif()
+            set(ANOPKI_DEPENDENCY_TOOL "${CMAKE_READELF}")
+            set(ANOPKI_BOUNDARY_FIXTURE_ARGS
+                --elf-reader "${CMAKE_READELF}"
+                --clean-artifact $<TARGET_FILE:anopki-core>
+                --openssl-artifact $<TARGET_FILE:anocrypto_parity_test>
+            )
+            add_executable(anocrypto_missing_sdk_probe enterprise/tests/anocrypto_missing_sdk_probe.cpp)
+            target_link_libraries(anocrypto_missing_sdk_probe PRIVATE AnoCryptoC::AnoCryptoC ${CMAKE_DL_LIBS})
+            set_target_properties(anocrypto_missing_sdk_probe PROPERTIES SKIP_BUILD_RPATH TRUE)
+            set(ANOPKI_MISSING_SDK_ARGS
+                --executable $<TARGET_FILE:anocrypto_missing_sdk_probe>
+                --sdk-library $<TARGET_FILE:AnoCryptoC::AnoCryptoC>
+                --sdk-soname $<TARGET_SONAME_FILE_NAME:AnoCryptoC::AnoCryptoC>
+            )
+        endif()
+
         add_test(
             NAME anocrypto.dependency_purity
             COMMAND ${Python3_EXECUTABLE}
                 ${CMAKE_CURRENT_SOURCE_DIR}/scripts/validate-anocrypto-boundary.py
                 --root ${CMAKE_CURRENT_SOURCE_DIR}
-                --dependency-tool ${CMAKE_LINKER}
+                --dependency-tool "${ANOPKI_DEPENDENCY_TOOL}"
                 --artifact runtime=$<TARGET_FILE:anopki-core>
                 --artifact adapter=$<TARGET_FILE:anopki_enterprise_anocrypto_adapter>
                 --artifact sdk=$<TARGET_FILE:AnoCryptoC::AnoCryptoC>
@@ -303,12 +326,13 @@ if(BUILD_TESTING)
         add_test(
             NAME anocrypto.boundary_validator_tests
             COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/scripts/test_validate_anocrypto_boundary.py
+                ${ANOPKI_BOUNDARY_FIXTURE_ARGS}
         )
         add_test(
             NAME anocrypto.missing_dependency_no_fallback
             COMMAND ${Python3_EXECUTABLE}
                 ${CMAKE_CURRENT_SOURCE_DIR}/scripts/test-anocrypto-missing-dependency.py
-                --executable $<TARGET_FILE:anopki_backend_profile_test>
+                ${ANOPKI_MISSING_SDK_ARGS}
         )
         set_tests_properties(anocrypto.missing_dependency_no_fallback PROPERTIES LABELS "anocrypto_no_fallback")
 
