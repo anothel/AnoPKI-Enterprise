@@ -1,25 +1,20 @@
 // SPDX-License-Identifier: MPL-2.0
-#include "anopki/crypto/runtime.hpp"
+#include "backend_validation_checks.hpp"
 
-#include <cassert>
-#include <string>
+#include <iostream>
 
 int main()
 {
-    const anopki::crypto::ProductProfileInfo &profile = anopki::crypto::selected_product_profile();
-    const anopki::crypto::Backend &backend = anopki::crypto::selected_backend();
-
-    assert(!profile.id.empty());
-    assert(!profile.edition.empty());
-    assert(profile.selected_backend == backend.info().id);
-    assert(!profile.fallback_enabled);
-    assert(backend.info().readiness == anopki::crypto::BackendReadiness::ready);
-    assert(backend.info().abi_version == 1);
-    assert(backend.info().build_fingerprint.starts_with("sha256:"));
-    assert(backend.info().build_fingerprint.size() == std::string{"sha256:"}.size() + 64U);
-    for (const anopki::crypto::BackendCapability capability : profile.required_capabilities)
+    try
     {
-        assert(anopki::crypto::has_capability(backend.info(), capability));
+        const auto &profile = anopki::crypto::selected_product_profile();
+        const auto &info = anopki::crypto::selected_backend().info();
+        anopki::test::validate_backend(profile, info, ANOPKI_EXPECTED_TEST_PROFILE);
+    }
+    catch (const std::exception &error)
+    {
+        std::cerr << "Backend profile validation failed: " << error.what() << '\n';
+        return 1;
     }
     return 0;
 }
