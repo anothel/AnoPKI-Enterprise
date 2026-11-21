@@ -199,9 +199,12 @@ if(BUILD_TESTING)
     target_link_libraries(anopki_crypto_backend_interface_test PRIVATE anopki::core)
     add_test(NAME anopki.crypto_backend_interface COMMAND anopki_crypto_backend_interface_test)
 
-    add_executable(anopki_backend_profile_test tests/backend_profile_test.cpp)
+    add_executable(anopki_backend_profile_test tests/backend_validation_checks_test.cpp)
     target_link_libraries(anopki_backend_profile_test PRIVATE anopki::core ${ANOPKI_SELECTED_ADAPTER_TARGET})
+    target_compile_definitions(anopki_backend_profile_test PRIVATE
+        ANOPKI_EXPECTED_TEST_PROFILE="${ANOPKI_PRODUCT_PROFILE}")
     add_test(NAME anopki.backend_profile COMMAND anopki_backend_profile_test)
+    add_test(NAME anopki.backend_validation_checks COMMAND anopki_backend_profile_test --fixtures)
 
     if(ANOPKI_PRODUCT_PROFILE STREQUAL "enterprise-openssl")
         add_executable(anopki_core_cli_contract_test tests/core_cli_contract_test.cpp)
@@ -250,9 +253,13 @@ if(BUILD_TESTING)
     else()
         find_package(Python3 REQUIRED COMPONENTS Interpreter)
         add_executable(anocrypto_sdk_integration_test enterprise/tests/anocrypto_sdk_integration_test.cpp)
-        target_link_libraries(anocrypto_sdk_integration_test PRIVATE anopki_enterprise_anocrypto_adapter)
+        target_include_directories(anocrypto_sdk_integration_test PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/tests")
+        target_link_libraries(anocrypto_sdk_integration_test PRIVATE anopki::core anopki_enterprise_anocrypto_adapter)
         add_test(NAME anocrypto.sdk_integration COMMAND anocrypto_sdk_integration_test)
         set_tests_properties(anocrypto.sdk_integration PROPERTIES LABELS "anocrypto_sdk_integration")
+        add_test(NAME anocrypto.runtime_evidence_checks
+            COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/scripts/test_anocrypto_runtime_evidence.py
+                $<TARGET_FILE:anocrypto_sdk_integration_test>)
 
         add_executable(anocrypto_no_fallback_test enterprise/tests/anocrypto_no_fallback_test.cpp)
         target_link_libraries(anocrypto_no_fallback_test PRIVATE anopki::core anopki_enterprise_anocrypto_adapter AnoCryptoC::AnoCryptoC)
