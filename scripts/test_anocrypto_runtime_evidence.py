@@ -56,6 +56,14 @@ def main():
         require(len(info["capabilities"]) == len(CAPABILITIES) and set(info["capabilities"]) == CAPABILITIES,
                 "capability set mismatch")
 
+        if sys.platform == "linux":
+            rewritten = run(valid)
+            require(rewritten.returncode == 0, rewritten.stderr)
+            require(valid.is_file() and not valid.is_symlink(), "rewritten evidence is not a regular file")
+            require(json.loads(valid.read_text(encoding="utf-8")) == info, "rewritten evidence changed")
+            staging = root / "valid.json.tmp"
+            require(not staging.exists() and not staging.is_symlink(), "rewrite left a staging entry")
+
         extra = root / "extra.json"
         require(run(extra, "unexpected").returncode != 0 and not extra.exists(), "invalid arguments published evidence")
         require(run("").returncode != 0, "empty output argument was accepted")
