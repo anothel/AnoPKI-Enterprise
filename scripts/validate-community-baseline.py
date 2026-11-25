@@ -28,6 +28,10 @@ REVIEWED_ENTERPRISE_PATCHES = {
         "773bd634194163a53bc8bfc2c05788088e1373756dd42c530a313290880025dc",
         "7dfe6372c82ed12c738677f190e051987df45681d9dabd91ec2e4b215b690c00",
     ),
+    "docs/runbooks/manual-demo.md": (
+        "4f739252e7447a2350eaa0d0a11e825d85269259fc146bf69c61969eb46a273f",
+        "7789e29e1d202ffeaf2172e82198da72fbd9f814af1c2851a4d3fca943364e01",
+    ),
     "scripts/acme-smoke/test-run-certbot-smoke.ps1": (
         "6129848d6afa29e238e580a9b67aef3c95e6cdc48b97ad274c027361c61336e0",
         "298968aaab3872b3953024cff355047439c483f393ac55087fdeaadd2a8c7885",
