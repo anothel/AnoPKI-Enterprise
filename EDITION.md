@@ -9,9 +9,17 @@ packaging.
 
 ## Important status
 
-The included AnoCrypto files are integration skeletons only. They are not a
-production cryptographic implementation, not a KCMVP-validated module, and not
-evidence that AnoPKI has switched away from the OpenSSL-backed behavior.
+OpenSSL remains the default Enterprise backend and compatibility baseline
+(`enterprise-openssl`). Selecting `enterprise-anocrypto-c` builds the Enterprise
+adapter against an external, installed AnoCrypto-C SDK. The selected profile
+runs without an OpenSSL runtime fallback.
 
-OpenSSL remains the compatibility baseline until CSR, issuance, CRL, OCSP, ACME,
-and release evidence parity is proven.
+[Historical P3-11 evidence](docs/enterprise/anocrypto-handoff-current-status.md)
+covers local operation parity, dependency purity, and no-fallback checks for
+the recorded configuration. Native verification and protected workflow
+verification with the original Q9 SDK remain `NOT_RUN`. Actual product
+end-to-end acceptance remains `NOT_RUN` for each Enterprise profile.
+
+The [backend profile release gates](docs/enterprise/backend-profile-release-gates.md)
+track the remaining production and external qualification work. The AnoCrypto-C
+profile records `production_ready=false` and `kcmvp_status=not_validated`.

@@ -1,6 +1,6 @@
 # Manual Enrollment Lifecycle Demo
 
-This demo proves the MVP lifecycle path:
+This demo walks through the MVP lifecycle:
 
 1. Create an issuer.
 2. Create an identity.
@@ -35,8 +35,23 @@ New-Item -ItemType Directory -Force .tmp-demo | Out-Null
 openssl ecparam -name prime256v1 -genkey -noout -out .tmp-demo\issuer.key
 openssl req -new -x509 -key .tmp-demo\issuer.key -days 365 -subj "/CN=AnoPKI-demo-ca" -out .tmp-demo\issuer.crt
 openssl ecparam -name prime256v1 -genkey -noout -out .tmp-demo\leaf.key
-openssl req -new -key .tmp-demo\leaf.key -subj "/CN=edge-01" -out .tmp-demo\leaf.csr
+@'
+[req]
+prompt = no
+distinguished_name = dn
+req_extensions = req_ext
+
+[dn]
+CN = edge-01
+
+[req_ext]
+subjectAltName = DNS:edge-01.example.test,IP:127.0.0.1
+'@ | Set-Content -Encoding ascii -ErrorAction Stop .tmp-demo\leaf.cnf
+openssl req -new -key .tmp-demo\leaf.key -config .tmp-demo\leaf.cnf -out .tmp-demo\leaf.csr
+if ($LASTEXITCODE -ne 0) { throw "Could not generate the leaf CSR." }
 ```
+
+The explicit request config keeps the leaf SANs independent of the default OpenSSL request configuration.
 
 ## Start Service
 
@@ -57,6 +72,37 @@ Run from the repository root:
 ```powershell
 $base = "http://localhost:8080"
 $headers = @{ "X-Actor" = "demo-admin" }
+$dnsName = "edge-01.example.test"
+$ipAddress = "127.0.0.1"
+
+# Inspect the same PEM that will be submitted, before any POST.
+$csrPem = Get-Content -Raw -ErrorAction Stop .tmp-demo\leaf.csr
+if ([string]::IsNullOrWhiteSpace($csrPem)) { throw "The leaf CSR is empty." }
+$csrPem | openssl req -noout
+if ($LASTEXITCODE -ne 0) { throw "Could not inspect the leaf CSR." }
+$csrAsn1 = $csrPem | openssl asn1parse -inform PEM
+if ($LASTEXITCODE -ne 0) { throw "Could not read the leaf CSR extensions." }
+$extensionRequest = @($csrAsn1 | Select-String '^\s*\d+:d=4\s+.*prim:\s+OBJECT\s+:(?:Microsoft )?Extension Request\s*$')
+if ($extensionRequest.Count -ne 1) { throw "The leaf CSR must contain exactly one extension request." }
+$sanExtension = @($csrAsn1 | Select-String '^\s*\d+:d=7\s+.*prim:\s+OBJECT\s+:X509v3 Subject Alternative Name\s*$' -Context 0,2)
+if ($sanExtension.Count -ne 1) { throw "The leaf CSR must contain exactly one SAN extension." }
+$sanFields = $sanExtension[0].Context.PostContext
+$sanValue = $sanFields[0]
+if ($sanValue -match '^\s*\d+:d=7\s+.*prim:\s+BOOLEAN\s*:') { $sanValue = $sanFields[1] }
+if ($sanValue -cnotmatch '^\s*\d+:d=7\s+.*prim:\s+OCTET STRING\s+\[HEX DUMP\]:([0-9A-F]+)\s*$') {
+    throw "Could not read the leaf CSR SAN values."
+}
+$actualSan = $Matches[1]
+
+# Compare the DER GeneralNames for this demo's DNS name and IPv4 address in either order.
+$dnsBytes = [Text.Encoding]::ASCII.GetBytes($dnsName)
+$ipBytes = ([Net.IPAddress]::Parse($ipAddress)).GetAddressBytes()
+$dnsHex = '82{0:X2}{1}' -f $dnsBytes.Length, ([BitConverter]::ToString($dnsBytes) -replace '-')
+$ipHex = '87{0:X2}{1}' -f $ipBytes.Length, ([BitConverter]::ToString($ipBytes) -replace '-')
+$sequence = '30{0:X2}' -f ($dnsBytes.Length + $ipBytes.Length + 4)
+if ($actualSan -cnotin @("$sequence$dnsHex$ipHex", "$sequence$ipHex$dnsHex")) {
+    throw "The leaf CSR SANs must match the enrollment request. Regenerate the leaf CSR."
+}
 
 $issuer = Invoke-RestMethod -Method Post -Uri "$base/issuers" -Headers $headers -ContentType "application/json" -Body (@{
     name = "demo-intermediate"
@@ -74,10 +120,10 @@ $identity = Invoke-RestMethod -Method Post -Uri "$base/identities" -Headers $hea
 $enrollment = Invoke-RestMethod -Method Post -Uri "$base/enrollments" -Headers $headers -ContentType "application/json" -Body (@{
     identity_id = $identity.id
     issuer_id = $issuer.id
-    csr_pem = Get-Content -Raw .tmp-demo\leaf.csr
+    csr_pem = $csrPem
     requested_subject = "CN=edge-01"
-    requested_dns_names = @("edge-01.example.test")
-    requested_ip_addresses = @("127.0.0.1")
+    requested_dns_names = @($dnsName)
+    requested_ip_addresses = @($ipAddress)
     requested_not_after = (Get-Date).ToUniversalTime().AddDays(30).ToString("o")
 } | ConvertTo-Json)
 
