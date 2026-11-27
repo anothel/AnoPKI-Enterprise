@@ -333,17 +333,32 @@ This is a lifecycle-service implementation in progress. Core lifecycle, profile 
 | Enterprise/OpenSSL internal validation package | Manifest generation enabled; customer distribution is not implied |
 | Enterprise/OpenSSL customer package | Blocked by incomplete license/notices, hosted qualification, and commercial authorization |
 | Enterprise/AnoCrypto-C internal validation package | Adapter/evidence inputs only; external SDK is not copied |
-| Enterprise/AnoCrypto-C customer package | Blocked; trusted SDK not run, parity pending, production false, KCMVP not validated |
+| Enterprise/AnoCrypto-C customer package | Blocked. Original Q9 SDK qualification and product E2E are pending. `production_ready=false` and `kcmvp_status=not_validated`. |
 
 
 ### Trusted AnoCrypto-C SDK integration
 
-Ordinary pull-request CI does not fetch private AnoCrypto-C source. A protected manual
-workflow accepts an exact source commit and uses the read-only
-`ANOCRYPTO_C_READ_TOKEN` secret to build, test, install, hash, and consume the
-external SDK. See `sdk-manifests/anocrypto-c/README.md`. A successful workflow
-proves package consumption and no-fallback behavior only; PKI operation parity
-remains pending until the external SDK exposes and passes those operations.
+Ordinary pull-request CI keeps external SDK integration separate. The protected
+manual workflow builds, tests, installs, hashes, and consumes the external SDK
+from an exact source commit. It runs selected-profile tests, including PKI
+operation parity and no-fallback checks. The SDK evidence contract is in
+`sdk-manifests/anocrypto-c/README.md`.
+
+The Enterprise AnoCrypto-C adapter source declares eight PKI operation
+capabilities. [Historical P3-11 evidence](docs/enterprise/anocrypto-handoff-current-status.md)
+records local parity, dependency purity, and no-fallback checks for its recorded
+configuration. Native verification with the approved original Q9 installed
+SDK and protected workflow verification remain `NOT_RUN`.
+For Enterprise/OpenSSL, [the scoped PKI-20 lifecycle report](https://github.com/anothel/AnoPKI-Enterprise/issues/13#issuecomment-7205314343)
+records 11/11 live cases passing on commit
+`6d1c6368bf5b4ce8a866a392054933d4dcf666b0` in an isolated Linux Debug/static
+SQLite lab. Independent review and full product acceptance remain pending;
+this is not Release packaging or positive HA qualification.
+Enterprise/AnoCrypto-C product E2E and original Q9 native/protected
+qualification remain `NOT_RUN`.
+[SDK qualification](https://github.com/anothel/AnoPKI-Enterprise/issues/8) and
+[product acceptance](https://github.com/anothel/AnoPKI-Enterprise/issues/13)
+track the remaining gates.
 
 
 Enterprise provider architecture: [Key provider integration plan](docs/enterprise/key-provider-integration-plan.md).

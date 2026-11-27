@@ -3,7 +3,7 @@
 This file records release artifact, supply-chain, and compatibility decisions.
 Release candidates attach evidence here by command output or CI run URL.
 
-Current draft: [v0.1.0-alpha.0 candidate evidence](release-candidate-v0.1.0-alpha.0.md).
+Historical record from 2026-07-11: [v0.1.0-alpha.0 candidate evidence](release-candidate-v0.1.0-alpha.0.md).
 
 ## Tool Decisions
 
@@ -396,8 +396,8 @@ name.
 | Profile | Required evidence | Release rule |
 | --- | --- | --- |
 | Community/OpenSSL | Community commit, OpenSSL version, full contract/golden tests, artifact evidence | Public release candidate allowed when the standard checklist passes. |
-| Enterprise/OpenSSL | Community baseline commit, Enterprise overlay version, OpenSSL version, Community plus Enterprise tests | Commercial release candidate allowed; AnoCrypto/KCMVP claims prohibited. |
-| Enterprise/AnoCrypto-C | Community baseline, Enterprise overlay, exact AnoCrypto-C SDK version/build/fingerprint, capability matrix, no-fallback tests, parity evidence | Production release blocked until all required Community operations are supported. |
+| Enterprise/OpenSSL | Community baseline commit, Enterprise overlay version, OpenSSL version, Community plus Enterprise tests | Customer packaging remains blocked pending separate qualification, licensing, notices, and commercial authorization. This profile excludes AnoCrypto and KCMVP claims. |
+| Enterprise/AnoCrypto-C | Community baseline, Enterprise overlay, exact AnoCrypto-C SDK version/build/fingerprint, capability matrix, no-fallback tests, parity evidence | Production release blocked pending exact installed-SDK qualification, product E2E, and the provider and distribution gates. |
 
 Required profile metadata:
 
@@ -454,8 +454,35 @@ The JSON must match the assembled artifact and includes `product_profile`,
 `edition`, `selected_backend`, `fallback_enabled`, dependency/version, readiness,
 capabilities, ABI version, and build fingerprint. Community/OpenSSL and
 Enterprise/OpenSSL require the complete operation capability set.
-Enterprise/AnoCrypto-C remains pending and reports no operation-level capabilities and
-remains a development/integration profile.
+The Enterprise AnoCrypto-C adapter declares the following capabilities after
+successful initialization of the selected external SDK:
+
+- `csr_inspect`
+- `certificate_issue`
+- `crl_generate`
+- `crl_inspect`
+- `ocsp_request_inspect`
+- `ocsp_issuer_inspect`
+- `ocsp_response_generate`
+- `ocsp_responder_validate`
+
+These are source declarations. Qualification requires exact-artifact evidence
+from the installed SDK, including runtime capability output, positive and
+negative operation parity, and no-fallback and dependency-purity checks.
+[Historical P3-11 evidence](../enterprise/anocrypto-handoff-current-status.md)
+records local parity, dependency purity, and no-fallback checks for its
+recorded configuration.
+Native verification with the approved original Q9 installed SDK and protected
+workflow verification remain `NOT_RUN`. See the
+[SDK qualification issue](https://github.com/anothel/AnoPKI-Enterprise/issues/8).
+[PKI-20 scoped Enterprise/OpenSSL lifecycle evidence](https://github.com/anothel/AnoPKI-Enterprise/issues/13#issuecomment-7205314343)
+reports 11/11 live cases passing on commit
+`6d1c6368bf5b4ce8a866a392054933d4dcf666b0` (isolated Linux Debug/static,
+SQLite). Independent review and full product acceptance remain pending.
+CRL AKI, renewal/expiry, broader recovery/HA and Release package validation
+are separate gates. Enterprise/AnoCrypto-C product E2E remains `NOT_RUN`.
+The selected AnoCrypto-C development/integration profile records
+`production_ready=false` and `kcmvp_status=not_validated`.
 
 The Go service parses the exact backend record at startup and exposes it through
 `GET /version`. Enterprise release tooling uses
